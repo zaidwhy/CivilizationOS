@@ -1,0 +1,11 @@
+[project]
+name = "civilizationos"
+version = "0.0.1"
+description = "CivilizationOS — a hybrid multi-agent society simulation (AGORA x PANTHEON)"
+requires-python = ">=3.12"
+
+[tool.pytest.ini_options]
+testpaths = ["api/tests"]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+addopts = "-q"

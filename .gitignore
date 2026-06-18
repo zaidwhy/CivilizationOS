@@ -1,0 +1,38 @@
+# Python
+.venv/
+__pycache__/
+*.pyc
+*.egg-info/
+.pytest_cache/
+
+# Env / secrets
+.env
+*.local
+
+# Data stores (local, regenerable)
+data/*.sqlite
+data/*.db
+data/chroma/
+ml/mlflow/mlruns/
+ml/**/checkpoints/
+
+# Node / frontend
+web/node_modules/
+web/dist/
+web/.vite/
+# tsc -b build outputs (composite project)
+web/*.tsbuildinfo
+web/vite.config.d.ts
+web/vite.config.js
+
+# Harness session/plan artifacts
+plans/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+# Logs
+*.log
