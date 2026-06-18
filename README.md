@@ -9,6 +9,13 @@ A hybrid of two paradigms: **AGORA** (generative-agent society) × **PANTHEON**
 (multi-agent deliberation). Built to run for **under $20** by routing most thinking
 to a local model.
 
+![The living city](docs/screenshots/city.png)
+
+*Citizens live out daily routines across an isometric city; the feed shows real,
+locally-generated conversations. Click any citizen to inspect their mind:*
+
+![Agent inspector](docs/screenshots/inspector.png)
+
 ---
 
 ## Why it's interesting
@@ -93,7 +100,8 @@ docs/     architecture writeup, demo script
 ## Build status
 
 - [x] **Phase 0** — foundation: 3-tier router, FastAPI+WebSocket, React shell, vector store
-- [ ] **Phase 1** — AGORA core: sim engine, citizens, memory stream, isometric city
+- [x] **Phase 1** — AGORA core: sim engine, citizens w/ daily routines, episodic memory
+  stream + reflection, local-LLM conversations, animated isometric city + inspector
 - [ ] **Phase 2** — PANTHEON councils + TCMF RAG
 - [ ] **Phase 3** — crises & society dynamics
 - [ ] **Phase 4** — fine-tuning + MLOps

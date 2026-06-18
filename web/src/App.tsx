@@ -1,10 +1,19 @@
 import { useEffect } from "react";
 import { connectWorldSocket, useWorld } from "./ws/store";
+import CityStage from "./city/CityStage";
+import Inspector from "./panels/Inspector";
+import EventFeed from "./panels/EventFeed";
+
+const PHASE_LABEL: Record<string, string> = {
+  night: "🌙 Night",
+  morning: "🌅 Morning",
+  work: "🏙️ Work",
+  evening: "🌆 Evening",
+};
 
 export default function App() {
   const conn = useWorld((s) => s.conn);
-  const tick = useWorld((s) => s.tick);
-  const premiumMode = useWorld((s) => s.premiumMode);
+  const world = useWorld((s) => s.world);
 
   useEffect(() => connectWorldSocket(), []);
 
@@ -15,14 +24,25 @@ export default function App() {
         <span className={`pill ${conn === "open" ? "live" : "off"}`}>
           {conn === "open" ? "● live" : conn}
         </span>
-        <span className="pill">{premiumMode ? "premium brains" : "free brains ($0)"}</span>
+        {world && (
+          <>
+            <span className="pill">{world.clock}</span>
+            <span className="pill">{PHASE_LABEL[world.phase] ?? world.phase}</span>
+            <span className="pill">{world.citizens.length} citizens</span>
+          </>
+        )}
+        <span className="grow" />
+        <span className="pill">free brains · $0</span>
       </header>
 
-      <main className="stage">
-        <div style={{ textAlign: "center" }}>
-          <div className="tick">{tick}</div>
-          <div>world clock ticks (Phase 0 heartbeat)</div>
+      <main className="layout">
+        <div className="city">
+          <CityStage />
         </div>
+        <aside className="sidebar">
+          <Inspector />
+          <EventFeed />
+        </aside>
       </main>
     </div>
   );

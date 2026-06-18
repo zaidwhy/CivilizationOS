@@ -1,8 +1,9 @@
 """CivilizationOS FastAPI entrypoint.
 
-Phase 0: exposes health, an LLM router status endpoint, and a WebSocket that
-streams a heartbeat tick. Phase 1 replaces the heartbeat with real world state
-from the simulation engine.
+A single shared simulation Engine is advanced by one background loop on startup;
+every connected WebSocket client receives the same broadcast world snapshots, so
+all viewers watch the same city. REST endpoints expose health, an LLM smoke test,
+and per-agent detail (memories + relationships) for the inspector panel.
 
 Run:  uvicorn api.main:app --reload --port 8000
 """
@@ -11,17 +12,69 @@ from __future__ import annotations
 import asyncio
 import contextlib
 import logging
+from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 
 from .config import get_settings
 from .llm import Tier, get_router
+from .sim.engine import Engine
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("civos.api")
 
-app = FastAPI(title="CivilizationOS", version="0.0.1")
+settings = get_settings()
+engine = Engine(seed=settings.sim_seed, use_llm=True)
+
+
+class ConnectionManager:
+    def __init__(self) -> None:
+        self.active: set[WebSocket] = set()
+
+    async def connect(self, ws: WebSocket) -> None:
+        await ws.accept()
+        self.active.add(ws)
+
+    def disconnect(self, ws: WebSocket) -> None:
+        self.active.discard(ws)
+
+    async def broadcast(self, message: dict) -> None:
+        dead = []
+        for ws in list(self.active):
+            try:
+                await ws.send_json(message)
+            except Exception:
+                dead.append(ws)
+        for ws in dead:
+            self.disconnect(ws)
+
+
+manager = ConnectionManager()
+
+
+async def _sim_loop() -> None:
+    """The single authoritative clock: advance the world and broadcast each tick."""
+    while True:
+        try:
+            snap = await engine.advance()
+            await manager.broadcast(snap)
+        except Exception:
+            logger.exception("sim loop tick failed")
+        await asyncio.sleep(settings.tick_seconds)
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    task = asyncio.create_task(_sim_loop())
+    logger.info("simulation started (seed=%s, use_llm=%s)", settings.sim_seed, engine.use_llm)
+    yield
+    task.cancel()
+    with contextlib.suppress(asyncio.CancelledError):
+        await task
+
+
+app = FastAPI(title="CivilizationOS", version="0.1.0", lifespan=lifespan)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
@@ -37,6 +90,8 @@ async def health() -> dict:
     return {
         "status": "ok",
         "premium_mode": s.premium_mode,
+        "tick": engine.tick_count,
+        "citizens": len(engine.citizens),
         "brains": {
             "local": s.ollama_chat_model,
             "free": s.gemini_model if s.has_gemini else None,
@@ -47,9 +102,14 @@ async def health() -> dict:
     }
 
 
+@app.get("/agent/{agent_id}")
+async def agent(agent_id: str) -> dict:
+    detail = engine.agent_detail(agent_id)
+    return detail or {"error": "not found", "id": agent_id}
+
+
 @app.get("/llm/ping")
 async def llm_ping(tier: int = 0) -> dict:
-    """Smoke-test the router at a requested tier (downgrades as configured)."""
     router = get_router()
     result = await router.complete(
         prompt="Reply with a single short sentence confirming you are online.",
@@ -69,22 +129,15 @@ async def llm_ping(tier: int = 0) -> dict:
 
 @app.websocket("/ws")
 async def ws(websocket: WebSocket) -> None:
-    """Phase-0 heartbeat. Phase 1 streams real world snapshots over this channel."""
-    await websocket.accept()
-    s = get_settings()
-    tick = 0
+    await manager.connect(websocket)
     try:
+        await websocket.send_json(engine.snapshot())  # immediate paint
         while True:
-            tick += 1
-            await websocket.send_json({
-                "type": "tick",
-                "tick": tick,
-                "premium_mode": s.premium_mode,
-            })
-            await asyncio.sleep(s.tick_seconds)
+            await websocket.receive_text()  # client keepalive / future commands
     except WebSocketDisconnect:
-        logger.info("client disconnected after %d ticks", tick)
-    except Exception:  # pragma: no cover - defensive
-        logger.exception("ws loop error")
+        manager.disconnect(websocket)
+    except Exception:
+        logger.exception("ws error")
+        manager.disconnect(websocket)
         with contextlib.suppress(Exception):
             await websocket.close()
