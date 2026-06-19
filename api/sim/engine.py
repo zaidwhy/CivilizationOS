@@ -429,8 +429,3 @@ class Engine:
             }
             for e in events
         ]
-
-
-def setattr_once(obj, val):
-    """Dummy helper — was an error in the first resolve_crisis draft, kept for clarity."""
-    return False
