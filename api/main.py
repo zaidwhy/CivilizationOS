@@ -14,8 +14,9 @@ import contextlib
 import logging
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
 
 from .config import get_settings
 from .llm import Tier, get_router
@@ -64,8 +65,22 @@ async def _sim_loop() -> None:
         await asyncio.sleep(settings.tick_seconds)
 
 
+async def _broadcast_debate_turn(turn) -> None:
+    await manager.broadcast({
+        "type": "debate_turn",
+        "debate_id": turn.debate_id,
+        "institution_id": turn.institution_id,
+        "role": turn.role,
+        "name": turn.name,
+        "text": turn.text,
+        "tick": turn.tick,
+        "is_final": turn.is_final,
+    })
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    engine._on_debate_turn = _broadcast_debate_turn
     task = asyncio.create_task(_sim_loop())
     logger.info("simulation started (seed=%s, use_llm=%s)", settings.sim_seed, engine.use_llm)
     yield
@@ -141,3 +156,69 @@ async def ws(websocket: WebSocket) -> None:
         manager.disconnect(websocket)
         with contextlib.suppress(Exception):
             await websocket.close()
+
+
+# ---- Phase 2: PANTHEON council endpoints ----
+
+class CrisisRequest(BaseModel):
+    text: str
+    institution_id: str
+    severity: float = 0.7
+
+
+@app.post("/crisis")
+async def post_crisis(req: CrisisRequest) -> dict:
+    from .agents.council import COUNCILS
+    if req.institution_id not in COUNCILS:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Unknown institution '{req.institution_id}'. "
+                   f"Valid: {list(COUNCILS.keys())}",
+        )
+    crisis = await engine.inject_crisis(
+        text=req.text,
+        institution_id=req.institution_id,
+        severity=req.severity,
+    )
+    return {
+        "crisis_id": crisis.id,
+        "debate_id": crisis.debate_id or "(debate starting…)",
+        "institution_id": crisis.institution_id,
+        "tick": crisis.tick,
+    }
+
+
+@app.get("/debates/{debate_id}")
+async def get_debate(debate_id: str) -> dict:
+    turns = engine.crises.get_debate(debate_id)
+    return {
+        "debate_id": debate_id,
+        "turns": [
+            {
+                "role": t.role,
+                "name": t.name,
+                "text": t.text,
+                "tick": t.tick,
+                "is_final": t.is_final,
+            }
+            for t in turns
+        ],
+        "complete": any(t.is_final for t in turns),
+    }
+
+
+@app.get("/crises")
+async def get_crises() -> dict:
+    return {
+        "crises": [
+            {
+                "id": c.id,
+                "text": c.text,
+                "tick": c.tick,
+                "institution_id": c.institution_id,
+                "debate_id": c.debate_id,
+                "severity": c.severity,
+            }
+            for c in engine.crises.list_crises()
+        ]
+    }

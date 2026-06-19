@@ -43,6 +43,16 @@ export type AgentDetail = {
   relationships: { id: string; name: string; affinity: number }[];
 };
 
+export type DebateTurn = {
+  debate_id: string;
+  institution_id: string;
+  role: string;
+  name: string;
+  text: string;
+  tick: number;
+  is_final: boolean;
+};
+
 type ConnState = "connecting" | "open" | "closed";
 
 interface WorldStore {
@@ -50,17 +60,26 @@ interface WorldStore {
   world: WorldMessage | null;
   selectedId: string | null;
   detail: AgentDetail | null;
+  // Phase 2 — debate state keyed by debate_id
+  debates: Record<string, DebateTurn[]>;
+  activeDebateId: string | null;
   setConn: (c: ConnState) => void;
   apply: (msg: WorldMessage) => void;
   select: (id: string | null) => void;
   refreshDetail: () => void;
+  addDebateTurn: (turn: DebateTurn) => void;
+  setActiveDebate: (id: string | null) => void;
 }
+
+const emptyDebates: Record<string, DebateTurn[]> = {};
 
 export const useWorld = create<WorldStore>((set, get) => ({
   conn: "connecting",
   world: null,
   selectedId: null,
   detail: null,
+  debates: emptyDebates,
+  activeDebateId: null,
   setConn: (conn) => set({ conn }),
   apply: (msg) => set({ world: msg }),
   select: (id) => {
@@ -78,6 +97,15 @@ export const useWorld = create<WorldStore>((set, get) => ({
       /* transient; will retry on next selection */
     }
   },
+  addDebateTurn: (turn) =>
+    set((s) => {
+      const prev = s.debates[turn.debate_id] ?? [];
+      return {
+        debates: { ...s.debates, [turn.debate_id]: [...prev, turn] },
+        activeDebateId: turn.debate_id,
+      };
+    }),
+  setActiveDebate: (id) => set({ activeDebateId: id }),
 }));
 
 // Dev convenience: expose the store on window so it can be driven from the
@@ -104,6 +132,7 @@ export function connectWorldSocket() {
     ws.onmessage = (e) => {
       const msg = JSON.parse(e.data);
       if (msg.type === "world") useWorld.getState().apply(msg);
+      else if (msg.type === "debate_turn") useWorld.getState().addDebateTurn(msg as DebateTurn);
     };
     ws.onclose = () => {
       useWorld.getState().setConn("closed");

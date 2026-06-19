@@ -7,16 +7,24 @@ the *text* of that conversation (and end-of-day reflections) is produced by the
 Tier-0 local model in a background task, so the tick loop never blocks on the LLM
 and the city keeps moving smoothly. With use_llm=False everything is rule-based and
 fully reproducible from the seed — that's the mode the tests run in.
+
+Phase 2: inject_crisis() adds a crisis node to the CausalGraph, activates the
+relevant PANTHEON council, and streams DebateTurns into the CrisisRegistry.
 """
 from __future__ import annotations
 
 import asyncio
 import logging
 import random
+from typing import Callable, Awaitable
 
 from ..agents.citizen import Citizen
+from ..agents.council import COUNCILS, DebateTurn
 from ..agents.personas import SEED_CITIZENS, Persona
 from ..llm import Tier, get_router
+from ..memory.causal_graph import CausalGraph
+from ..memory.tcmf import TCMFRetriever
+from ..sim.crisis import Crisis, CrisisRegistry
 from .world import TICKS_PER_DAY, World, clock_label, phase_for_tick
 
 logger = logging.getLogger("civos.sim")
@@ -44,6 +52,12 @@ class Engine:
         self.event_log: list[dict] = []
         self._bg: set[asyncio.Task] = set()
         self._router = get_router() if use_llm else None
+        # Phase 2 — PANTHEON
+        self.causal_graph = CausalGraph()
+        self.tcmf = TCMFRetriever(self.causal_graph)
+        self.crises = CrisisRegistry()
+        # callback: (turn: DebateTurn) -> Awaitable[None] — set by main.py to broadcast
+        self._on_debate_turn: Callable[[DebateTurn], Awaitable[None]] | None = None
 
     # ---- main step ----
     async def advance(self) -> dict:
@@ -152,6 +166,74 @@ class Engine:
             except Exception:
                 logger.exception("embedding failed")
         c.memory.add(text, tick, kind=kind, importance=IMPORTANCE.get(kind, 3.0), embedding=embedding)
+
+    # ---- Phase 2: crisis injection ----
+    async def inject_crisis(
+        self,
+        text: str,
+        institution_id: str,
+        severity: float = 0.7,
+    ) -> Crisis:
+        """Inject a crisis, activate the PANTHEON council, stream debate turns."""
+        tick = self.tick_count
+        crisis = self.crises.create(text, tick, institution_id, severity)
+
+        # Add crisis to causal graph
+        embedding: list[float] | None = None
+        if self.use_llm and self._router:
+            try:
+                embedding = (await self._router.embed([text]))[0]
+            except Exception:
+                logger.exception("crisis embedding failed")
+
+        self.causal_graph.add_event(
+            crisis.causal_event_id,
+            text=text,
+            tick=tick,
+            kind="crisis",
+            institution_id=institution_id,
+            embedding=embedding,
+        )
+        self.causal_graph.auto_link_predecessors(crisis.causal_event_id)
+
+        self._log_event(tick, "crisis", f"CRISIS [{institution_id}]: {text}")
+        logger.info("Crisis injected: %s -> %s", crisis.id, institution_id)
+
+        council = COUNCILS.get(institution_id)
+        if council is None:
+            logger.warning("No council for institution %s", institution_id)
+            return crisis
+
+        # Debate runs as a background task so the HTTP response returns immediately
+        self._spawn(self._run_debate(crisis, council, embedding))
+        return crisis
+
+    async def _run_debate(self, crisis: Crisis, council, crisis_embedding) -> None:
+        router = self._router or get_router()
+        ctx = await self.tcmf.retrieve(
+            question=crisis.text,
+            citizens=self.citizens,
+            tick=crisis.tick,
+            institution_id=crisis.institution_id,
+            crisis_event_id=crisis.causal_event_id,
+            k=12,
+            router=router if self.use_llm else None,
+        )
+
+        first_turn = True
+        async for turn in council.deliberate(ctx, router):
+            if first_turn:
+                self.crises.set_debate_id(crisis.id, turn.debate_id)
+                first_turn = False
+            self.crises.add_turn(turn.debate_id, turn)
+            self._log_event(crisis.tick, "debate", f"[{turn.name}] {turn.text[:80]}…")
+            if self._on_debate_turn:
+                try:
+                    await self._on_debate_turn(turn)
+                except Exception:
+                    logger.exception("debate broadcast failed")
+
+        logger.info("Debate complete for crisis %s", crisis.id)
 
     # ---- events / snapshot ----
     def _log_event(self, tick: int, kind: str, text: str) -> None:

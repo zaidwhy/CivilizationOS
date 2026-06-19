@@ -3,6 +3,7 @@ import { connectWorldSocket, useWorld } from "./ws/store";
 import CityStage from "./city/CityStage";
 import Inspector from "./panels/Inspector";
 import EventFeed from "./panels/EventFeed";
+import CouncilChamber from "./panels/CouncilChamber";
 
 const PHASE_LABEL: Record<string, string> = {
   night: "🌙 Night",
@@ -42,6 +43,7 @@ export default function App() {
         <aside className="sidebar">
           <Inspector />
           <EventFeed />
+          <CouncilChamber />
         </aside>
       </main>
     </div>
