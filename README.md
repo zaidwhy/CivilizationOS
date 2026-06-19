@@ -80,6 +80,14 @@ Quick checks:
 - `GET http://localhost:8000/health` — shows active brains + spend
 - `GET http://localhost:8000/llm/ping?tier=0` — smoke-test the local brain through the router
 
+**Inject a crisis (Phase 2+):**
+```bash
+curl -X POST http://localhost:8000/crisis \
+  -H "Content-Type: application/json" \
+  -d '{"text":"Fever outbreak at Mercy Clinic","institution_id":"inst_health"}'
+# then watch the CouncilChamber panel in the UI for the live debate
+```
+
 ## Test
 
 ```bash
@@ -102,7 +110,11 @@ docs/     architecture writeup, demo script
 - [x] **Phase 0** — foundation: 3-tier router, FastAPI+WebSocket, React shell, vector store
 - [x] **Phase 1** — AGORA core: sim engine, citizens w/ daily routines, episodic memory
   stream + reflection, local-LLM conversations, animated isometric city + inspector
-- [ ] **Phase 2** — PANTHEON councils + TCMF RAG
-- [ ] **Phase 3** — crises & society dynamics
+- [x] **Phase 2** — PANTHEON councils + TCMF RAG: causal graph, TCMF retriever, 5-specialist
+  debate (Historian → Strategist → Skeptic → Predictor → Synthesizer), CouncilChamber UI,
+  `POST /crisis` + `GET /debates/{id}` endpoints; 38 tests passing
+- [ ] **Phase 3** — crises & society dynamics: pre-defined crisis templates (Pandemic, Drought,
+  Cyberattack, Election, Crime), citizen fear/reaction states, multi-institution triggering,
+  RelationshipGraph UI, causal graph timeline
 - [ ] **Phase 4** — fine-tuning + MLOps
 - [ ] **Phase 5** — polish, demo & docs
