@@ -9,7 +9,8 @@ export type Citizen = {
   action: string;
   location_id: string;
   speech: string | null;
-  fear: number;  // 0-1, Phase 3
+  fear: number;
+  active_crisis: string | null;
 };
 
 export type LocationT = {
@@ -41,6 +42,7 @@ export type AgentDetail = {
   name: string;
   occupation: string;
   traits: string;
+  backstory: string;
   action: string;
   fear: number;
   active_crisis: string | null;
@@ -58,6 +60,15 @@ export type DebateTurn = {
   is_final: boolean;
 };
 
+export type HealthData = {
+  tick_interval: number;
+  tier2_spent_usd: number;
+  tier2_budget_usd: number;
+  premium_mode: boolean;
+  causal_events: number;
+  active_crises: string[];
+};
+
 type ConnState = "connecting" | "open" | "closed";
 
 interface WorldStore {
@@ -65,15 +76,16 @@ interface WorldStore {
   world: WorldMessage | null;
   selectedId: string | null;
   detail: AgentDetail | null;
-  // Phase 2 — debate state keyed by debate_id
   debates: Record<string, DebateTurn[]>;
   activeDebateId: string | null;
+  health: HealthData | null;
   setConn: (c: ConnState) => void;
   apply: (msg: WorldMessage) => void;
   select: (id: string | null) => void;
   refreshDetail: () => void;
   addDebateTurn: (turn: DebateTurn) => void;
   setActiveDebate: (id: string | null) => void;
+  setHealth: (h: HealthData) => void;
 }
 
 const emptyDebates: Record<string, DebateTurn[]> = {};
@@ -85,6 +97,7 @@ export const useWorld = create<WorldStore>((set, get) => ({
   detail: null,
   debates: emptyDebates,
   activeDebateId: null,
+  health: null,
   setConn: (conn) => set({ conn }),
   apply: (msg) => set({ world: msg }),
   select: (id) => {
@@ -99,7 +112,7 @@ export const useWorld = create<WorldStore>((set, get) => ({
       const d = await res.json();
       if (!d.error && get().selectedId === id) set({ detail: d });
     } catch {
-      /* transient; will retry on next selection */
+      /* transient */
     }
   },
   addDebateTurn: (turn) =>
@@ -111,10 +124,9 @@ export const useWorld = create<WorldStore>((set, get) => ({
       };
     }),
   setActiveDebate: (id) => set({ activeDebateId: id }),
+  setHealth: (h) => set({ health: h }),
 }));
 
-// Dev convenience: expose the store on window so it can be driven from the
-// console (and automated checks). Tree-shaken out of production builds.
 if (import.meta.env.DEV && typeof window !== "undefined") {
   (window as unknown as { useWorld: typeof useWorld }).useWorld = useWorld;
 }
@@ -126,6 +138,24 @@ export function connectWorldSocket() {
   let retry: ReturnType<typeof setTimeout> | undefined;
   let keepalive: ReturnType<typeof setInterval> | undefined;
   let detailPoll: ReturnType<typeof setInterval> | undefined;
+  let healthPoll: ReturnType<typeof setInterval> | undefined;
+
+  const pollHealth = async () => {
+    try {
+      const res = await fetch("/api/health");
+      if (res.ok) {
+        const d = await res.json();
+        useWorld.getState().setHealth({
+          tick_interval: d.tick_interval ?? 1,
+          tier2_spent_usd: d.tier2_spent_usd ?? 0,
+          tier2_budget_usd: d.tier2_budget_usd ?? 15,
+          premium_mode: d.premium_mode ?? false,
+          causal_events: d.causal_events ?? 0,
+          active_crises: d.active_crises ?? [],
+        });
+      }
+    } catch { /* transient */ }
+  };
 
   const open = () => {
     useWorld.getState().setConn("connecting");
@@ -148,13 +178,15 @@ export function connectWorldSocket() {
   };
 
   open();
-  // keep the open inspector panel fresh as the selected agent accrues memories
   detailPoll = setInterval(() => useWorld.getState().refreshDetail(), 4000);
+  healthPoll = setInterval(pollHealth, 5000);
+  pollHealth();
 
   return () => {
     if (retry) clearTimeout(retry);
     if (keepalive) clearInterval(keepalive);
     if (detailPoll) clearInterval(detailPoll);
+    if (healthPoll) clearInterval(healthPoll);
     ws?.close();
   };
 }
