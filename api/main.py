@@ -3,7 +3,12 @@
 A single shared simulation Engine is advanced by one background loop on startup;
 every connected WebSocket client receives the same broadcast world snapshots, so
 all viewers watch the same city. REST endpoints expose health, an LLM smoke test,
-and per-agent detail (memories + relationships) for the inspector panel.
+per-agent detail, and PANTHEON council controls.
+
+Phase 5 additions:
+  POST /speed           — change tick interval (0.1–5.0 seconds)
+  POST /crisis/{key}/resolve — manually end an active crisis
+  GET  /timeline        — causal event history for the Timeline panel
 
 Run:  uvicorn api.main:app --reload --port 8000
 """
@@ -55,14 +60,14 @@ manager = ConnectionManager()
 
 
 async def _sim_loop() -> None:
-    """The single authoritative clock: advance the world and broadcast each tick."""
+    """Single authoritative clock: advance the world and broadcast each tick."""
     while True:
         try:
             snap = await engine.advance()
             await manager.broadcast(snap)
         except Exception:
             logger.exception("sim loop tick failed")
-        await asyncio.sleep(settings.tick_seconds)
+        await asyncio.sleep(engine.tick_interval)
 
 
 async def _broadcast_debate_turn(turn) -> None:
@@ -89,7 +94,7 @@ async def lifespan(app: FastAPI):
         await task
 
 
-app = FastAPI(title="CivilizationOS", version="0.1.0", lifespan=lifespan)
+app = FastAPI(title="CivilizationOS", version="0.5.0", lifespan=lifespan)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
@@ -98,15 +103,21 @@ app.add_middleware(
 )
 
 
+# ---- core ----
+
 @app.get("/health")
 async def health() -> dict:
     s = get_settings()
     router = get_router()
     return {
         "status": "ok",
+        "version": "0.5.0",
         "premium_mode": s.premium_mode,
         "tick": engine.tick_count,
+        "tick_interval": engine.tick_interval,
         "citizens": len(engine.citizens),
+        "active_crises": [t.name for t, _ in engine._active_templates],
+        "causal_events": len(engine.causal_graph),
         "brains": {
             "local": s.ollama_chat_model,
             "free": s.gemini_model if s.has_gemini else None,
@@ -146,9 +157,9 @@ async def llm_ping(tier: int = 0) -> dict:
 async def ws(websocket: WebSocket) -> None:
     await manager.connect(websocket)
     try:
-        await websocket.send_json(engine.snapshot())  # immediate paint
+        await websocket.send_json(engine.snapshot())
         while True:
-            await websocket.receive_text()  # client keepalive / future commands
+            await websocket.receive_text()
     except WebSocketDisconnect:
         manager.disconnect(websocket)
     except Exception:
@@ -158,13 +169,46 @@ async def ws(websocket: WebSocket) -> None:
             await websocket.close()
 
 
-# ---- Phase 2: PANTHEON council endpoints ----
+# ---- Phase 5: simulation controls ----
+
+class SpeedRequest(BaseModel):
+    seconds_per_tick: float = 1.0
+
+
+@app.post("/speed")
+async def set_speed(req: SpeedRequest) -> dict:
+    """Adjust simulation speed. 0.1 = very fast, 5.0 = very slow."""
+    clamped = max(0.1, min(5.0, req.seconds_per_tick))
+    engine.tick_interval = clamped
+    return {"tick_interval": engine.tick_interval}
+
+
+@app.post("/crisis/{template_key}/resolve")
+async def resolve_crisis(template_key: str) -> dict:
+    """Manually resolve an active crisis by its template key."""
+    from .sim.events import CRISIS_TEMPLATES
+    if template_key not in CRISIS_TEMPLATES:
+        raise HTTPException(status_code=404, detail=f"Unknown crisis template '{template_key}'")
+    result = engine.resolve_crisis(template_key)
+    if result is None:
+        raise HTTPException(status_code=409, detail=f"Crisis '{template_key}' is not currently active")
+    return {"resolved": template_key, "message": result, "tick": engine.tick_count}
+
+
+@app.get("/timeline")
+async def get_timeline(k: int = 60) -> dict:
+    """Causal event history for the Timeline panel (newest first)."""
+    events = engine.timeline(k=min(k, 200))
+    return {"events": events, "total_nodes": len(engine.causal_graph)}
+
+
+# ---- PANTHEON council endpoints ----
 
 class CrisisRequest(BaseModel):
     text: str
     institution_id: str
     severity: float = 0.7
-    template_key: str | None = None  # Phase 3: optional preset template
+    template_key: str | None = None
 
 
 @app.post("/crisis")
@@ -174,18 +218,15 @@ async def post_crisis(req: CrisisRequest) -> dict:
     if req.institution_id not in COUNCILS:
         raise HTTPException(
             status_code=400,
-            detail=f"Unknown institution '{req.institution_id}'. "
-                   f"Valid: {list(COUNCILS.keys())}",
+            detail=f"Unknown institution '{req.institution_id}'. Valid: {list(COUNCILS.keys())}",
         )
-    # If a template is given, use its institution and text as defaults
     tmpl = CRISIS_TEMPLATES.get(req.template_key or "")
-    institution_id = req.institution_id
-    text = req.text
-    if tmpl and not req.text:
-        text = tmpl.description
+    text = req.text or (tmpl.description if tmpl else "")
+    if not text:
+        raise HTTPException(status_code=422, detail="crisis text is required")
     crisis = await engine.inject_crisis(
         text=text,
-        institution_id=institution_id,
+        institution_id=req.institution_id,
         severity=req.severity,
         template_key=req.template_key,
     )
@@ -209,6 +250,7 @@ async def get_templates() -> dict:
                 "description": t.description,
                 "primary_institution": t.primary_institution,
                 "secondary_institutions": t.secondary_institutions,
+                "resolution_text": t.resolution_text,
             }
             for t in CRISIS_TEMPLATES.values()
         ]
