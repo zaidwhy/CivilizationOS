@@ -5,6 +5,15 @@ const KIND_COLOR: Record<string, string> = {
   conversation: "#6ea8fe",
   reflection: "#b388ff",
   event: "#fbbf24",
+  decision: "#fbbf24",
+};
+
+const FEAR_LABEL = (pct: number) => {
+  if (pct < 10) return null;
+  if (pct < 30) return "uneasy";
+  if (pct < 55) return "worried";
+  if (pct < 75) return "afraid";
+  return "terrified";
 };
 
 export default function Inspector() {
@@ -15,14 +24,15 @@ export default function Inspector() {
   if (!selectedId) {
     return (
       <div className="panel hint">
-        <p>Click a citizen to inspect their mind — memories, relationships, and what they're doing.</p>
+        <p>Click a citizen on the city map to inspect their mind — memories, relationships, and current state.</p>
       </div>
     );
   }
 
-  if (!detail) return <div className="panel">Loading…</div>;
+  if (!detail) return <div className="panel" style={{ color: "var(--muted)", fontSize: 12 }}>Loading…</div>;
 
   const fearPct = Math.round((detail.fear ?? 0) * 100);
+  const fearLabel = FEAR_LABEL(fearPct);
 
   return (
     <div className="panel">
@@ -34,12 +44,27 @@ export default function Inspector() {
         <button className="x" onClick={() => select(null)}>✕</button>
       </div>
 
+      {detail.backstory && (
+        <div style={{
+          margin: "8px 0",
+          padding: "7px 9px",
+          background: "rgba(110,168,254,0.06)",
+          border: "1px solid rgba(110,168,254,0.15)",
+          borderRadius: 6,
+          fontSize: 11,
+          color: "#94a3b8",
+          lineHeight: 1.5,
+        }}>
+          {detail.backstory}
+        </div>
+      )}
+
       <div className="now">{detail.action}</div>
 
-      {fearPct > 5 && (
+      {fearLabel && (
         <div className="fear-bar">
           <div className="fear-label">
-            ⚠ Fear{detail.active_crisis ? ` (${detail.active_crisis})` : ""} — {fearPct}%
+            ⚠ {fearLabel}{detail.active_crisis ? ` — ${detail.active_crisis}` : ""} ({fearPct}%)
           </div>
           <div className="fear-track">
             <div className="fear-fill" style={{ width: `${fearPct}%` }} />
@@ -50,9 +75,11 @@ export default function Inspector() {
       {detail.relationships.length > 0 && (
         <>
           <div className="section">Relationships</div>
-          {detail.relationships.slice(0, 5).map((r) => (
+          {detail.relationships.slice(0, 6).map((r) => (
             <div key={r.id} className="rel">
-              <span>{r.name}</span>
+              <span style={{ fontSize: 12 }}>
+                {r.affinity >= 0 ? "♥" : "⚡"} {r.name}
+              </span>
               <div className="bar">
                 <div
                   className="fill"
@@ -67,7 +94,7 @@ export default function Inspector() {
         </>
       )}
 
-      <div className="section">Memory stream</div>
+      <div className="section">Memory stream ({detail.memories.length})</div>
       <div className="memories">
         {detail.memories.length === 0 && <div className="muted small">No memories yet…</div>}
         {detail.memories.map((m, i) => (
@@ -75,7 +102,9 @@ export default function Inspector() {
             <span className="dot" style={{ background: KIND_COLOR[m.kind] ?? "#8b97a7" }} />
             <div>
               <div className="small">{m.text}</div>
-              <div className="muted xsmall">{m.kind} · importance {m.importance}</div>
+              <div className="muted xsmall">
+                {m.kind} · importance {m.importance.toFixed(0)} · tick {m.tick}
+              </div>
             </div>
           </div>
         ))}
