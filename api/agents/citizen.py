@@ -110,8 +110,18 @@ class Citizen:
     def apply_fear(self, amount: float) -> None:
         self.fear = min(1.0, self.fear + amount)
 
-    def decay_fear(self, rate: float = 0.002) -> None:
+    def decay_fear(self, rate: float = 0.006) -> None:
+        """Fear decays ~0.6%/tick — clears in ~2 in-world days from 1.0."""
         self.fear = max(0.0, self.fear - rate)
+
+    def decay_relationships(self, rate: float = 0.0003) -> None:
+        """Relationships very slowly drift toward 0 when not reinforced."""
+        for oid in list(self.relationships):
+            v = self.relationships[oid]
+            if abs(v) < rate:
+                del self.relationships[oid]
+            else:
+                self.relationships[oid] = v - rate if v > 0 else v + rate
 
     # ---- serialization ----
     def snapshot(self) -> dict:

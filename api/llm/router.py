@@ -129,6 +129,7 @@ class LLMRouter:
         max_tokens: int = 512,
         temperature: float = 0.7,
         claude_model: str | None = None,
+        local_model: str | None = None,   # Phase 4: override local model (e.g. fine-tuned council)
     ) -> LLMResult:
         used = self.resolve_tier(tier)
         if used == Tier.PREMIUM:
@@ -139,28 +140,32 @@ class LLMRouter:
         elif used == Tier.FREE:
             result = await self._complete_gemini(prompt, system, max_tokens, temperature)
         else:
-            result = await self._complete_ollama(prompt, system, max_tokens, temperature)
+            result = await self._complete_ollama(
+                prompt, system, max_tokens, temperature,
+                model=local_model or self.s.ollama_chat_model,
+            )
 
         result.tier_requested = tier
         result.tier_used = used
         result.downgraded = used < tier
         return result
 
-    async def _complete_ollama(self, prompt, system, max_tokens, temperature) -> LLMResult:
+    async def _complete_ollama(self, prompt, system, max_tokens, temperature, model: str | None = None) -> LLMResult:
         client = self._ollama_client()
+        model = model or self.s.ollama_chat_model
         messages = []
         if system:
             messages.append({"role": "system", "content": system})
         messages.append({"role": "user", "content": prompt})
         resp = await client.chat(
-            model=self.s.ollama_chat_model,
+            model=model,
             messages=messages,
             options={"temperature": temperature, "num_predict": max_tokens},
         )
         return LLMResult(
             text=resp["message"]["content"],
             tier_requested=Tier.LOCAL, tier_used=Tier.LOCAL,
-            model=self.s.ollama_chat_model,
+            model=model,
         )
 
     async def _complete_gemini(self, prompt, system, max_tokens, temperature) -> LLMResult:

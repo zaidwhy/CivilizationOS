@@ -29,6 +29,21 @@ export function citizenColor(id: string): number {
   return palette[h % palette.length];
 }
 
+/** Blend citizen base color toward red based on fear level (0-1). */
+export function citizenColorWithFear(id: string, fear: number): number {
+  const base = citizenColor(id);
+  if (fear < 0.05) return base;
+  const r0 = (base >> 16) & 0xff;
+  const g0 = (base >> 8) & 0xff;
+  const b0 = base & 0xff;
+  // Blend toward #f87171 (red-ish fear color)
+  const t = Math.min(1, fear * 1.2);
+  const r = Math.round(r0 + (0xf8 - r0) * t);
+  const g = Math.round(g0 + (0x71 - g0) * t);
+  const b = Math.round(b0 + (0x71 - b0) * t);
+  return (r << 16) | (g << 8) | b;
+}
+
 /** Night/day overlay alpha from day_progress (0..1). Darkest pre-dawn, bright midday. */
 export function nightAlpha(dayProgress: number): number {
   // smooth bell that is high at night (0 and 1) and ~0 at midday (0.5)

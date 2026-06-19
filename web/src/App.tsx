@@ -16,6 +16,7 @@ const PHASE_LABEL: Record<string, string> = {
 export default function App() {
   const conn = useWorld((s) => s.conn);
   const world = useWorld((s) => s.world);
+  const activeCrises = useWorld((s) => s.world?.active_crises) ?? [];
 
   useEffect(() => connectWorldSocket(), []);
 
@@ -33,6 +34,11 @@ export default function App() {
             <span className="pill">{world.citizens.length} citizens</span>
           </>
         )}
+        {activeCrises.map((name) => (
+          <span key={name} className="pill" style={{ color: "#f87171", borderColor: "#f87171" }}>
+            ⚠ {name}
+          </span>
+        ))}
         <span className="grow" />
         <span className="pill">free brains · $0</span>
       </header>

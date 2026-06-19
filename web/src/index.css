@@ -44,12 +44,13 @@ body { margin: 0; background: var(--bg); color: var(--text); overflow: hidden; }
 .sidebar {
   border-left: 1px solid var(--line);
   background: var(--panel2);
-  display: grid;
-  grid-template-rows: 1fr auto;
+  display: flex;
+  flex-direction: column;
   min-height: 0;
+  overflow-y: auto;
 }
 
-.panel { padding: 14px; overflow-y: auto; }
+.panel { padding: 14px; flex-shrink: 0; }
 .panel.hint { color: var(--muted); font-size: 13px; display: grid; align-content: center; }
 
 .panel-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; }
@@ -83,9 +84,14 @@ body { margin: 0; background: var(--bg); color: var(--text); overflow: hidden; }
 .mem { display: grid; grid-template-columns: 10px 1fr; gap: 8px; align-items: start; }
 .mem .dot { width: 8px; height: 8px; border-radius: 50%; margin-top: 4px; }
 
-.feed { border-top: 1px solid var(--line); max-height: 38vh; }
-.feed-row { display: grid; grid-template-columns: 84px 1fr; gap: 8px; padding: 4px 0; align-items: baseline; }
-.feed-row .kind { font-size: 10px; text-transform: uppercase; color: var(--muted); letter-spacing: 0.5px; }
+.feed { border-top: 1px solid var(--line); max-height: 220px; overflow-y: auto; }
+.feed-row { display: grid; grid-template-columns: 28px 1fr; gap: 6px; padding: 3px 0; align-items: baseline; }
+.feed-row .kind-icon { font-size: 12px; }
+
+.fear-bar { margin: 8px 0 0; }
+.fear-label { font-size: 11px; color: #f87171; margin-bottom: 3px; }
+.fear-track { height: 5px; background: var(--line); border-radius: 999px; overflow: hidden; }
+.fear-fill { height: 100%; border-radius: 999px; background: linear-gradient(90deg, #fbbf24, #f87171); transition: width 0.4s; }
 
 .muted { color: var(--muted); }
 .small { font-size: 12px; line-height: 1.4; }

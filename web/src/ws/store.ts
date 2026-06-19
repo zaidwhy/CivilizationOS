@@ -32,6 +32,8 @@ export type WorldMessage = {
   locations: LocationT[];
   citizens: Citizen[];
   events: WorldEvent[];
+  active_crises: string[];
+  closed_locations: string[];
 };
 
 export type AgentDetail = {
@@ -40,6 +42,8 @@ export type AgentDetail = {
   occupation: string;
   traits: string;
   action: string;
+  fear: number;
+  active_crisis: string | null;
   memories: { tick: number; kind: string; text: string; importance: number }[];
   relationships: { id: string; name: string; affinity: number }[];
 };

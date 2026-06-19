@@ -68,12 +68,13 @@ cp .env.example .env     # then add GEMINI_API_KEY / ANTHROPIC_API_KEY to unlock
 
 ## Run
 
-```bash
-# Terminal 1 — backend
-.venv/Scripts/python -m uvicorn api.main:app --reload --port 8000
+```powershell
+# Terminal 1 — backend (PowerShell)
+cd C:\Users\Asus\projects\CivilizationOS
+$env:PYTHONIOENCODING="utf-8"; .venv\Scripts\python -m uvicorn api.main:app --reload --port 8000
 
 # Terminal 2 — frontend
-cd web && npm run dev      # http://localhost:5173
+cd web; npm run dev      # http://localhost:5173
 ```
 
 Quick checks:
@@ -112,9 +113,12 @@ docs/     architecture writeup, demo script
   stream + reflection, local-LLM conversations, animated isometric city + inspector
 - [x] **Phase 2** — PANTHEON councils + TCMF RAG: causal graph, TCMF retriever, 5-specialist
   debate (Historian → Strategist → Skeptic → Predictor → Synthesizer), CouncilChamber UI,
-  `POST /crisis` + `GET /debates/{id}` endpoints; 38 tests passing
-- [ ] **Phase 3** — crises & society dynamics: pre-defined crisis templates (Pandemic, Drought,
-  Cyberattack, Election, Crime), citizen fear/reaction states, multi-institution triggering,
-  RelationshipGraph UI, causal graph timeline
-- [ ] **Phase 4** — fine-tuning + MLOps
+  `POST /crisis` + `GET /debates/{id}` endpoints; 38 tests
+- [x] **Phase 3** — crises & society dynamics: 5 pre-defined crisis templates (Pandemic/Drought/
+  Cyberattack/Election/Crime), citizen fear state + fear tint in renderer, multi-institution
+  triggering, RelationshipGraph social canvas, EventFeed with icons, active crisis topbar pill
+- [x] **Phase 4** — fine-tuning + MLOps: `ml/dataset/generate.py` (300-sample council-voice
+  dataset), `ml/train_lora.ipynb` (Unsloth LoRA on Colab T4 → GGUF → Ollama), persona-
+  consistency + debate-coherence eval harness (`ml/evals/persona_eval.py`) with MLflow
+  tracking; fine-tuned model wired into router via `OLLAMA_COUNCIL_MODEL` config
 - [ ] **Phase 5** — polish, demo & docs

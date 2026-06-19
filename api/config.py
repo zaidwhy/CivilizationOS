@@ -26,6 +26,8 @@ class Settings(BaseSettings):
     ollama_host: str = "http://127.0.0.1:11434"
     ollama_chat_model: str = "qwen2.5:3b-instruct"
     ollama_embed_model: str = "nomic-embed-text"
+    # Phase 4: fine-tuned council voice model (set after training + ollama create)
+    ollama_council_model: str = ""  # e.g. "council-voice" — empty = use chat model
 
     # --- Tier 1: Gemini free tier ---
     gemini_api_key: str = ""
@@ -48,6 +50,10 @@ class Settings(BaseSettings):
     @property
     def has_claude(self) -> bool:
         return bool(self.anthropic_api_key)
+
+    @property
+    def has_finetuned_council(self) -> bool:
+        return bool(self.ollama_council_model)
 
 
 @lru_cache

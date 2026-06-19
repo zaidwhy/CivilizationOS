@@ -6,7 +6,7 @@ import {
   TILE_H,
   toScreen,
   LOCATION_COLORS,
-  citizenColor,
+  citizenColorWithFear,
   nightAlpha,
 } from "./iso";
 
@@ -107,7 +107,7 @@ export default function CityStage() {
         const ring = new Graphics();
         ring.circle(0, 0, 9).stroke({ width: 2, color: 0xffffff, alpha: 0 });
         const dot = new Graphics();
-        dot.circle(0, 0, 6).fill({ color: citizenColor(id) }).stroke({ width: 1.5, color: 0x0b0e14 });
+        dot.circle(0, 0, 6).fill({ color: citizenColorWithFear(id, 0) }).stroke({ width: 1.5, color: 0x0b0e14 });
 
         const nameText = new Text({ text: name.split(" ")[0], style: nameStyle });
         nameText.anchor.set(0.5, 0);
@@ -150,6 +150,11 @@ export default function CityStage() {
           }
           s.tgtX = sx;
           s.tgtY = sy;
+          // fear tint — re-draw dot color each frame based on current fear
+          s.dot.clear();
+          s.dot.circle(0, 0, 6)
+            .fill({ color: citizenColorWithFear(c.id, c.fear ?? 0) })
+            .stroke({ width: 1.5, color: 0x0b0e14 });
           // selection ring
           s.ring.alpha = selected === c.id ? 1 : 0;
           // speech bubble

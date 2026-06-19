@@ -15,12 +15,14 @@ export default function Inspector() {
   if (!selectedId) {
     return (
       <div className="panel hint">
-        <p>Click a citizen to inspect their mind — memories, relationships, and what they’re doing.</p>
+        <p>Click a citizen to inspect their mind — memories, relationships, and what they're doing.</p>
       </div>
     );
   }
 
   if (!detail) return <div className="panel">Loading…</div>;
+
+  const fearPct = Math.round((detail.fear ?? 0) * 100);
 
   return (
     <div className="panel">
@@ -33,6 +35,17 @@ export default function Inspector() {
       </div>
 
       <div className="now">{detail.action}</div>
+
+      {fearPct > 5 && (
+        <div className="fear-bar">
+          <div className="fear-label">
+            ⚠ Fear{detail.active_crisis ? ` (${detail.active_crisis})` : ""} — {fearPct}%
+          </div>
+          <div className="fear-track">
+            <div className="fear-fill" style={{ width: `${fearPct}%` }} />
+          </div>
+        </div>
+      )}
 
       {detail.relationships.length > 0 && (
         <>

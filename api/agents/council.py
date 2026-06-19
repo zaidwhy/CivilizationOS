@@ -50,9 +50,9 @@ ROLE_SPECS: list[dict] = [
         "emoji": "📜",
         "tier": Tier.FREE,
         "system": (
-            "You are the council Historian. Your job: surface relevant historical "
-            "precedents, past decisions, and lessons from the city's memory. "
-            "Be concise — 2-3 sentences max. Ground claims in the evidence provided."
+            "You are the council Historian. Surface 1-2 specific historical precedents "
+            "or past decisions relevant to this crisis. Cite evidence from the memory "
+            "provided. Be concrete and analytical. 3 sentences max."
         ),
     },
     {
@@ -60,9 +60,9 @@ ROLE_SPECS: list[dict] = [
         "emoji": "⚔️",
         "tier": Tier.FREE,
         "system": (
-            "You are the council Strategist. Your job: propose 1-2 actionable "
-            "interventions the institution can take. Be specific and practical. "
-            "2-3 sentences max."
+            "You are the council Strategist. Propose exactly 2 actionable interventions "
+            "this institution can implement immediately. Be specific about WHO does WHAT. "
+            "3 sentences max."
         ),
     },
     {
@@ -70,9 +70,9 @@ ROLE_SPECS: list[dict] = [
         "emoji": "🔍",
         "tier": Tier.FREE,
         "system": (
-            "You are the council Skeptic. Your job: identify the biggest risk, "
-            "hidden assumption, or unintended consequence in the proposed strategies. "
-            "Challenge the most confident claim. 2-3 sentences max."
+            "You are the council Skeptic. Challenge the Strategist's proposals. "
+            "Name the single biggest hidden risk or unintended consequence. "
+            "Propose a safeguard. 3 sentences max."
         ),
     },
     {
@@ -80,20 +80,20 @@ ROLE_SPECS: list[dict] = [
         "emoji": "🔮",
         "tier": Tier.FREE,
         "system": (
-            "You are the council Predictor. Your job: forecast the most likely "
-            "outcome if the proposed strategy is followed, and the worst-case if it "
-            "fails. Use probabilistic language. 2-3 sentences max."
+            "You are the council Predictor. Given what the Historian found and the "
+            "Strategist proposed: forecast the most likely outcome (with a probability "
+            "estimate) and the tail-risk worst case. 3 sentences max."
         ),
     },
     {
         "role": "Synthesizer",
         "emoji": "⚖️",
-        "tier": Tier.PREMIUM,  # Claude when available
+        "tier": Tier.PREMIUM,
         "system": (
-            "You are the council Synthesizer. You have heard the Historian, "
-            "Strategist, Skeptic, and Predictor. Weigh their perspectives and issue "
-            "ONE clear policy recommendation the institution should adopt. "
-            "Start with 'VERDICT:' then 1-2 sentences."
+            "You are the council Synthesizer. After hearing all four specialists, "
+            "issue a single decisive policy directive. Begin your response with "
+            "'VERDICT:' followed by the specific action, who executes it, and the "
+            "success metric. 2-3 sentences max."
         ),
     },
 ]
@@ -135,14 +135,19 @@ class Council:
                 user_prompt = f"{base_prompt}\n\nSpeak as {role}."
 
             try:
+                from ..config import get_settings
+                s = get_settings()
+                # Phase 4: use fine-tuned council voice model for LOCAL-tier calls
+                local_override = s.ollama_council_model if s.has_finetuned_council else None
                 result = await router.complete(
                     prompt=user_prompt,
                     system=spec["system"],
                     tier=spec["tier"],
-                    max_tokens=120,
-                    temperature=0.75,
+                    max_tokens=180,
+                    temperature=0.72,
+                    local_model=local_override if spec["tier"] == Tier.LOCAL else None,
                 )
-                text = result.text.strip().split("\n")[0][:300]
+                text = result.text.strip()[:400]
             except Exception:
                 logger.exception("council %s/%s failed", self.institution_id, role)
                 text = f"[{role} unavailable]"

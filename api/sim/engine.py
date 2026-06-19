@@ -72,6 +72,7 @@ class Engine:
 
         for c in self.citizens.values():
             c.decay_fear()
+            c.decay_relationships()
             c.decide_target(self.world, tick, closed_locations=self._closed_locations)
             c.step()
             self._record_arrival(c, tick)
@@ -110,7 +111,8 @@ class Engine:
 
     def _start_conversation(self, a: Citizen, b: Citizen, loc_id: str, tick: int) -> None:
         a.talk_cooldown = b.talk_cooldown = CONVO_COOLDOWN_TICKS
-        delta = 0.05
+        # Relationship warmth grows with repeated contact but decays slowly over time
+        delta = 0.04 + 0.02 * a.p.sociability
         a.adjust_relationship(b.p.id, delta)
         b.adjust_relationship(a.p.id, delta)
         loc = self.world.location(loc_id)
@@ -125,14 +127,20 @@ class Engine:
             self._remember(b, f"Talked with {a.p.name} at {loc.name}.", tick, "conversation")
 
     async def _llm_converse(self, a: Citizen, b: Citizen, place: str, tick: int) -> None:
+        crisis_note = ""
+        if self._active_templates:
+            tmpl = self._active_templates[0][0]
+            crisis_note = f" The city is currently dealing with: {tmpl.name}."
+        rel = a.relationships.get(b.p.id, 0.0)
+        rel_note = "" if abs(rel) < 0.1 else (" You know them well." if rel > 0.3 else " You've met before.")
         prompt = (
-            f"You are {a.p.name}, a {a.p.age}-year-old {a.p.occupation} "
-            f"({a.p.traits}). You run into {b.p.name} ({b.p.occupation}) at {place}. "
-            f"Say ONE short, natural line of dialogue (max 18 words). No quotes."
+            f"You are {a.p.name}, a {a.p.age}-year-old {a.p.occupation} ({a.p.traits}).{crisis_note}"
+            f" You run into {b.p.name} ({b.p.occupation}) at {place}.{rel_note}"
+            f" Say ONE short, natural, in-character line of dialogue (max 18 words). No quotes, no stage directions."
         )
         try:
-            res = await self._router.complete(prompt=prompt, tier=Tier.LOCAL, max_tokens=48, temperature=0.9)
-            line = res.text.strip().split("\n")[0][:160]
+            res = await self._router.complete(prompt=prompt, tier=Tier.LOCAL, max_tokens=56, temperature=0.9)
+            line = res.text.strip().split("\n")[0][:180]
         except Exception:
             logger.exception("conversation generation failed")
             line = f"Nice to see you, {b.p.name.split()[0]}."
@@ -151,12 +159,19 @@ class Engine:
         if not recent:
             return
         bullets = "\n".join(f"- {m.text}" for m in recent)
+        crisis_note = ""
+        if self._active_templates:
+            tmpl = self._active_templates[0][0]
+            crisis_note = f" The city is gripped by a {tmpl.name}."
+        fear_note = f" (Current fear level: {c.fear:.0%})" if c.fear > 0.2 else ""
         prompt = (
-            f"You are {c.p.name} ({c.p.traits}). Reflecting on today:\n{bullets}\n\n"
-            f"Write ONE sentence capturing how you feel about the city right now."
+            f"You are {c.p.name} ({c.p.traits}).{crisis_note}{fear_note}\n"
+            f"Today's key moments:\n{bullets}\n\n"
+            f"Write ONE honest sentence about how you feel about the city right now. "
+            f"Be specific, personal, and in-character."
         )
         try:
-            res = await self._router.complete(prompt=prompt, tier=Tier.LOCAL, max_tokens=60, temperature=0.8)
+            res = await self._router.complete(prompt=prompt, tier=Tier.LOCAL, max_tokens=80, temperature=0.8)
             await self._remember_async(c, f"Reflection: {res.text.strip()}", tick, "reflection")
         except Exception:
             logger.exception("reflection failed for %s", c.p.id)
@@ -293,16 +308,20 @@ class Engine:
     def snapshot(self) -> dict:
         tick = self.tick_count
         minute_of_day = (tick % TICKS_PER_DAY) / TICKS_PER_DAY
+        world_snap = self.world.snapshot()
+        active_crises = [t.name for t, _ in self._active_templates]
         return {
             "type": "world",
             "tick": tick,
             "clock": clock_label(tick),
             "phase": phase_for_tick(tick).value,
             "day_progress": round(minute_of_day, 4),
-            "grid": self.world.snapshot()["grid"],
-            "locations": self.world.snapshot()["locations"],
+            "grid": world_snap["grid"],
+            "locations": world_snap["locations"],
             "citizens": [c.snapshot() for c in self.citizens.values()],
             "events": self.event_log[-8:],
+            "active_crises": active_crises,
+            "closed_locations": list(self._closed_locations),
         }
 
     def agent_detail(self, agent_id: str) -> dict | None:
@@ -315,9 +334,11 @@ class Engine:
             "occupation": c.p.occupation,
             "traits": c.p.traits,
             "action": c.action,
+            "fear": round(c.fear, 2),
+            "active_crisis": c.active_crisis,
             "memories": [
                 {"tick": m.tick, "kind": m.kind, "text": m.text, "importance": m.importance}
-                for m in c.memory.recent(12)
+                for m in c.memory.recent(15)
             ],
             "relationships": [
                 {"id": oid, "name": self.citizens[oid].p.name, "affinity": round(v, 2)}

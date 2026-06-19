@@ -1,17 +1,61 @@
 import { useWorld } from "../ws/store";
 
+const KIND_ICON: Record<string, string> = {
+  conversation: "💬",
+  crisis:       "⚠️",
+  debate:       "⚖️",
+  observation:  "👁",
+  reflection:   "💭",
+  event:        "📡",
+};
+
+const KIND_COLOR: Record<string, string> = {
+  conversation: "#6ea8fe",
+  crisis:       "#f87171",
+  debate:       "#fbbf24",
+  observation:  "#8b97a7",
+  reflection:   "#b388ff",
+  event:        "#34d399",
+};
+
 export default function EventFeed() {
-  // Select the stable reference; default outside the selector so zustand's
-  // identity check doesn't see a new [] every render (that loops forever).
   const events = useWorld((s) => s.world?.events) ?? [];
+  const activeCrises = useWorld((s) => s.world?.active_crises) ?? [];
+
   return (
     <div className="panel feed">
       <div className="section">City feed</div>
-      {events.length === 0 && <div className="muted small">Waiting for the city to stir…</div>}
+      {activeCrises.length > 0 && (
+        <div style={{ marginBottom: 8, display: "flex", flexWrap: "wrap", gap: 4 }}>
+          {activeCrises.map((name) => (
+            <span
+              key={name}
+              style={{
+                fontSize: 10, padding: "2px 7px", borderRadius: 999,
+                background: "rgba(248,113,113,0.15)", color: "#f87171",
+                border: "1px solid rgba(248,113,113,0.3)",
+              }}
+            >
+              ⚠️ {name}
+            </span>
+          ))}
+        </div>
+      )}
+      {events.length === 0 && (
+        <div className="muted small">Waiting for the city to stir…</div>
+      )}
       {[...events].reverse().map((e, i) => (
         <div key={i} className="feed-row">
-          <span className="kind">{e.kind}</span>
-          <span className="small">{e.text}</span>
+          <span
+            className="kind-icon"
+            title={e.kind}
+            style={{ color: KIND_COLOR[e.kind] ?? "#8b97a7" }}
+          >
+            {KIND_ICON[e.kind] ?? "·"}
+          </span>
+          <span className="small" style={{ color: KIND_COLOR[e.kind] ?? "inherit" }}>
+            {e.text}
+          </span>
         </div>
       ))}
     </div>
