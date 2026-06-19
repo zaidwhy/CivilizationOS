@@ -333,54 +333,35 @@ class Engine:
 
     # ---- Phase 5: crisis resolution ----
     def resolve_crisis(self, template_key: str) -> str | None:
-        """Remove an active crisis template early and broadcast its resolution text."""
-        removed = False
-        tmpl_name: str | None = None
-        resolution: str | None = None
-        self._active_templates = [
-            (t, exp) for t, exp in self._active_templates
-            if not (t.key == template_key and (setattr_once(t, tmpl_name) or True))
-        ]
-
-        # Simpler approach — iterate and rebuild
-        new_templates = []
-        for t, exp in self._active_templates:
-            if t.key == template_key and not removed:
-                removed = True
-                tmpl_name = t.name
-                resolution = t.resolution_text
-            else:
-                new_templates.append((t, exp))
-
-        # If the initial filter ran, _active_templates is already modified. Redo cleanly:
-        all_templates = self._active_templates
-        self._active_templates = []
-        removed = False
+        """Remove an active crisis template early. Returns resolution text or None if not active."""
         tmpl_obj = CRISIS_TEMPLATES.get(template_key)
-        for t, exp in all_templates:
-            if t.key == template_key and not removed:
-                removed = True
-            else:
-                self._active_templates.append((t, exp))
+        was_active = any(t.key == template_key for t, _ in self._active_templates)
+        if not was_active:
+            return None
 
-        if removed and tmpl_obj:
-            # Cool citizen fear
-            for c in self.citizens.values():
-                if c.active_crisis == template_key:
-                    c.fear = max(0.0, c.fear - 0.3)
-                    c.active_crisis = None
-            res_text = tmpl_obj.resolution_text or f"The {tmpl_obj.name} has been resolved."
-            self._log_event(self.tick_count, "event", f"RESOLVED: {res_text}")
-            # Add resolution to causal graph
-            res_id = f"res_{template_key}_{self.tick_count}"
-            self.causal_graph.add_event(
-                res_id,
-                text=res_text,
-                tick=self.tick_count,
-                kind="resolution",
-            )
-            return res_text
-        return None
+        self._active_templates = [
+            (t, exp) for t, exp in self._active_templates if t.key != template_key
+        ]
+        self._closed_locations = set()
+        for t, _ in self._active_templates:
+            self._closed_locations.update(t.closed_locations)
+
+        for c in self.citizens.values():
+            if c.active_crisis == template_key:
+                c.fear = max(0.0, c.fear - 0.3)
+                c.active_crisis = None
+
+        res_text = (
+            tmpl_obj.resolution_text
+            if tmpl_obj
+            else f"The crisis has been resolved."
+        )
+        self._log_event(self.tick_count, "event", f"RESOLVED: {res_text}")
+        res_id = f"res_{template_key}_{self.tick_count}"
+        self.causal_graph.add_event(
+            res_id, text=res_text, tick=self.tick_count, kind="resolution",
+        )
+        return res_text
 
     # ---- events / snapshot ----
     def _log_event(self, tick: int, kind: str, text: str) -> None:
