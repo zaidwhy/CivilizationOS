@@ -8,6 +8,7 @@ import {
   LOCATION_COLORS,
   citizenColorWithFear,
   nightAlpha,
+  closedLocationColor,
 } from "./iso";
 
 type CitizenSprite = {
@@ -24,6 +25,7 @@ type CitizenSprite = {
 
 const nameStyle = new TextStyle({ fill: 0xe6edf3, fontSize: 11, fontWeight: "600" });
 const labelStyle = new TextStyle({ fill: 0xb8c4d4, fontSize: 10, fontWeight: "700" });
+const closedLabelStyle = new TextStyle({ fill: 0xf87171, fontSize: 10, fontWeight: "700" });
 const speechStyle = new TextStyle({ fill: 0x0b0e14, fontSize: 11, wordWrap: true, wordWrapWidth: 150 });
 
 export default function CityStage() {
@@ -77,19 +79,38 @@ export default function CityStage() {
         }
       };
 
-      const drawLocations = (locs: ReturnType<typeof useWorld.getState>["world"]) => {
+      const drawLocations = (
+        locs: NonNullable<ReturnType<typeof useWorld.getState>["world"]>,
+        closed: string[],
+      ) => {
         locLayer.removeChildren();
-        for (const l of locs!.locations) {
+        for (const l of locs.locations) {
           const { sx, sy } = toScreen(l.x, l.y);
-          const color = LOCATION_COLORS[l.type] ?? 0x444444;
+          const isClosed = closed.includes(l.id);
+          const color = isClosed ? closedLocationColor(l.type) : (LOCATION_COLORS[l.type] ?? 0x444444);
           const g = new Graphics();
-          // a little iso "building" block
           const bw = 22, bh = 26;
           g.poly([sx, sy - bh, sx + bw / 2, sy - bh + 10, sx, sy - bh + 20, sx - bw / 2, sy - bh + 10])
             .fill({ color });
-          g.rect(sx - bw / 2, sy - bh + 10, bw, 16).fill({ color, alpha: 0.85 });
+          g.rect(sx - bw / 2, sy - bh + 10, bw, 16).fill({ color, alpha: isClosed ? 0.5 : 0.85 });
+
+          if (isClosed) {
+            // Red ✕ overlay on closed buildings
+            const cx = new Graphics();
+            cx.circle(0, 0, 9).fill({ color: 0x7f1d1d, alpha: 0.85 });
+            cx.x = sx;
+            cx.y = sy - bh + 3;
+            locLayer.addChild(cx);
+            const xt = new Text({ text: "✕", style: new TextStyle({ fill: 0xff6b6b, fontSize: 10 }) });
+            xt.anchor.set(0.5);
+            xt.x = sx;
+            xt.y = sy - bh + 3;
+            locLayer.addChild(xt);
+          }
+
           locLayer.addChild(g);
-          const label = new Text({ text: l.name, style: labelStyle });
+          const style = isClosed ? closedLabelStyle : labelStyle;
+          const label = new Text({ text: isClosed ? `${l.name} ⛔` : l.name, style });
           label.anchor.set(0.5, 1);
           label.x = sx;
           label.y = sy - bh - 2;
@@ -101,7 +122,7 @@ export default function CityStage() {
         const container = new Container();
         container.eventMode = "static";
         container.cursor = "pointer";
-        container.hitArea = new Circle(0, 0, 14); // generous, easy-to-click target
+        container.hitArea = new Circle(0, 0, 14);
         container.on("pointertap", () => useWorld.getState().select(id));
 
         const ring = new Graphics();
@@ -120,7 +141,7 @@ export default function CityStage() {
         bubbleText.y = 5;
         bubble.addChild(bubbleBg, bubbleText);
         bubble.visible = false;
-        (bubble as any)._bg = bubbleBg;
+        (bubble as unknown as { _bg: Graphics })._bg = bubbleBg;
 
         container.addChild(ring, dot, nameText, bubble);
         peopleLayer.addChild(container);
@@ -130,12 +151,13 @@ export default function CityStage() {
       const sync = () => {
         const w = useWorld.getState().world;
         if (!w) return;
+        const closed = w.closed_locations ?? [];
         if (!built) {
           fitWorld(w.grid.w, w.grid.h);
           drawGround(w.grid.w, w.grid.h);
-          drawLocations(w);
           built = true;
         }
+        drawLocations(w, closed);
         const selected = useWorld.getState().selectedId;
         const seen = new Set<string>();
         for (const c of w.citizens) {
@@ -150,18 +172,15 @@ export default function CityStage() {
           }
           s.tgtX = sx;
           s.tgtY = sy;
-          // fear tint — re-draw dot color each frame based on current fear
           s.dot.clear();
           s.dot.circle(0, 0, 6)
             .fill({ color: citizenColorWithFear(c.id, c.fear ?? 0) })
             .stroke({ width: 1.5, color: 0x0b0e14 });
-          // selection ring
           s.ring.alpha = selected === c.id ? 1 : 0;
-          // speech bubble
           if (c.speech) {
             const text = c.speech.length > 80 ? c.speech.slice(0, 79) + "…" : c.speech;
             s.bubbleText.text = text;
-            const bg = (s.bubble as any)._bg as Graphics;
+            const bg = (s.bubble as unknown as { _bg: Graphics })._bg;
             bg.clear();
             bg.roundRect(0, 0, s.bubbleText.width + 16, s.bubbleText.height + 10, 6).fill({ color: 0xf2f6ff });
             s.bubble.x = -(s.bubbleText.width + 16) / 2;
@@ -171,23 +190,21 @@ export default function CityStage() {
             s.bubble.visible = false;
           }
         }
-        // remove stale
         for (const [id, s] of sprites) {
           if (!seen.has(id)) {
             s.container.destroy();
             sprites.delete(id);
           }
         }
-        // night overlay
         night.clear();
-        night.rect(0, 0, app.renderer.width, app.renderer.height).fill({ color: 0x05070d, alpha: nightAlpha(w.day_progress) });
+        night.rect(0, 0, app.renderer.width, app.renderer.height)
+          .fill({ color: 0x05070d, alpha: nightAlpha(w.day_progress) });
       };
 
       app.ticker.add(() => {
         for (const s of sprites.values()) {
           s.dispX += (s.tgtX - s.dispX) * 0.15;
           s.dispY += (s.tgtY - s.dispY) * 0.15;
-          // depth sort: lower on screen drawn on top
           s.container.x = s.dispX;
           s.container.y = s.dispY;
           s.container.zIndex = s.dispY;
