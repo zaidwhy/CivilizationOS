@@ -46,7 +46,15 @@ export function citizenColorWithFear(id: string, fear: number): number {
 
 /** Night/day overlay alpha from day_progress (0..1). Darkest pre-dawn, bright midday. */
 export function nightAlpha(dayProgress: number): number {
-  // smooth bell that is high at night (0 and 1) and ~0 at midday (0.5)
-  const dist = Math.abs(dayProgress - 0.5) * 2; // 0 at noon, 1 at midnight
+  const dist = Math.abs(dayProgress - 0.5) * 2;
   return Math.min(0.6, dist * dist * 0.6);
+}
+
+/** Darkened / desaturated color for a closed / crisis-affected location. */
+export function closedLocationColor(type: string): number {
+  const base = LOCATION_COLORS[type] ?? 0x444444;
+  const r = Math.round(((base >> 16) & 0xff) * 0.35);
+  const g = Math.round(((base >> 8) & 0xff) * 0.35);
+  const b = Math.round((base & 0xff) * 0.35);
+  return (r << 16) | (g << 8) | b;
 }
