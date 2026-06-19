@@ -25,6 +25,7 @@ from ..llm import Tier, get_router
 from ..memory.causal_graph import CausalGraph
 from ..memory.tcmf import TCMFRetriever
 from ..sim.crisis import Crisis, CrisisRegistry
+from ..sim.events import CRISIS_TEMPLATES, CrisisTemplate
 from .world import TICKS_PER_DAY, World, clock_label, phase_for_tick
 
 logger = logging.getLogger("civos.sim")
@@ -58,14 +59,20 @@ class Engine:
         self.crises = CrisisRegistry()
         # callback: (turn: DebateTurn) -> Awaitable[None] — set by main.py to broadcast
         self._on_debate_turn: Callable[[DebateTurn], Awaitable[None]] | None = None
+        # Phase 3 — active crisis state
+        self._active_templates: list[tuple[CrisisTemplate, int]] = []  # (template, expiry_tick)
+        self._closed_locations: set[str] = set()
 
     # ---- main step ----
     async def advance(self) -> dict:
         self.tick_count += 1
         tick = self.tick_count
 
+        self._tick_crisis_effects(tick)
+
         for c in self.citizens.values():
-            c.decide_target(self.world, tick)
+            c.decay_fear()
+            c.decide_target(self.world, tick, closed_locations=self._closed_locations)
             c.step()
             self._record_arrival(c, tick)
 
@@ -167,12 +174,32 @@ class Engine:
                 logger.exception("embedding failed")
         c.memory.add(text, tick, kind=kind, importance=IMPORTANCE.get(kind, 3.0), embedding=embedding)
 
+    # ---- Phase 3: crisis effects per tick ----
+    def _tick_crisis_effects(self, tick: int) -> None:
+        """Expire finished crises and rebuild closed-location set."""
+        self._active_templates = [
+            (tmpl, exp) for tmpl, exp in self._active_templates if exp > tick
+        ]
+        self._closed_locations = set()
+        for tmpl, _ in self._active_templates:
+            self._closed_locations.update(tmpl.closed_locations)
+
+    def _apply_template_fear(self, tmpl: CrisisTemplate, tick: int) -> None:
+        """Inject fear into citizens and add crisis memories."""
+        for c in self.citizens.values():
+            boost = tmpl.workplace_fear_boost.get(c.p.workplace_id, 0.0)
+            c.apply_fear(tmpl.base_fear + boost)
+            c.active_crisis = tmpl.key
+            if tmpl.citizen_observation:
+                self._remember(c, tmpl.citizen_observation, tick, "event")
+
     # ---- Phase 2: crisis injection ----
     async def inject_crisis(
         self,
         text: str,
         institution_id: str,
         severity: float = 0.7,
+        template_key: str | None = None,
     ) -> Crisis:
         """Inject a crisis, activate the PANTHEON council, stream debate turns."""
         tick = self.tick_count
@@ -198,6 +225,24 @@ class Engine:
 
         self._log_event(tick, "crisis", f"CRISIS [{institution_id}]: {text}")
         logger.info("Crisis injected: %s -> %s", crisis.id, institution_id)
+
+        # Phase 3: apply template effects if a template was specified
+        tmpl = CRISIS_TEMPLATES.get(template_key or "")
+        if tmpl:
+            expiry = tick + tmpl.duration_ticks
+            self._active_templates.append((tmpl, expiry))
+            self._apply_template_fear(tmpl, tick)
+            # Trigger secondary councils as background debates
+            for sec_inst in tmpl.secondary_institutions:
+                sec_council = COUNCILS.get(sec_inst)
+                if sec_council:
+                    sec_crisis = self.crises.create(text, tick, sec_inst, severity * 0.7)
+                    self.causal_graph.add_event(
+                        sec_crisis.causal_event_id, text=text, tick=tick,
+                        kind="crisis", institution_id=sec_inst, embedding=embedding,
+                    )
+                    self.causal_graph.link(crisis.causal_event_id, sec_crisis.causal_event_id)
+                    self._spawn(self._run_debate(sec_crisis, sec_council, embedding))
 
         council = COUNCILS.get(institution_id)
         if council is None:

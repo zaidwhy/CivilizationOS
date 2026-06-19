@@ -32,19 +32,37 @@ class Citizen:
         self.talk_cooldown = 0
         self.memory = MemoryStream(persona.id)
         self.relationships: dict[str, float] = {}
+        # Phase 3 — crisis reaction state
+        self.fear: float = 0.0          # 0-1, decays slowly each tick
+        self.active_crisis: str | None = None   # key of current affecting crisis
 
     # ---- routine ----
-    def decide_target(self, world: World, tick: int) -> None:
+    def decide_target(self, world: World, tick: int, closed_locations: set[str] | None = None) -> None:
         """Pick where to head based on the time of day. Called each tick."""
+        closed = closed_locations or set()
         phase = phase_for_tick(tick)
-        if phase == DayPhase.NIGHT:
-            self._aim(self.p.home_x, self.p.home_y, f"home_{self.p.id}", "home", "resting at home")
-        elif phase == DayPhase.WORK:
+        if phase == DayPhase.NIGHT or self.fear > 0.7:
+            # High fear drives citizens home regardless of time
+            self._aim(self.p.home_x, self.p.home_y, f"home_{self.p.id}", "home", "sheltering at home")
+        elif phase == DayPhase.WORK and self.p.workplace_id not in closed:
             loc = world.location(self.p.workplace_id)
             self._aim(loc.x, loc.y, loc.id, loc.name, f"working at {loc.name}")
-        else:  # MORNING or EVENING -> socialize at favorite commons
-            loc = world.location(self.p.favorite_commons)
-            self._aim(loc.x, loc.y, loc.id, loc.name, f"spending time at {loc.name}")
+        elif phase == DayPhase.WORK and self.p.workplace_id in closed:
+            # Workplace closed — stay home
+            self._aim(self.p.home_x, self.p.home_y, f"home_{self.p.id}", "home", "staying home (workplace closed)")
+        else:  # MORNING or EVENING -> socialize at favorite commons (if not closed)
+            commons_id = self.p.favorite_commons
+            if commons_id in closed:
+                # fall back to any open commons
+                commons_id = next(
+                    (l.id for l in world.commons() if l.id not in closed),
+                    None,
+                )
+            if commons_id:
+                loc = world.location(commons_id)
+                self._aim(loc.x, loc.y, loc.id, loc.name, f"spending time at {loc.name}")
+            else:
+                self._aim(self.p.home_x, self.p.home_y, f"home_{self.p.id}", "home", "staying home")
         self._refresh_action()
 
     def _aim(self, x: int, y: int, loc_id: str, dest_name: str, arrived_action: str) -> None:
@@ -89,6 +107,12 @@ class Citizen:
         self.relationships[other_id] = v
         return v
 
+    def apply_fear(self, amount: float) -> None:
+        self.fear = min(1.0, self.fear + amount)
+
+    def decay_fear(self, rate: float = 0.002) -> None:
+        self.fear = max(0.0, self.fear - rate)
+
     # ---- serialization ----
     def snapshot(self) -> dict:
         return {
@@ -100,4 +124,5 @@ class Citizen:
             "action": self.action,
             "location_id": self.location_id,
             "speech": self.speech,
+            "fear": round(self.fear, 2),
         }

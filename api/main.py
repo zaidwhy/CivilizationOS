@@ -164,27 +164,54 @@ class CrisisRequest(BaseModel):
     text: str
     institution_id: str
     severity: float = 0.7
+    template_key: str | None = None  # Phase 3: optional preset template
 
 
 @app.post("/crisis")
 async def post_crisis(req: CrisisRequest) -> dict:
     from .agents.council import COUNCILS
+    from .sim.events import CRISIS_TEMPLATES
     if req.institution_id not in COUNCILS:
         raise HTTPException(
             status_code=400,
             detail=f"Unknown institution '{req.institution_id}'. "
                    f"Valid: {list(COUNCILS.keys())}",
         )
+    # If a template is given, use its institution and text as defaults
+    tmpl = CRISIS_TEMPLATES.get(req.template_key or "")
+    institution_id = req.institution_id
+    text = req.text
+    if tmpl and not req.text:
+        text = tmpl.description
     crisis = await engine.inject_crisis(
-        text=req.text,
-        institution_id=req.institution_id,
+        text=text,
+        institution_id=institution_id,
         severity=req.severity,
+        template_key=req.template_key,
     )
     return {
         "crisis_id": crisis.id,
         "debate_id": crisis.debate_id or "(debate starting…)",
         "institution_id": crisis.institution_id,
         "tick": crisis.tick,
+        "template": req.template_key,
+    }
+
+
+@app.get("/events/templates")
+async def get_templates() -> dict:
+    from .sim.events import CRISIS_TEMPLATES
+    return {
+        "templates": [
+            {
+                "key": t.key,
+                "name": t.name,
+                "description": t.description,
+                "primary_institution": t.primary_institution,
+                "secondary_institutions": t.secondary_institutions,
+            }
+            for t in CRISIS_TEMPLATES.values()
+        ]
     }
 
 

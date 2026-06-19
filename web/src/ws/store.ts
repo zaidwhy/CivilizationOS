@@ -9,6 +9,7 @@ export type Citizen = {
   action: string;
   location_id: string;
   speech: string | null;
+  fear: number;  // 0-1, Phase 3
 };
 
 export type LocationT = {

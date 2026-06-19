@@ -4,6 +4,7 @@ import CityStage from "./city/CityStage";
 import Inspector from "./panels/Inspector";
 import EventFeed from "./panels/EventFeed";
 import CouncilChamber from "./panels/CouncilChamber";
+import RelationshipGraph from "./panels/RelationshipGraph";
 
 const PHASE_LABEL: Record<string, string> = {
   night: "🌙 Night",
@@ -42,6 +43,7 @@ export default function App() {
         </div>
         <aside className="sidebar">
           <Inspector />
+          <RelationshipGraph />
           <EventFeed />
           <CouncilChamber />
         </aside>
