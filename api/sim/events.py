@@ -29,6 +29,7 @@ class CrisisTemplate:
     citizen_observation: str = ""
     resolution_text: str = ""
     secondary_severity: float = 0.7
+    verdict_fear_reduction: float = 0.12  # fear drop applied to all citizens when council verdict is reached
 
 
 CRISIS_TEMPLATES: dict[str, CrisisTemplate] = {
