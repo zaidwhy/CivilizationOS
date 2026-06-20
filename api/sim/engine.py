@@ -329,6 +329,12 @@ class Engine:
             self.causal_graph.link(crisis.causal_event_id, decision_id)
             self._log_event(self.tick_count, "decision", f"VERDICT [{council.institution_id}]: {verdict_text[:80]}…")
 
+            # Apply partial world-state effects: reduce fear, add decision memory to all citizens
+            if crisis.template_key:
+                tmpl = CRISIS_TEMPLATES.get(crisis.template_key)
+                if tmpl:
+                    self._apply_verdict_effects(tmpl, verdict_text)
+
         logger.info("Debate complete for crisis %s", crisis.id)
 
     # ---- Phase 5: crisis resolution ----
