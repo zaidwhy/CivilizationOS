@@ -276,6 +276,54 @@ async def get_debate(debate_id: str) -> dict:
     }
 
 
+@app.get("/graph")
+async def get_graph() -> dict:
+    """Citizen social graph: nodes with fear levels + weighted affinity edges."""
+    nodes = [
+        {
+            "id": c.p.id,
+            "name": c.p.name,
+            "occupation": c.p.occupation,
+            "fear": round(c.fear, 2),
+        }
+        for c in engine.citizens.values()
+    ]
+    edges: list[dict] = []
+    seen: set[tuple[str, str]] = set()
+    for c in engine.citizens.values():
+        for other_id, affinity in c.relationships.items():
+            if other_id not in engine.citizens:
+                continue
+            key = (min(c.p.id, other_id), max(c.p.id, other_id))
+            if key not in seen and abs(affinity) > 0.05:
+                seen.add(key)
+                edges.append({
+                    "source": c.p.id,
+                    "target": other_id,
+                    "weight": round(affinity, 2),
+                    "positive": affinity >= 0,
+                })
+    return {"nodes": nodes, "edges": edges}
+
+
+@app.get("/stats")
+async def get_stats() -> dict:
+    """Simulation statistics for the StatsPanel: fear histogram, memory counts, debate count."""
+    fears = [c.fear for c in engine.citizens.values()]
+    buckets = [0, 0, 0, 0, 0]  # 0-20%, 20-40%, 40-60%, 60-80%, 80-100%
+    for f in fears:
+        buckets[min(4, int(f * 5))] += 1
+    return {
+        "tick": engine.tick_count,
+        "avg_fear": round(sum(fears) / len(fears), 3) if fears else 0,
+        "fear_buckets": buckets,
+        "memory_counts": {c.p.name: len(c.memory) for c in engine.citizens.values()},
+        "total_debates": len(engine.crises.all_debates()),
+        "active_crises": len(engine._active_templates),
+        "causal_events": len(engine.causal_graph),
+    }
+
+
 @app.get("/crises")
 async def get_crises() -> dict:
     return {
