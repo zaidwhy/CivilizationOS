@@ -369,6 +369,20 @@ class Engine:
         )
         return res_text
 
+    def _apply_verdict_effects(self, tmpl: CrisisTemplate, verdict_text: str) -> None:
+        """Partial fear reduction + decision memory when a council reaches a verdict."""
+        summary = verdict_text[:100].rstrip()
+        tick = self.tick_count
+        for c in self.citizens.values():
+            c.fear = max(0.0, c.fear - tmpl.verdict_fear_reduction)
+            self._remember(
+                c,
+                f"Council issued directive on {tmpl.name}: {summary}",
+                tick,
+                "decision",
+            )
+        self._log_event(tick, "decision", f"Council verdict applied — {tmpl.name} fear reduced")
+
     # ---- events / snapshot ----
     def _log_event(self, tick: int, kind: str, text: str) -> None:
         self.event_log.append({"tick": tick, "kind": kind, "text": text})
