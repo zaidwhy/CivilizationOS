@@ -94,7 +94,7 @@ async def lifespan(app: FastAPI):
         await task
 
 
-app = FastAPI(title="CivilizationOS", version="0.5.0", lifespan=lifespan)
+app = FastAPI(title="CivilizationOS", version="0.6.0", lifespan=lifespan)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
@@ -111,7 +111,7 @@ async def health() -> dict:
     router = get_router()
     return {
         "status": "ok",
-        "version": "0.5.0",
+        "version": "0.6.0",
         "premium_mode": s.premium_mode,
         "tick": engine.tick_count,
         "tick_interval": engine.tick_interval,
