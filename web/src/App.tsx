@@ -114,6 +114,7 @@ export default function App() {
           <EventFeed />
           <CouncilChamber />
           <Timeline />
+          <StatsPanel />
         </aside>
       </main>
     </div>
