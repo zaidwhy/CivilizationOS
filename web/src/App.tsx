@@ -6,6 +6,7 @@ import EventFeed from "./panels/EventFeed";
 import CouncilChamber from "./panels/CouncilChamber";
 import RelationshipGraph from "./panels/RelationshipGraph";
 import Timeline from "./panels/Timeline";
+import StatsPanel from "./panels/StatsPanel";
 import Onboarding from "./components/Onboarding";
 
 const PHASE_LABEL: Record<string, string> = {
