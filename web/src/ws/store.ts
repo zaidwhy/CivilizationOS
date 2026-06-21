@@ -153,6 +153,7 @@ export function connectWorldSocket() {
           premium_mode: d.premium_mode ?? false,
           causal_events: d.causal_events ?? 0,
           active_crises: d.active_crises ?? [],
+          council_model: d.brains?.council ?? null,
         });
       }
     } catch { /* transient */ }
