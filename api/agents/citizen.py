@@ -59,10 +59,11 @@ OCCUPATION_CRISIS_OBSERVATIONS: dict[str, dict[str, str]] = {
         "housing_crisis": "Twenty-three percent of residents are spending over sixty percent of income on rent. That is the systemic-crisis threshold.",
     },
     "officer": {
-        "pandemic":    "We're enforcing quarantine zones but half the force is already calling in sick.",
-        "cyberattack": "Our dispatch system is down. We're coordinating on analog radios.",
-        "election":    "Tensions outside the counting centre are escalating. We need more units.",
-        "crime_wave":  "We've had a 40% surge in calls tonight. The precinct is stretched thin.",
+        "pandemic":       "We're enforcing quarantine zones but half the force is already calling in sick.",
+        "cyberattack":    "Our dispatch system is down. We're coordinating on analog radios.",
+        "election":       "Tensions outside the counting centre are escalating. We need more units.",
+        "crime_wave":     "We've had a 40% surge in calls tonight. The precinct is stretched thin.",
+        "housing_crisis": "Eviction enforcement orders are up 340% this quarter. Some of these families have nowhere to go.",
     },
     "civil servant": {
         "pandemic":    "I'm coordinating emergency permits for pop-up medical facilities.",
