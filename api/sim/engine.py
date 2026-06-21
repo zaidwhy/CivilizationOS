@@ -66,6 +66,7 @@ class Engine:
         # Phase 3 — active crisis state
         self._active_templates: list[tuple[CrisisTemplate, int]] = []  # (template, expiry_tick)
         self._closed_locations: set[str] = set()
+        self._verdict_reopened: set[str] = set()  # locations partially reopened by council verdict
 
     # ---- main step ----
     async def advance(self) -> dict:
