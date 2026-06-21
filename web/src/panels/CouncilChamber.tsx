@@ -18,6 +18,17 @@ type Template = {
   resolution_text: string;
 };
 
+type CrisisRecord = {
+  id: string;
+  text: string;
+  tick: number;
+  institution_id: string;
+  debate_id: string;
+  severity: number;
+  template_key: string | null;
+  resolved: boolean;
+};
+
 const ROLE_COLORS: Record<string, string> = {
   Historian:   "#a78bfa",
   Strategist:  "#34d399",
