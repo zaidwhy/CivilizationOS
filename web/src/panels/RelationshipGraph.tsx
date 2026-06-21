@@ -124,7 +124,9 @@ export default function RelationshipGraph() {
     }
 
     function draw() {
-      const ctx = canvas.getContext("2d");
+      const c2d = canvasRef.current;
+      if (!c2d) return;
+      const ctx = c2d.getContext("2d");
       if (!ctx) return;
       const cs = citizensRef.current;
       const selId = selectedIdRef.current;
