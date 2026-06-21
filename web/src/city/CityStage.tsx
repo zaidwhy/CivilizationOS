@@ -178,13 +178,25 @@ export default function CityStage() {
             .stroke({ width: 1.5, color: 0x0b0e14 });
           s.ring.alpha = selected === c.id ? 1 : 0;
           if (c.speech) {
-            const text = c.speech.length > 80 ? c.speech.slice(0, 79) + "…" : c.speech;
-            s.bubbleText.text = text;
+            // Strip "Name: " prefix — name is already shown in the label below
+            const raw = c.speech;
+            const colonIdx = raw.indexOf(": ");
+            const dialogue = colonIdx !== -1 ? raw.slice(colonIdx + 2) : raw;
+            const display = dialogue.length > 50 ? dialogue.slice(0, 49) + "…" : dialogue;
+            s.bubbleText.text = display;
+
             const bg = (s.bubble as unknown as { _bg: Graphics })._bg;
             bg.clear();
-            bg.roundRect(0, 0, s.bubbleText.width + 16, s.bubbleText.height + 10, 6).fill({ color: 0xf2f6ff });
-            s.bubble.x = -(s.bubbleText.width + 16) / 2;
-            s.bubble.y = -34;
+            const bw = s.bubbleText.width + 16;
+            const bh = s.bubbleText.height + 10;
+            // Bubble body
+            bg.roundRect(0, 0, bw, bh, 6).fill({ color: 0xf2f6ff });
+            // Downward pointer triangle centred at bottom
+            const px = bw / 2;
+            bg.poly([px - 5, bh, px + 5, bh, px, bh + 7]).fill({ color: 0xf2f6ff });
+
+            s.bubble.x = -(bw / 2);
+            s.bubble.y = -(bh + 7 + 18); // 18px gap above the dot top
             s.bubble.visible = true;
           } else {
             s.bubble.visible = false;
