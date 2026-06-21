@@ -177,14 +177,22 @@ class Council:
             try:
                 from ..config import get_settings
                 s = get_settings()
-                local_override = s.ollama_council_model if s.has_finetuned_council else None
+                is_synth = spec["role"] == "Synthesizer"
+                if s.has_finetuned_council and not is_synth:
+                    # Route all debate roles through the fine-tuned local model;
+                    # Synthesizer keeps its Tier.PREMIUM path (Claude verdict).
+                    effective_tier = Tier.LOCAL
+                    local_model = s.ollama_council_model
+                else:
+                    effective_tier = spec["tier"]
+                    local_model = None
                 result = await router.complete(
                     prompt=user_prompt,
                     system=spec["system"],
-                    tier=spec["tier"],
+                    tier=effective_tier,
                     max_tokens=200,
                     temperature=0.72,
-                    local_model=local_override if spec["tier"] == Tier.LOCAL else None,
+                    local_model=local_model,
                 )
                 text = result.text.strip()[:500]
             except Exception:
