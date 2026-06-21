@@ -111,7 +111,7 @@ async def health() -> dict:
     router = get_router()
     return {
         "status": "ok",
-        "version": "0.6.0",
+        "version": "0.7.0",
         "premium_mode": s.premium_mode,
         "tick": engine.tick_count,
         "tick_interval": engine.tick_interval,
