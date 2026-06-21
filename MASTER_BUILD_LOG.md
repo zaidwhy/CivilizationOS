@@ -719,37 +719,41 @@ All three Phase 8 items complete: speech bubbles ✅, graph tooltip ✅, fine-tu
 
 ---
 
-## 7. What Remains — Phase 8 Candidates
+## 7. What Remains — Phase 9 Candidates
 
-### High impact, in-code (recommended for Phase 8)
-
-**A. Citizen speech bubbles in PixiJS**
-- The `action` field in every citizen's world snapshot already carries the last spoken line or movement description.
-- Render this as a floating text label above the PixiJS sprite, with a 5-second fade-out timer.
-- Zero new LLM calls. Pure rendering work. Makes the city feel dramatically alive.
-- Files to touch: `web/src/city/CityStage.tsx`, `web/src/city/iso.ts`
-
-**B. Social graph hover tooltip**
-- The force-directed graph is live but only supports click-to-select.
-- On hover over a node: show a small tooltip with name, occupation, fear %, and top 3 relationships by affinity.
-- Files to touch: `web/src/panels/RelationshipGraph.tsx`
-
-**C. Sixth crisis template**
-- Ideas: **Housing Crisis** (inst_economy), **Food Riot** (inst_police + inst_economy), **Power Outage** (inst_gov)
-- Files to touch: `api/sim/events.py` (add template), potentially new occupation observations in `citizen.py`
+All Phase 8 items are complete. The remaining backlog from the original plan:
 
 ### Requires external setup
 
-**D. Wire fine-tuned model**
-- Export the trained LoRA from `ml/train_lora.ipynb` to GGUF
-- `ollama create civos-council -f <modelfile>`
-- Set `OLLAMA_COUNCIL_MODEL=civos-council` in `.env`
-- `PREMIUM_MODE=false` councils will use the fine-tuned voice
+**A. Fine-tuned GGUF export (to fully activate the council model)**
+- `ml/train_lora.ipynb` — run on Colab T4, export GGUF
+- `ollama create civos-council -f Modelfile`
+- `OLLAMA_COUNCIL_MODEL=civos-council` in `.env`
+- Routing code and header pill are already live and waiting
 
-**E. Deploy frontend to Vercel**
+**B. Deploy frontend to Vercel**
 - `cd web && vercel` — one command
-- Backend must run locally (Ollama dependency)
-- Add `VITE_API_BASE_URL` env var for the Vercel build pointing to local/ngrok backend
+- Backend has Ollama dependency (needs local + ngrok or self-hosted API)
+- Set `VITE_API_BASE_URL` for the Vercel build
+- Explicitly deferred by user (2026-06-21): "we will deploy it after i say we should"
+
+### Nice-to-have in-code additions
+
+**C. Sixth crisis template**
+- **Housing Crisis** (inst_economy) is the most natural addition: affordable housing collapse, market speculation, eviction wave
+- Files: `api/sim/events.py` (new template), `api/agents/citizen.py` (occupation-specific observations)
+
+**D. CouncilChamber debate archiving**
+- Many debates pile up with no collapse/archive UX; older debates crowd the panel
+- Files: `web/src/panels/CouncilChamber.tsx`
+
+### Original plan items never attempted
+
+**E. "Rewind story" scrubber**
+- Causal graph exists and is queryable via `/timeline`; but no timeline scrubbing UI was ever built
+
+**F. Demo video recording**
+- No recording tooling or scripts in repo
 
 ---
 
