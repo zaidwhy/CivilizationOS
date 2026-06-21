@@ -347,6 +347,8 @@ async def get_crises() -> dict:
                 "institution_id": c.institution_id,
                 "debate_id": c.debate_id,
                 "severity": c.severity,
+                "template_key": c.template_key,
+                "resolved": c.resolved,
             }
             for c in engine.crises.list_crises()
         ]
