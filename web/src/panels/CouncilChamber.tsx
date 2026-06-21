@@ -77,6 +77,7 @@ function TurnCard({ turn }: { turn: DebateTurn }) {
 
 export default function CouncilChamber() {
   const [templates, setTemplates] = useState<Template[]>([]);
+  const [customCrises, setCustomCrises] = useState<CrisisRecord[]>([]);
   const [selectedTemplate, setSelectedTemplate] = useState<string>("");
   const [institution, setInstitution] = useState("inst_health");
   const [crisisText, setCrisisText] = useState("");
