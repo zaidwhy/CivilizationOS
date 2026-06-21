@@ -72,11 +72,39 @@ OCCUPATION_CRISIS_OBSERVATIONS: dict[str, dict[str, str]] = {
         "crime_wave":  "I'm closing an hour early until things settle down. It's not worth the risk.",
     },
     "shopkeeper": {
-        "pandemic":    "I'm limiting customers to five at a time. Some argue, but I hold the line.",
-        "drought":     "Rationing supplies across the whole neighbourhood — family accounts first.",
-        "cyberattack": "My inventory system is down. Running on a paper ledger like my grandmother did.",
-        "election":    "Half my customers are furious at the other half. I've banned politics at the counter.",
-        "crime_wave":  "Two break-ins this week. I've started sleeping in the back with the door bolted.",
+        "pandemic":       "I'm limiting customers to five at a time. Some argue, but I hold the line.",
+        "drought":        "Rationing supplies across the whole neighbourhood — family accounts first.",
+        "cyberattack":    "My inventory system is down. Running on a paper ledger like my grandmother did.",
+        "election":       "Half my customers are furious at the other half. I've banned politics at the counter.",
+        "crime_wave":     "Two break-ins this week. I've started sleeping in the back with the door bolted.",
+        "housing_crisis": "Three of my regular suppliers have left the district. Delivery costs have doubled.",
+    },
+    "doctor": {
+        "housing_crisis": "Patients are skipping follow-up appointments — they say they can't afford the bus fare after rent.",
+    },
+    "nurse": {
+        "housing_crisis": "Two colleagues gave notice this week. They can't afford to live anywhere near the clinic.",
+    },
+    "journalist": {
+        "housing_crisis": "I have documents showing the developer got advance notice of the rezoning six weeks before it was public.",
+    },
+    "editor": {
+        "housing_crisis": "We've been running the eviction numbers for three months. The data is damning and no one in power has responded.",
+    },
+    "trader": {
+        "housing_crisis": "Mortgage-backed instruments are showing the same stress patterns as before the last crash. I'm out.",
+    },
+    "analyst": {
+        "housing_crisis": "Twenty-three percent of residents are spending over sixty percent of income on rent. That's a systemic threshold.",
+    },
+    "officer": {
+        "housing_crisis": "Eviction enforcement orders are up three hundred and forty percent this quarter. Some of these families have nowhere to go.",
+    },
+    "civil servant": {
+        "housing_crisis": "Emergency housing applications have overwhelmed the system. We're three months behind and still counting.",
+    },
+    "barista": {
+        "housing_crisis": "My regulars are moving out one by one. I can't afford to stay here myself much longer.",
     },
 }
 
