@@ -21,10 +21,11 @@ OCCUPATION_CRISIS_OBSERVATIONS: dict[str, dict[str, str]] = {
         "housing_crisis": "Patients are missing follow-up appointments — they say they can't afford the bus fare after rent.",
     },
     "nurse": {
-        "pandemic":    "We don't have enough PPE for the whole ward. Someone has to go without.",
-        "drought":     "Half the clinic staff look dehydrated themselves. This heat is merciless.",
-        "cyberattack": "I can't access medication records. Every order needs a double verbal check.",
-        "crime_wave":  "Two patients tonight with injuries they say were from 'falls'. I don't believe them.",
+        "pandemic":       "We don't have enough PPE for the whole ward. Someone has to go without.",
+        "drought":        "Half the clinic staff look dehydrated themselves. This heat is merciless.",
+        "cyberattack":    "I can't access medication records. Every order needs a double verbal check.",
+        "crime_wave":     "Two patients tonight with injuries they say were from 'falls'. I don't believe them.",
+        "housing_crisis": "Two colleagues gave notice this week. They can't afford to live anywhere near the clinic.",
     },
     "journalist": {
         "pandemic":    "The official case count doesn't match what doctors are telling me off the record.",
