@@ -30,6 +30,7 @@ class CrisisTemplate:
     resolution_text: str = ""
     secondary_severity: float = 0.7
     verdict_fear_reduction: float = 0.12  # fear drop applied to all citizens when council verdict is reached
+    verdict_reopens: list[str] = field(default_factory=list)  # locations partially reopened when verdict is delivered
 
 
 CRISIS_TEMPLATES: dict[str, CrisisTemplate] = {
@@ -54,6 +55,7 @@ CRISIS_TEMPLATES: dict[str, CrisisTemplate] = {
             "The pandemic has been brought under control. Transmission rates are falling "
             "and the clinic is reopening to routine patients."
         ),
+        verdict_reopens=["clinic"],
     ),
     "drought": CrisisTemplate(
         key="drought",
@@ -76,6 +78,7 @@ CRISIS_TEMPLATES: dict[str, CrisisTemplate] = {
             "Emergency water deliveries have stabilised the drought situation. "
             "The market is reopening and prices are beginning to fall."
         ),
+        verdict_reopens=["market"],
     ),
     "cyberattack": CrisisTemplate(
         key="cyberattack",
@@ -98,6 +101,7 @@ CRISIS_TEMPLATES: dict[str, CrisisTemplate] = {
             "City systems have been restored following the cyberattack. "
             "Investigators are tracing the origin of the breach."
         ),
+        verdict_reopens=["hall"],
     ),
     "election": CrisisTemplate(
         key="election",
@@ -120,6 +124,7 @@ CRISIS_TEMPLATES: dict[str, CrisisTemplate] = {
             "The election dispute has been resolved by an independent audit. "
             "The city is cautiously returning to normal."
         ),
+        verdict_reopens=[],
     ),
     "crime_wave": CrisisTemplate(
         key="crime_wave",
@@ -142,5 +147,6 @@ CRISIS_TEMPLATES: dict[str, CrisisTemplate] = {
             "The crime wave has subsided following increased patrols. "
             "The park is safe to use again."
         ),
+        verdict_reopens=["park"],
     ),
 }
