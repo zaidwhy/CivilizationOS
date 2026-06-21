@@ -195,6 +195,18 @@ async def resolve_crisis(template_key: str) -> dict:
     return {"resolved": template_key, "message": result, "tick": engine.tick_count}
 
 
+@app.post("/crisis/id/{crisis_id}/resolve")
+async def resolve_crisis_by_id(crisis_id: str) -> dict:
+    """Resolve any crisis by its registry ID — works for custom and template crises."""
+    result = engine.resolve_crisis_by_id(crisis_id)
+    if result is None:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Crisis '{crisis_id}' not found or already resolved",
+        )
+    return {"resolved": crisis_id, "message": result, "tick": engine.tick_count}
+
+
 @app.get("/timeline")
 async def get_timeline(k: int = 60) -> dict:
     """Causal event history for the Timeline panel (newest first)."""
