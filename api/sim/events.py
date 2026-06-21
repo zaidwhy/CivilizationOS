@@ -149,4 +149,28 @@ CRISIS_TEMPLATES: dict[str, CrisisTemplate] = {
         ),
         verdict_reopens=["park"],
     ),
+    "housing_crisis": CrisisTemplate(
+        key="housing_crisis",
+        name="Housing Crisis",
+        description=(
+            "A wave of speculative development has pushed rents beyond what working "
+            "residents can afford. Mass evictions are underway and the Trade Exchange "
+            "has suspended trading amid housing market volatility."
+        ),
+        primary_institution="inst_economy",
+        secondary_institutions=["inst_gov"],
+        closed_locations=["exchange"],
+        base_fear=0.35,
+        workplace_fear_boost={"exchange": 0.3, "hall": 0.2, "market": 0.1},
+        duration_ticks=600,
+        citizen_observation=(
+            "A housing crisis has erupted — rents have doubled overnight, eviction "
+            "notices are everywhere, and the Trade Exchange has halted trading."
+        ),
+        resolution_text=(
+            "Emergency rent controls have passed and the eviction freeze is in effect. "
+            "The Trade Exchange is reopening as market confidence stabilises."
+        ),
+        verdict_reopens=["exchange"],
+    ),
 }
