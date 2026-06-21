@@ -248,6 +248,37 @@ export default function CouncilChamber() {
         </div>
       )}
 
+      {/* Unresolved custom (free-text) crisis badges */}
+      {customCrises.length > 0 && (
+        <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+          <div style={{ fontSize: 10, color: "#64748b" }}>Custom crises</div>
+          {customCrises.map((c) => (
+            <div key={c.id} style={{ display: "flex", alignItems: "center", gap: 3, flexWrap: "wrap" }}>
+              <span style={{
+                fontSize: 10, padding: "2px 7px", borderRadius: 999,
+                background: "rgba(251,191,36,0.12)", color: "#fbbf24",
+                border: "1px solid rgba(251,191,36,0.3)",
+                maxWidth: 170, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+              }}>
+                ⚡ {c.text.slice(0, 40)}{c.text.length > 40 ? "…" : ""}
+              </span>
+              <button
+                onClick={() => resolveById(c.id)}
+                disabled={resolving === c.id}
+                title={`Resolve custom crisis (${c.id})`}
+                style={{
+                  background: "rgba(74,222,128,0.1)", border: "1px solid rgba(74,222,128,0.3)",
+                  color: "#4ade80", borderRadius: 4, fontSize: 9, cursor: "pointer",
+                  padding: "1px 5px",
+                }}
+              >
+                {resolving === c.id ? "…" : "✓ resolve"}
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+
       {/* Template presets */}
       {templates.length > 0 && (
         <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
