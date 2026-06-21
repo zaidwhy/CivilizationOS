@@ -65,6 +65,13 @@ class CrisisRegistry:
     def get_debate(self, debate_id: str) -> list[DebateTurn]:
         return self._debates.get(debate_id, [])
 
+    def get_crisis(self, crisis_id: str) -> Crisis | None:
+        return self._crises.get(crisis_id)
+
+    def mark_resolved(self, crisis_id: str) -> None:
+        if crisis_id in self._crises:
+            self._crises[crisis_id].resolved = True
+
     def list_crises(self) -> list[Crisis]:
         return sorted(self._crises.values(), key=lambda c: c.tick, reverse=True)
 
