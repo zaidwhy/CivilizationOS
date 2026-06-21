@@ -70,6 +70,63 @@ class TestFearSystem:
         assert eng.citizens[c.p.id].fear < before
 
 
+class TestResolveById:
+    def _make_engine(self) -> Engine:
+        return Engine(personas=SEED_CITIZENS[:3], seed=42, use_llm=False)
+
+    @pytest.mark.asyncio
+    async def test_resolve_template_crisis_by_id(self):
+        eng = self._make_engine()
+        crisis = await eng.inject_crisis("pandemic outbreak", "inst_health", template_key="pandemic")
+        assert any(t.key == "pandemic" for t, _ in eng._active_templates)
+        result = eng.resolve_crisis_by_id(crisis.id)
+        assert result is not None
+        assert not any(t.key == "pandemic" for t, _ in eng._active_templates)
+        assert eng.crises.get_crisis(crisis.id).resolved
+
+    @pytest.mark.asyncio
+    async def test_resolve_custom_crisis_by_id(self):
+        eng = self._make_engine()
+        crisis = await eng.inject_crisis("strange fog covers the city", "inst_gov", template_key=None)
+        result = eng.resolve_crisis_by_id(crisis.id)
+        assert result is not None
+        assert eng.crises.get_crisis(crisis.id).resolved
+
+    def test_resolve_by_id_not_found_returns_none(self):
+        eng = self._make_engine()
+        assert eng.resolve_crisis_by_id("crisis_9999") is None
+
+    def test_resolve_by_id_already_resolved_returns_none(self):
+        eng = self._make_engine()
+        eng.crises.mark_resolved("nonexistent")  # no-op
+        c = eng.crises.create("test", 0, "inst_gov")
+        eng.crises.mark_resolved(c.id)
+        assert eng.resolve_crisis_by_id(c.id) is None
+
+    def test_verdict_reopens_location(self):
+        eng = self._make_engine()
+        tmpl = CRISIS_TEMPLATES["pandemic"]
+        eng._active_templates = [(tmpl, 9999)]
+        eng._tick_crisis_effects(1)
+        assert "clinic" in eng._closed_locations
+        eng._apply_verdict_effects(tmpl, "The council mandates clinic reopening with safety protocols")
+        assert "clinic" not in eng._closed_locations
+        assert "clinic" in eng._verdict_reopened
+        # Location stays open on subsequent ticks while crisis is still active
+        eng._tick_crisis_effects(2)
+        assert "clinic" not in eng._closed_locations
+
+    def test_verdict_reopened_cleared_on_full_resolve(self):
+        eng = self._make_engine()
+        tmpl = CRISIS_TEMPLATES["pandemic"]
+        eng._active_templates = [(tmpl, 9999)]
+        eng._tick_crisis_effects(1)
+        eng._apply_verdict_effects(tmpl, "Council directive issued")
+        assert "clinic" in eng._verdict_reopened
+        eng.resolve_crisis("pandemic")
+        assert "clinic" not in eng._verdict_reopened
+
+
 class TestLocationClosure:
     def test_closed_location_routes_citizen_home(self):
         from api.agents.citizen import Citizen
