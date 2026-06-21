@@ -771,11 +771,11 @@ All Phase 8 items are complete. The remaining backlog from the original plan:
 
 ---
 
-## 9. API Endpoints — Complete Reference (v0.7.0)
+## 9. API Endpoints — Complete Reference (v0.8.0)
 
 | Method | Path | Description | Added |
 |---|---|---|---|
-| GET | `/health` | Status, version, spend, tick interval, brains | Phase 0 |
+| GET | `/health` | Status, version, spend, tick interval, brains (incl. `council` model) | Phase 0 / Phase 8 |
 | GET | `/agent/{id}` | Citizen detail: memories, relationships, backstory | Phase 1 |
 | WS | `/ws` | Live world snapshots + debate turn stream | Phase 0 |
 | GET | `/llm/ping?tier=0` | Smoke-test a specific LLM tier | Phase 0 |
