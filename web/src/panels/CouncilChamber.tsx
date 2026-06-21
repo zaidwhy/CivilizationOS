@@ -105,6 +105,23 @@ export default function CouncilChamber() {
       .catch(() => {});
   }, []);
 
+  // Poll /crises to surface unresolved custom (non-template) crises
+  useEffect(() => {
+    const fetchCrises = () => {
+      fetch("/api/crises")
+        .then((r) => r.json())
+        .then((d: { crises: CrisisRecord[] }) => {
+          setCustomCrises(
+            (d.crises ?? []).filter((c) => !c.template_key && !c.resolved)
+          );
+        })
+        .catch(() => {});
+    };
+    fetchCrises();
+    const id = setInterval(fetchCrises, 8000);
+    return () => clearInterval(id);
+  }, []);
+
   function pickTemplate(key: string) {
     setSelectedTemplate(key);
     const t = templates.find((t) => t.key === key);
