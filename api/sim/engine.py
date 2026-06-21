@@ -212,6 +212,8 @@ class Engine:
         self._closed_locations = set()
         for tmpl, _ in self._active_templates:
             self._closed_locations.update(tmpl.closed_locations)
+        # Remove locations that were partially reopened by a council verdict
+        self._closed_locations -= self._verdict_reopened
 
     def _apply_template_fear(self, tmpl: CrisisTemplate, tick: int) -> None:
         """Inject fear and occupation-specific memories into citizens."""
