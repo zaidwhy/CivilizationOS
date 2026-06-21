@@ -1,0 +1,26 @@
+# Ollama Modelfile for the CivilizationOS fine-tuned council voice model.
+#
+# Usage (after exporting GGUF from train_lora.ipynb):
+#   1. Copy unsloth.Q4_K_M.gguf to this directory (ml/)
+#   2. ollama create civos-council -f ml/Modelfile
+#   3. Add to .env:  OLLAMA_COUNCIL_MODEL=civos-council
+#   4. Restart the API — purple 🧠 pill appears in the header when active.
+#
+# The four debate roles (Historian, Strategist, Skeptic, Predictor) will use
+# this model. The Synthesizer keeps its Tier.PREMIUM path for final verdicts.
+
+FROM ./unsloth.Q4_K_M.gguf
+
+# Match the ChatML template Qwen2.5-Instruct was trained on
+TEMPLATE """{{ if .System }}<|im_start|>system
+{{ .System }}<|im_end|>
+{{ end }}{{ range .Messages }}{{ if eq .Role "user" }}<|im_start|>user
+{{ .Content }}<|im_end|>
+<|im_start|>assistant
+{{ else if eq .Role "assistant" }}{{ .Content }}<|im_end|>
+{{ end }}{{ end }}"""
+
+PARAMETER temperature 0.72
+PARAMETER top_p 0.9
+PARAMETER repeat_penalty 1.1
+PARAMETER num_ctx 2048
