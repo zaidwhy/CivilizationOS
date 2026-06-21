@@ -51,11 +51,12 @@ OCCUPATION_CRISIS_OBSERVATIONS: dict[str, dict[str, str]] = {
         "housing_crisis": "Mortgage-backed instruments are showing the same stress patterns as before the last crash. I'm moving out of exposure.",
     },
     "analyst": {
-        "pandemic":    "The R-value from the clinic data suggests exponential spread within 9 days.",
-        "drought":     "The reservoir drawdown rate means we have 23 days of supply at current usage.",
-        "cyberattack": "The breach pattern matches the state-sponsored toolkit from last year's advisory.",
-        "election":    "The statistical anomaly in precinct 7 is 4.2 standard deviations from expected.",
-        "crime_wave":  "Crime clustering has a 0.87 correlation with the three blocks around the park.",
+        "pandemic":       "The R-value from the clinic data suggests exponential spread within 9 days.",
+        "drought":        "The reservoir drawdown rate means we have 23 days of supply at current usage.",
+        "cyberattack":    "The breach pattern matches the state-sponsored toolkit from last year's advisory.",
+        "election":       "The statistical anomaly in precinct 7 is 4.2 standard deviations from expected.",
+        "crime_wave":     "Crime clustering has a 0.87 correlation with the three blocks around the park.",
+        "housing_crisis": "Twenty-three percent of residents are spending over sixty percent of income on rent. That is the systemic-crisis threshold.",
     },
     "officer": {
         "pandemic":    "We're enforcing quarantine zones but half the force is already calling in sick.",
