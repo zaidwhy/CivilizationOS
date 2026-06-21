@@ -16,6 +16,15 @@ type GraphNode = { id: string; name: string; occupation: string; fear: number };
 type GraphEdge = { source: string; target: string; weight: number; positive: boolean };
 type GraphData = { nodes: GraphNode[]; edges: GraphEdge[] };
 
+type TooltipData = {
+  name: string;
+  occupation: string;
+  fear: number;
+  bonds: { name: string; weight: number; positive: boolean }[];
+  x: number;
+  y: number;
+};
+
 function fearColor(fear: number): string {
   const r = Math.round(59 + fear * (239 - 59));
   const g = Math.round(130 - fear * 100);
@@ -29,6 +38,7 @@ export default function RelationshipGraph() {
   const selectedId = useWorld((s) => s.selectedId);
   const select = useWorld((s) => s.select);
   const [graph, setGraph] = useState<GraphData | null>(null);
+  const [tooltip, setTooltip] = useState<TooltipData | null>(null);
 
   // Refs for RAF loop — avoids stale closure / restart on every render
   const citizensRef = useRef(citizens);
@@ -64,7 +74,6 @@ export default function RelationshipGraph() {
       if (!cs) return;
       const phys = physRef.current;
 
-      // Sync physics nodes with current citizens
       const citizenIds = new Set(cs.map((c) => c.id));
       cs.forEach((c, i) => {
         if (!phys.has(c.id)) {
@@ -85,7 +94,6 @@ export default function RelationshipGraph() {
       const nodes = [...phys.values()];
       const edges = graphRef.current?.edges ?? [];
 
-      // Repulsion between every pair
       for (let i = 0; i < nodes.length; i++) {
         for (let j = i + 1; j < nodes.length; j++) {
           const a = nodes[i], b = nodes[j];
@@ -98,7 +106,6 @@ export default function RelationshipGraph() {
         }
       }
 
-      // Spring forces along affinity edges
       for (const edge of edges) {
         const a = phys.get(edge.source), b = phys.get(edge.target);
         if (!a || !b) continue;
@@ -112,7 +119,6 @@ export default function RelationshipGraph() {
         b.vx -= fx; b.vy -= fy;
       }
 
-      // Weak gravity toward canvas centre + damping + integrate
       for (const n of nodes) {
         n.vx += (W / 2 - n.x) * GRAVITY;
         n.vy += (H / 2 - n.y) * GRAVITY;
@@ -136,7 +142,6 @@ export default function RelationshipGraph() {
 
       ctx.clearRect(0, 0, W, H);
 
-      // Draw edges (affinity or co-location fallback)
       if (hasGraph && edges.length > 0) {
         for (const edge of edges) {
           const pa = phys.get(edge.source), pb = phys.get(edge.target);
@@ -170,7 +175,6 @@ export default function RelationshipGraph() {
         });
       }
 
-      // Draw nodes
       if (cs) {
         cs.forEach((c) => {
           const p = phys.get(c.id);
@@ -219,7 +223,57 @@ export default function RelationshipGraph() {
     select(null);
   }
 
+  function handleMouseMove(e: React.MouseEvent<HTMLCanvasElement>) {
+    const rect = canvasRef.current!.getBoundingClientRect();
+    const mx = e.clientX - rect.left;
+    const my = e.clientY - rect.top;
+    const cs = citizensRef.current;
+    const g = graphRef.current;
+    if (!cs) { setTooltip(null); return; }
+
+    let hoveredId: string | null = null;
+    for (const c of cs) {
+      const p = physRef.current.get(c.id);
+      if (p && Math.hypot(mx - p.x, my - p.y) <= R + 6) {
+        hoveredId = c.id;
+        break;
+      }
+    }
+
+    if (!hoveredId) { setTooltip(null); return; }
+
+    const citizen = cs.find((c) => c.id === hoveredId);
+    if (!citizen) { setTooltip(null); return; }
+
+    const bonds: TooltipData["bonds"] = [];
+    if (g?.edges) {
+      for (const edge of g.edges) {
+        const otherId = edge.source === hoveredId ? edge.target
+          : edge.target === hoveredId ? edge.source
+          : null;
+        if (!otherId) continue;
+        const other = cs.find((c) => c.id === otherId);
+        if (other) bonds.push({ name: other.name.split(" ")[0], weight: Math.abs(edge.weight), positive: edge.positive });
+      }
+      bonds.sort((a, b) => b.weight - a.weight);
+    }
+
+    const p = physRef.current.get(hoveredId)!;
+    setTooltip({
+      name: citizen.name,
+      occupation: citizen.occupation,
+      fear: citizen.fear,
+      bonds: bonds.slice(0, 3),
+      x: p.x,
+      y: p.y,
+    });
+  }
+
   const edgeCount = graph?.edges?.length ?? 0;
+
+  // Flip tooltip to left side if node is in the right half of the canvas
+  const tipLeft = tooltip ? (tooltip.x > W / 2 ? tooltip.x - 148 : tooltip.x + 14) : 0;
+  const tipTop  = tooltip ? Math.max(0, tooltip.y - 14) : 0;
 
   return (
     <div className="panel">
@@ -231,13 +285,55 @@ export default function RelationshipGraph() {
         <span>Edge: <span style={{ color: "#4ade80" }}>trust</span> · <span style={{ color: "#f87171" }}>tension</span></span>
         {edgeCount > 0 && <span style={{ marginLeft: "auto" }}>{edgeCount} bonds</span>}
       </div>
-      <canvas
-        ref={canvasRef}
-        width={W}
-        height={H}
-        onClick={handleClick}
-        style={{ cursor: "pointer", borderRadius: 6, background: "rgba(0,0,0,0.2)" }}
-      />
+      <div style={{ position: "relative", display: "inline-block" }}>
+        <canvas
+          ref={canvasRef}
+          width={W}
+          height={H}
+          onClick={handleClick}
+          onMouseMove={handleMouseMove}
+          onMouseLeave={() => setTooltip(null)}
+          style={{ cursor: "pointer", borderRadius: 6, background: "rgba(0,0,0,0.2)", display: "block" }}
+        />
+        {tooltip && (
+          <div style={{
+            position: "absolute",
+            left: tipLeft,
+            top: tipTop,
+            background: "#0f172a",
+            border: "1px solid #334155",
+            borderRadius: 7,
+            padding: "7px 10px",
+            fontSize: 11,
+            color: "#cbd5e1",
+            pointerEvents: "none",
+            zIndex: 20,
+            minWidth: 130,
+            maxWidth: 150,
+            boxShadow: "0 4px 12px rgba(0,0,0,0.5)",
+          }}>
+            <div style={{ fontWeight: 700, color: "#f1f5f9", marginBottom: 1, fontSize: 12 }}>
+              {tooltip.name}
+            </div>
+            <div style={{ color: "#64748b", marginBottom: 5, fontSize: 10 }}>
+              {tooltip.occupation}
+            </div>
+            <div style={{ color: fearColor(tooltip.fear), marginBottom: tooltip.bonds.length ? 5 : 0, fontSize: 11 }}>
+              fear&nbsp;{Math.round(tooltip.fear * 100)}%
+            </div>
+            {tooltip.bonds.map((b) => (
+              <div key={b.name} style={{
+                display: "flex", justifyContent: "space-between",
+                color: b.positive ? "#4ade80" : "#f87171",
+                fontSize: 10, marginTop: 2,
+              }}>
+                <span>{b.positive ? "♥" : "⚡"} {b.name}</span>
+                <span>{Math.round(b.weight * 100)}%</span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
