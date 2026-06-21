@@ -805,3 +805,7 @@ All Phase 8 items are complete. The remaining backlog from the original plan:
 | RAF loop with empty deps | Phase 7 | Physics loop must not restart on every world-snapshot tick — empty deps is intentional |
 | `resolve_crisis_by_id` delegates to `resolve_crisis` | Phase 7 | Avoids duplicating template removal logic (fear, closed locations, causal graph, citizen reset) |
 | Custom crisis fear reduction 0.15 (not 0.30) | Phase 7 | Unknown severity warrants conservative default; 0.30 is reserved for full template resolution |
+| Synthesizer excluded from fine-tuned model path | Phase 8 | Synthesizer issues the binding VERDICT; Claude's reasoning quality matters more here than persona voice |
+| HTML overlay div for graph tooltip (not canvas-drawn) | Phase 8 | Canvas text is hard to style and position; HTML div gives font, border, colour control for free |
+| Tooltip left-flip at `x > W/2` | Phase 8 | Prevents tooltip clipping the canvas right edge without needing to measure DOM width |
+| Name prefix stripped in speech bubble via colon heuristic | Phase 8 | LLM outputs `"Name: dialogue"` format; stripping keeps bubble readable without backend changes |
