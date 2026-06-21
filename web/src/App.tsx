@@ -62,13 +62,24 @@ function SpendCounter() {
   const color = pct > 80 ? "#f87171" : pct > 50 ? "#fbbf24" : "#4ade80";
 
   return (
-    <span
-      className="pill"
-      title={`$${spent.toFixed(4)} of $${budget} Claude budget used (${pct.toFixed(1)}%)`}
-      style={{ color, borderColor: color, cursor: "default" }}
-    >
-      {health.premium_mode ? "⚡ premium" : "⚙ free"} · ${spent.toFixed(3)}
-    </span>
+    <>
+      {health.council_model && (
+        <span
+          className="pill"
+          title={`Fine-tuned council model active: ${health.council_model}`}
+          style={{ color: "#a78bfa", borderColor: "#a78bfa", cursor: "default" }}
+        >
+          🧠 {health.council_model}
+        </span>
+      )}
+      <span
+        className="pill"
+        title={`$${spent.toFixed(4)} of $${budget} Claude budget used (${pct.toFixed(1)}%)`}
+        style={{ color, borderColor: color, cursor: "default" }}
+      >
+        {health.premium_mode ? "⚡ premium" : "⚙ free"} · ${spent.toFixed(3)}
+      </span>
+    </>
   );
 }
 
