@@ -28,11 +28,12 @@ OCCUPATION_CRISIS_OBSERVATIONS: dict[str, dict[str, str]] = {
         "housing_crisis": "Two colleagues gave notice this week. They can't afford to live anywhere near the clinic.",
     },
     "journalist": {
-        "pandemic":    "The official case count doesn't match what doctors are telling me off the record.",
-        "drought":     "City Hall is denying the reservoir is critical. I have the internal memos.",
-        "cyberattack": "Someone is trying very hard to control the narrative about this breach.",
-        "election":    "I've had three sources contact me about voting irregularities in the same district.",
-        "crime_wave":  "Police are under-reporting incidents by classifying them as 'civil disputes'.",
+        "pandemic":       "The official case count doesn't match what doctors are telling me off the record.",
+        "drought":        "City Hall is denying the reservoir is critical. I have the internal memos.",
+        "cyberattack":    "Someone is trying very hard to control the narrative about this breach.",
+        "election":       "I've had three sources contact me about voting irregularities in the same district.",
+        "crime_wave":     "Police are under-reporting incidents by classifying them as 'civil disputes'.",
+        "housing_crisis": "I have documents showing the developer got advance notice of the rezoning six weeks before it went public.",
     },
     "editor": {
         "pandemic":    "We're running the clinic numbers every day. The public deserves accurate data.",
