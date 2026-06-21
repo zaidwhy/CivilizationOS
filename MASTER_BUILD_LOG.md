@@ -605,6 +605,70 @@ The fine-tuned GGUF model **has not been wired into the live runtime** yet. The 
 
 ---
 
+### Phase 8 — Speech Bubbles, Graph Tooltip, Fine-Tuned Model Wired
+**Duration:** 1 session (2026-06-21) | **Not in original plan — completing original plan backlog**
+
+#### What was built
+
+**A. Speech bubble visual overhaul**
+
+`api/agents/citizen.py`:
+- `say()` TTL default `4 → 10` — bubbles stay visible ~10 seconds at 1 tick/s
+
+`web/src/city/CityStage.tsx`:
+- `speechStyle` wordWrapWidth `150 → 120` (narrower bubbles)
+- `sync()` speech block rewritten:
+  - **Name prefix stripped**: `"Ava Chen: Hello"` → `"Hello"` (colon-index heuristic)
+  - **50-char cap** with `…` ellipsis (was 80)
+  - **Downward pointer triangle**: `bg.poly([px-5, bh, px+5, bh, px, bh+7])` centred at bubble bottom
+  - **Dynamic repositioning**: `bubble.y = -(bh + 7 + 18)` — pointer tip 18 px above dot; adjusts automatically to bubble height
+
+**B. Graph hover tooltip**
+
+`web/src/panels/RelationshipGraph.tsx` — added:
+- `TooltipData` type: `{ name, occupation, fear, bonds[], x, y }`
+- `tooltip` state (`useState<TooltipData | null>`)
+- `handleMouseMove` — hit-tests `physRef.current` positions; on match, builds `bonds[]` from `graphRef.current.edges`, sorts descending by weight, trims to top 3
+- `onMouseLeave` clears tooltip
+- Canvas wrapped in `<div style={{ position: "relative" }}>` for HTML overlay positioning
+- Tooltip div positioned at `(tipLeft, tipTop)` in canvas-space; auto-flips to left side when node `x > W/2`
+- Tooltip shows: full name (bold), occupation (muted), `fear N%` (coloured by `fearColor()`), top 3 bonds with ♥/⚡ icon + affinity %
+
+**C. Fine-tuned model wiring (bug fix + plumbing)**
+
+`api/agents/council.py` — `Council.deliberate()` routing bug fixed:
+- **Root cause**: `local_model` was only passed when `spec["tier"] == Tier.LOCAL`, but no role spec has `Tier.LOCAL` — they use `Tier.FREE` / `Tier.PREMIUM`. So the fine-tuned model was silently ignored.
+- **Fix**: when `has_finetuned_council` and role is not Synthesizer, override `effective_tier = Tier.LOCAL` and pass `local_model = s.ollama_council_model`
+- **Synthesizer excluded**: keeps `Tier.PREMIUM` (Claude) — binding verdicts benefit from best reasoning; custom voice matters for the 4 debate roles
+
+`api/main.py` — `/health` now includes `brains.council: str | null` (model name when active, null otherwise)
+
+`web/src/ws/store.ts`:
+- `HealthData` gets `council_model: string | null`
+- Health poll extracts `d.brains?.council ?? null`
+
+`web/src/App.tsx` — `SpendCounter`:
+- When `health.council_model` is set, renders a purple `🧠 model-name` pill in the header
+
+**To activate:** set `OLLAMA_COUNCIL_MODEL=civos-council` in `.env` after `ollama create civos-council` from the GGUF export in `ml/train_lora.ipynb`.
+
+#### Files changed
+
+| File | Change |
+|---|---|
+| `api/agents/citizen.py` | TTL default `4 → 10` |
+| `api/agents/council.py` | Fixed fine-tuned tier routing |
+| `api/main.py` | `/health` exposes `brains.council` |
+| `web/src/city/CityStage.tsx` | Bubble redesign (strip, cap, tail, position) |
+| `web/src/panels/RelationshipGraph.tsx` | Hover tooltip overlay |
+| `web/src/ws/store.ts` | `council_model` field in `HealthData` |
+| `web/src/App.tsx` | Purple fine-tuned model pill in header |
+
+#### Plan vs reality
+All three Phase 8 items complete: speech bubbles ✅, graph tooltip ✅, fine-tuned model wired ✅. No new tests (pure rendering + one-method logic fix, existing 54 cover all affected state paths).
+
+---
+
 ## 6. Original Plan vs Reality — Cross-Reference Table
 
 | Item from original plan | Status | Notes |
