@@ -175,6 +175,24 @@ export default function CouncilChamber() {
     }
   }
 
+  async function resolveById(crisisId: string) {
+    setResolving(crisisId);
+    setError(null);
+    try {
+      const res = await fetch(`/api/crisis/id/${crisisId}/resolve`, { method: "POST" });
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({}));
+        setError(d.detail ?? `HTTP ${res.status}`);
+      } else {
+        setCustomCrises((prev) => prev.filter((c) => c.id !== crisisId));
+      }
+    } catch (e: unknown) {
+      setError(String(e));
+    } finally {
+      setResolving(null);
+    }
+  }
+
   const allDebateIds = Object.keys(debates);
 
   return (
