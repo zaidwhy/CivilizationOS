@@ -26,7 +26,7 @@ type CitizenSprite = {
 const nameStyle = new TextStyle({ fill: 0xe6edf3, fontSize: 11, fontWeight: "600" });
 const labelStyle = new TextStyle({ fill: 0xb8c4d4, fontSize: 10, fontWeight: "700" });
 const closedLabelStyle = new TextStyle({ fill: 0xf87171, fontSize: 10, fontWeight: "700" });
-const speechStyle = new TextStyle({ fill: 0x0b0e14, fontSize: 11, wordWrap: true, wordWrapWidth: 150 });
+const speechStyle = new TextStyle({ fill: 0x0b0e14, fontSize: 11, wordWrap: true, wordWrapWidth: 120 });
 
 export default function CityStage() {
   const ref = useRef<HTMLDivElement>(null);
