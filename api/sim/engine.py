@@ -412,7 +412,7 @@ class Engine:
         return res_text
 
     def _apply_verdict_effects(self, tmpl: CrisisTemplate, verdict_text: str) -> None:
-        """Partial fear reduction + decision memory when a council reaches a verdict."""
+        """Partial fear reduction + decision memory + partial location reopening on verdict."""
         summary = verdict_text[:100].rstrip()
         tick = self.tick_count
         for c in self.citizens.values():
@@ -423,7 +423,14 @@ class Engine:
                 tick,
                 "decision",
             )
-        self._log_event(tick, "decision", f"Council verdict applied — {tmpl.name} fear reduced")
+
+        # Partially reopen locations designated safe by this verdict
+        for loc in tmpl.verdict_reopens:
+            self._verdict_reopened.add(loc)
+            self._closed_locations.discard(loc)
+
+        reopened_note = f" — {', '.join(tmpl.verdict_reopens)} partially reopened" if tmpl.verdict_reopens else ""
+        self._log_event(tick, "decision", f"Council verdict applied — {tmpl.name} fear reduced{reopened_note}")
 
     # ---- events / snapshot ----
     def _log_event(self, tick: int, kind: str, text: str) -> None:
