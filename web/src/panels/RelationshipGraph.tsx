@@ -2,9 +2,16 @@ import { useEffect, useRef, useState } from "react";
 import { useWorld } from "../ws/store";
 
 const W = 260;
-const H = 200;
+const H = 210;
 const R = 7;
+const REPULSION = 1400;
+const SPRING_STRENGTH = 0.05;
+const IDEAL_DIST_POS = 55;
+const IDEAL_DIST_NEG = 95;
+const GRAVITY = 0.004;
+const DAMPING = 0.82;
 
+type PhysNode = { id: string; x: number; y: number; vx: number; vy: number };
 type GraphNode = { id: string; name: string; occupation: string; fear: number };
 type GraphEdge = { source: string; target: string; weight: number; positive: boolean };
 type GraphData = { nodes: GraphNode[]; edges: GraphEdge[] };
@@ -23,6 +30,18 @@ export default function RelationshipGraph() {
   const select = useWorld((s) => s.select);
   const [graph, setGraph] = useState<GraphData | null>(null);
 
+  // Refs for RAF loop — avoids stale closure / restart on every render
+  const citizensRef = useRef(citizens);
+  const selectedIdRef = useRef(selectedId);
+  const graphRef = useRef(graph);
+  const physRef = useRef<Map<string, PhysNode>>(new Map());
+  const rafRef = useRef<number>(0);
+
+  useEffect(() => { citizensRef.current = citizens; }, [citizens]);
+  useEffect(() => { selectedIdRef.current = selectedId; }, [selectedId]);
+  useEffect(() => { graphRef.current = graph; }, [graph]);
+
+  // Poll /api/graph every 6 s
   useEffect(() => {
     const fetchGraph = async () => {
       try {
@@ -35,91 +54,162 @@ export default function RelationshipGraph() {
     return () => clearInterval(id);
   }, []);
 
-  // Layout: fixed circle based on world citizens order
-  const positions: Record<string, { x: number; y: number }> = {};
-  if (citizens) {
-    const cx = W / 2, cy = H / 2, rad = Math.min(W, H) / 2 - R - 10;
-    citizens.forEach((c, i) => {
-      const angle = (2 * Math.PI * i) / citizens.length - Math.PI / 2;
-      positions[c.id] = {
-        x: cx + rad * Math.cos(angle),
-        y: cy + rad * Math.sin(angle),
-      };
-    });
-  }
-
+  // Single RAF loop — runs once on mount, reads everything from refs
   useEffect(() => {
     const canvas = canvasRef.current;
-    if (!canvas || !citizens) return;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
+    if (!canvas) return;
 
-    ctx.clearRect(0, 0, W, H);
+    function physicsStep() {
+      const cs = citizensRef.current;
+      if (!cs) return;
+      const phys = physRef.current;
 
-    // Draw affinity edges from /api/graph
-    if (graph?.edges) {
-      for (const edge of graph.edges) {
-        const pa = positions[edge.source];
-        const pb = positions[edge.target];
-        if (!pa || !pb) continue;
-        const alpha = Math.min(0.9, Math.abs(edge.weight) * 1.5);
-        const thickness = Math.max(0.5, Math.abs(edge.weight) * 3);
-        ctx.beginPath();
-        ctx.moveTo(pa.x, pa.y);
-        ctx.lineTo(pb.x, pb.y);
-        ctx.strokeStyle = edge.positive
-          ? `rgba(74,222,128,${alpha})`
-          : `rgba(248,113,113,${alpha})`;
-        ctx.lineWidth = thickness;
-        ctx.stroke();
-      }
-    } else {
-      // Fallback: faint co-location lines while graph loads
-      citizens.forEach((a) => {
-        citizens.forEach((b) => {
-          if (a.id >= b.id) return;
-          if (a.location_id && a.location_id === b.location_id && !a.location_id.startsWith("home_")) {
-            const pa = positions[a.id];
-            const pb = positions[b.id];
-            ctx.beginPath();
-            ctx.moveTo(pa.x, pa.y);
-            ctx.lineTo(pb.x, pb.y);
-            ctx.strokeStyle = "rgba(148,163,184,0.2)";
-            ctx.lineWidth = 1;
-            ctx.stroke();
-          }
-        });
+      // Sync physics nodes with current citizens
+      const citizenIds = new Set(cs.map((c) => c.id));
+      cs.forEach((c, i) => {
+        if (!phys.has(c.id)) {
+          const angle = (2 * Math.PI * i) / cs.length - Math.PI / 2;
+          phys.set(c.id, {
+            id: c.id,
+            x: W / 2 + (Math.min(W, H) / 2 - R - 12) * Math.cos(angle),
+            y: H / 2 + (Math.min(W, H) / 2 - R - 12) * Math.sin(angle),
+            vx: 0,
+            vy: 0,
+          });
+        }
       });
+      for (const id of phys.keys()) {
+        if (!citizenIds.has(id)) phys.delete(id);
+      }
+
+      const nodes = [...phys.values()];
+      const edges = graphRef.current?.edges ?? [];
+
+      // Repulsion between every pair
+      for (let i = 0; i < nodes.length; i++) {
+        for (let j = i + 1; j < nodes.length; j++) {
+          const a = nodes[i], b = nodes[j];
+          const dx = a.x - b.x, dy = a.y - b.y;
+          const dist = Math.max(Math.hypot(dx, dy), 1);
+          const f = REPULSION / (dist * dist);
+          const fx = (dx / dist) * f, fy = (dy / dist) * f;
+          a.vx += fx; a.vy += fy;
+          b.vx -= fx; b.vy -= fy;
+        }
+      }
+
+      // Spring forces along affinity edges
+      for (const edge of edges) {
+        const a = phys.get(edge.source), b = phys.get(edge.target);
+        if (!a || !b) continue;
+        const dx = b.x - a.x, dy = b.y - a.y;
+        const dist = Math.max(Math.hypot(dx, dy), 1);
+        const ideal = edge.positive ? IDEAL_DIST_POS : IDEAL_DIST_NEG;
+        const spring = SPRING_STRENGTH * Math.abs(edge.weight);
+        const f = spring * (dist - ideal);
+        const fx = (dx / dist) * f, fy = (dy / dist) * f;
+        a.vx += fx; a.vy += fy;
+        b.vx -= fx; b.vy -= fy;
+      }
+
+      // Weak gravity toward canvas centre + damping + integrate
+      for (const n of nodes) {
+        n.vx += (W / 2 - n.x) * GRAVITY;
+        n.vy += (H / 2 - n.y) * GRAVITY;
+        n.vx *= DAMPING;
+        n.vy *= DAMPING;
+        n.x = Math.max(R + 5, Math.min(W - R - 5, n.x + n.vx));
+        n.y = Math.max(R + 10, Math.min(H - R - 12, n.y + n.vy));
+      }
     }
 
-    // Draw nodes
-    citizens.forEach((c) => {
-      const p = positions[c.id];
-      const isSel = c.id === selectedId;
-      ctx.beginPath();
-      ctx.arc(p.x, p.y, isSel ? R + 2 : R, 0, 2 * Math.PI);
-      ctx.fillStyle = fearColor(c.fear ?? 0);
-      ctx.fill();
-      if (isSel) {
-        ctx.strokeStyle = "#fbbf24";
-        ctx.lineWidth = 2;
-        ctx.stroke();
+    function draw() {
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return;
+      const cs = citizensRef.current;
+      const selId = selectedIdRef.current;
+      const edges = graphRef.current?.edges ?? [];
+      const hasGraph = graphRef.current !== null;
+      const phys = physRef.current;
+
+      ctx.clearRect(0, 0, W, H);
+
+      // Draw edges (affinity or co-location fallback)
+      if (hasGraph && edges.length > 0) {
+        for (const edge of edges) {
+          const pa = phys.get(edge.source), pb = phys.get(edge.target);
+          if (!pa || !pb) continue;
+          const alpha = Math.min(0.9, Math.abs(edge.weight) * 1.5);
+          const thickness = Math.max(0.5, Math.abs(edge.weight) * 3);
+          ctx.beginPath();
+          ctx.moveTo(pa.x, pa.y);
+          ctx.lineTo(pb.x, pb.y);
+          ctx.strokeStyle = edge.positive
+            ? `rgba(74,222,128,${alpha})`
+            : `rgba(248,113,113,${alpha})`;
+          ctx.lineWidth = thickness;
+          ctx.stroke();
+        }
+      } else if (!hasGraph && cs) {
+        cs.forEach((a) => {
+          cs.forEach((b) => {
+            if (a.id >= b.id) return;
+            if (a.location_id && a.location_id === b.location_id && !a.location_id.startsWith("home_")) {
+              const pa = phys.get(a.id), pb = phys.get(b.id);
+              if (!pa || !pb) return;
+              ctx.beginPath();
+              ctx.moveTo(pa.x, pa.y);
+              ctx.lineTo(pb.x, pb.y);
+              ctx.strokeStyle = "rgba(148,163,184,0.2)";
+              ctx.lineWidth = 1;
+              ctx.stroke();
+            }
+          });
+        });
       }
-      ctx.font = "8px monospace";
-      ctx.fillStyle = "#94a3b8";
-      ctx.textAlign = "center";
-      ctx.fillText(c.name.split(" ")[0], p.x, p.y + R + 9);
-    });
-  }, [citizens, selectedId, graph]);
+
+      // Draw nodes
+      if (cs) {
+        cs.forEach((c) => {
+          const p = phys.get(c.id);
+          if (!p) return;
+          const isSel = c.id === selId;
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, isSel ? R + 2 : R, 0, 2 * Math.PI);
+          ctx.fillStyle = fearColor(c.fear ?? 0);
+          ctx.fill();
+          if (isSel) {
+            ctx.strokeStyle = "#fbbf24";
+            ctx.lineWidth = 2;
+            ctx.stroke();
+          }
+          ctx.font = "8px monospace";
+          ctx.fillStyle = "#94a3b8";
+          ctx.textAlign = "center";
+          ctx.fillText(c.name.split(" ")[0], p.x, p.y + R + 9);
+        });
+      }
+    }
+
+    function frame() {
+      physicsStep();
+      draw();
+      rafRef.current = requestAnimationFrame(frame);
+    }
+
+    rafRef.current = requestAnimationFrame(frame);
+    return () => cancelAnimationFrame(rafRef.current);
+  }, []); // intentionally empty — loop runs once and reads from refs
 
   function handleClick(e: React.MouseEvent<HTMLCanvasElement>) {
-    if (!citizens) return;
     const rect = canvasRef.current!.getBoundingClientRect();
     const mx = e.clientX - rect.left;
     const my = e.clientY - rect.top;
-    for (const c of citizens) {
-      const p = positions[c.id];
-      if (Math.hypot(mx - p.x, my - p.y) <= R + 4) {
+    const cs = citizensRef.current;
+    if (!cs) return;
+    for (const c of cs) {
+      const p = physRef.current.get(c.id);
+      if (p && Math.hypot(mx - p.x, my - p.y) <= R + 4) {
         select(c.id);
         return;
       }
