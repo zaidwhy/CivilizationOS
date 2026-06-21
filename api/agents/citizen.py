@@ -73,11 +73,12 @@ OCCUPATION_CRISIS_OBSERVATIONS: dict[str, dict[str, str]] = {
         "housing_crisis": "Emergency housing applications have overwhelmed the system. We are three months behind and still counting.",
     },
     "barista": {
-        "pandemic":    "Half my regulars haven't come in. I keep the cafe open so people have somewhere to go.",
-        "drought":     "Can't make espresso with rationed water. People are still coming in just to talk.",
-        "cyberattack": "Card readers are all down. Cash only and no one carries cash anymore.",
-        "election":    "The arguments in here are getting heated. I've had to ask two people to leave.",
-        "crime_wave":  "I'm closing an hour early until things settle down. It's not worth the risk.",
+        "pandemic":       "Half my regulars haven't come in. I keep the cafe open so people have somewhere to go.",
+        "drought":        "Can't make espresso with rationed water. People are still coming in just to talk.",
+        "cyberattack":    "Card readers are all down. Cash only and no one carries cash anymore.",
+        "election":       "The arguments in here are getting heated. I've had to ask two people to leave.",
+        "crime_wave":     "I'm closing an hour early until things settle down. It's not worth the risk.",
+        "housing_crisis": "My regulars are moving out one by one. I can't afford to stay in this neighbourhood myself much longer.",
     },
     "shopkeeper": {
         "pandemic":       "I'm limiting customers to five at a time. Some argue, but I hold the line.",
