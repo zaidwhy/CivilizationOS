@@ -38,11 +38,12 @@ const ROLE_COLORS: Record<string, string> = {
 };
 
 const CRISIS_EMOJI: Record<string, string> = {
-  pandemic:    "🦠",
-  drought:     "🌵",
-  cyberattack: "💻",
-  election:    "🗳️",
-  crime_wave:  "🔫",
+  pandemic:       "🦠",
+  drought:        "🌵",
+  cyberattack:    "💻",
+  election:       "🗳️",
+  crime_wave:     "🔫",
+  housing_crisis: "🏚️",
 };
 
 function Dots() {
