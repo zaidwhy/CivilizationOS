@@ -14,10 +14,11 @@ from .personas import Persona
 # crisis template activates, giving each profession a distinct reaction to events.
 OCCUPATION_CRISIS_OBSERVATIONS: dict[str, dict[str, str]] = {
     "doctor": {
-        "pandemic":    "As a doctor I need to prepare triage protocols immediately — we'll be overwhelmed.",
-        "drought":     "Dehydration cases are going to spike. I'm ordering IV fluids now.",
-        "cyberattack": "Our electronic patient records are down. Switching to paper charts.",
-        "crime_wave":  "We're treating more assault victims at the clinic. The streets aren't safe.",
+        "pandemic":       "As a doctor I need to prepare triage protocols immediately — we'll be overwhelmed.",
+        "drought":        "Dehydration cases are going to spike. I'm ordering IV fluids now.",
+        "cyberattack":    "Our electronic patient records are down. Switching to paper charts.",
+        "crime_wave":     "We're treating more assault victims at the clinic. The streets aren't safe.",
+        "housing_crisis": "Patients are missing follow-up appointments — they say they can't afford the bus fare after rent.",
     },
     "nurse": {
         "pandemic":    "We don't have enough PPE for the whole ward. Someone has to go without.",
