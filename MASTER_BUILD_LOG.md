@@ -700,8 +700,8 @@ All three Phase 8 items complete: speech bubbles ✅, graph tooltip ✅, fine-tu
 | Synthetic council-voice dataset | ✅ Done | |
 | MLflow tracking | ✅ Done | Local tracking store |
 | Eval harness (persona + debate quality) | ✅ Done | |
-| **Fine-tuned model wired into councils** | ❌ Not done | `OLLAMA_COUNCIL_MODEL` config hook ready; needs GGUF exported and loaded |
-| Fine-tuned model passes evals (milestone) | ⚠ Partial | Harness built; model not yet evaluated in live loop |
+| **Fine-tuned model wired into councils** | ✅ Done (Phase 8) | Bug fixed in `council.py`; header pill shows active model; activate via `OLLAMA_COUNCIL_MODEL` env var |
+| Fine-tuned model passes evals (milestone) | ⚠ Partial | Harness built; routing wired; model export from Colab still required to fully activate |
 | Visual polish | ✅ Done | |
 | Onboarding tooltip tour | ✅ Done | 5-step, localStorage-persisted |
 | **"Rewind story" feature** | ❌ Not done | Never implemented |
