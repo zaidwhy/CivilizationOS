@@ -163,7 +163,7 @@ class Citizen:
         return bool(self.location_id) and not self.location_id.startswith("home_")
 
     # ---- speech / relationships ----
-    def say(self, text: str, ttl: int = 4) -> None:
+    def say(self, text: str, ttl: int = 10) -> None:
         self.speech = text
         self.speech_ttl = ttl
 
