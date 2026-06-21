@@ -67,6 +67,7 @@ export type HealthData = {
   premium_mode: boolean;
   causal_events: number;
   active_crises: string[];
+  council_model: string | null;
 };
 
 type ConnState = "connecting" | "open" | "closed";
