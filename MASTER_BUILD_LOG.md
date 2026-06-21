@@ -682,7 +682,7 @@ All three Phase 8 items complete: speech bubbles ✅, graph tooltip ✅, fine-tu
 | Citizen perceive→plan→act→converse | ✅ Done | |
 | Memory stream + reflection loop | ✅ Done | |
 | PixiJS isometric city | ✅ Done | |
-| **Speech bubbles above sprites** | ❌ Not done | `action` field exists in snapshot; rendering deferred to Phase 8 |
+| **Speech bubbles above sprites** | ✅ Done (Phase 8) | Rounded bubble, name-prefix stripped, pointer tail, 10-tick TTL |
 | WebSocket world state → Zustand | ✅ Done | |
 | 10 citizens live a day (milestone) | ✅ Done | 48 then 54 tests verify it |
 | Causal graph (causal_graph.py) | ✅ Done | |
