@@ -66,10 +66,11 @@ OCCUPATION_CRISIS_OBSERVATIONS: dict[str, dict[str, str]] = {
         "housing_crisis": "Eviction enforcement orders are up 340% this quarter. Some of these families have nowhere to go.",
     },
     "civil servant": {
-        "pandemic":    "I'm coordinating emergency permits for pop-up medical facilities.",
-        "drought":     "Water rationing ordinance needs mayoral sign-off. I'm drafting it tonight.",
-        "cyberattack": "City systems are going to manual override. This will be a very long week.",
-        "election":    "I'm not allowed to comment on the certification process. Ask the commission.",
+        "pandemic":       "I'm coordinating emergency permits for pop-up medical facilities.",
+        "drought":        "Water rationing ordinance needs mayoral sign-off. I'm drafting it tonight.",
+        "cyberattack":    "City systems are going to manual override. This will be a very long week.",
+        "election":       "I'm not allowed to comment on the certification process. Ask the commission.",
+        "housing_crisis": "Emergency housing applications have overwhelmed the system. We are three months behind and still counting.",
     },
     "barista": {
         "pandemic":    "Half my regulars haven't come in. I keep the cafe open so people have somewhere to go.",
