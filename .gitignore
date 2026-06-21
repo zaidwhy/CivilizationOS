@@ -9,6 +9,11 @@ __pycache__/
 .env
 *.local
 
+# Large model files
+*.gguf
+ml/mlruns/
+ml/mlflow.db
+
 # Data stores (local, regenerable)
 data/*.sqlite
 data/*.db
