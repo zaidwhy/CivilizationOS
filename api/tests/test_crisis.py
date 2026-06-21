@@ -127,6 +127,48 @@ class TestResolveById:
         assert "clinic" not in eng._verdict_reopened
 
 
+class TestHousingCrisis:
+    def test_housing_crisis_exists(self):
+        assert "housing_crisis" in CRISIS_TEMPLATES
+
+    def test_housing_crisis_closes_exchange(self):
+        tmpl = CRISIS_TEMPLATES["housing_crisis"]
+        assert "exchange" in tmpl.closed_locations
+
+    def test_housing_crisis_primary_institution(self):
+        tmpl = CRISIS_TEMPLATES["housing_crisis"]
+        assert tmpl.primary_institution == "inst_economy"
+
+    def test_housing_crisis_verdict_reopens_exchange(self):
+        tmpl = CRISIS_TEMPLATES["housing_crisis"]
+        assert "exchange" in tmpl.verdict_reopens
+
+    def test_housing_crisis_occupation_observations_present(self):
+        from api.agents.citizen import OCCUPATION_CRISIS_OBSERVATIONS
+        occupations_with_housing = [
+            occ for occ, obs in OCCUPATION_CRISIS_OBSERVATIONS.items()
+            if "housing_crisis" in obs
+        ]
+        assert len(occupations_with_housing) == 10
+
+    def test_housing_crisis_closes_exchange_in_engine(self):
+        eng = Engine(personas=SEED_CITIZENS[:3], seed=42, use_llm=False)
+        tmpl = CRISIS_TEMPLATES["housing_crisis"]
+        eng._active_templates = [(tmpl, 9999)]
+        eng._tick_crisis_effects(1)
+        assert "exchange" in eng._closed_locations
+
+    def test_housing_crisis_verdict_reopens_exchange_in_engine(self):
+        eng = Engine(personas=SEED_CITIZENS[:3], seed=42, use_llm=False)
+        tmpl = CRISIS_TEMPLATES["housing_crisis"]
+        eng._active_templates = [(tmpl, 9999)]
+        eng._tick_crisis_effects(1)
+        assert "exchange" in eng._closed_locations
+        eng._apply_verdict_effects(tmpl, "VERDICT: Impose emergency rent controls.")
+        assert "exchange" not in eng._closed_locations
+        assert "exchange" in eng._verdict_reopened
+
+
 class TestLocationClosure:
     def test_closed_location_routes_citizen_home(self):
         from api.agents.citizen import Citizen
