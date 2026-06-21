@@ -120,6 +120,7 @@ async def health() -> dict:
         "causal_events": len(engine.causal_graph),
         "brains": {
             "local": s.ollama_chat_model,
+            "council": s.ollama_council_model if s.has_finetuned_council else None,
             "free": s.gemini_model if s.has_gemini else None,
             "premium": s.claude_member_model if s.has_claude else None,
         },
