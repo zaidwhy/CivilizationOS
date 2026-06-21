@@ -36,10 +36,11 @@ OCCUPATION_CRISIS_OBSERVATIONS: dict[str, dict[str, str]] = {
         "housing_crisis": "I have documents showing the developer got advance notice of the rezoning six weeks before it went public.",
     },
     "editor": {
-        "pandemic":    "We're running the clinic numbers every day. The public deserves accurate data.",
-        "cyberattack": "Our servers were probed last night. The attack on City Hall may be broader.",
-        "election":    "Every claim about the results gets fact-checked before we print it. Every one.",
-        "crime_wave":  "We will not run fear-mongering headlines. Facts, context, attribution.",
+        "pandemic":       "We're running the clinic numbers every day. The public deserves accurate data.",
+        "cyberattack":    "Our servers were probed last night. The attack on City Hall may be broader.",
+        "election":       "Every claim about the results gets fact-checked before we print it. Every one.",
+        "crime_wave":     "We will not run fear-mongering headlines. Facts, context, attribution.",
+        "housing_crisis": "We've been documenting the eviction numbers for three months. The data is damning and no one in power has responded.",
     },
     "trader": {
         "pandemic":    "Supply chains are already seizing up. I'm hedging commodity exposure now.",
