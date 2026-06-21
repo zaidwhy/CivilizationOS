@@ -43,11 +43,12 @@ OCCUPATION_CRISIS_OBSERVATIONS: dict[str, dict[str, str]] = {
         "housing_crisis": "We've been documenting the eviction numbers for three months. The data is damning and no one in power has responded.",
     },
     "trader": {
-        "pandemic":    "Supply chains are already seizing up. I'm hedging commodity exposure now.",
-        "drought":     "Food futures are spiking and the exchange algorithms are amplifying the panic.",
-        "cyberattack": "Settlement systems are frozen. Every open position is a blind risk right now.",
-        "election":    "Markets hate uncertainty. I'm moving to cash until this resolves.",
-        "crime_wave":  "Theft is up 30% at the market district. My insurance won't cover it all.",
+        "pandemic":       "Supply chains are already seizing up. I'm hedging commodity exposure now.",
+        "drought":        "Food futures are spiking and the exchange algorithms are amplifying the panic.",
+        "cyberattack":    "Settlement systems are frozen. Every open position is a blind risk right now.",
+        "election":       "Markets hate uncertainty. I'm moving to cash until this resolves.",
+        "crime_wave":     "Theft is up 30% at the market district. My insurance won't cover it all.",
+        "housing_crisis": "Mortgage-backed instruments are showing the same stress patterns as before the last crash. I'm moving out of exposure.",
     },
     "analyst": {
         "pandemic":    "The R-value from the clinic data suggests exponential spread within 9 days.",
