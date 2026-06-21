@@ -354,19 +354,58 @@ class Engine:
         self._closed_locations = set()
         for t, _ in self._active_templates:
             self._closed_locations.update(t.closed_locations)
+        self._closed_locations -= self._verdict_reopened
+
+        # Clear verdict-reopened entries for the resolved template's locations
+        if tmpl_obj:
+            for loc in tmpl_obj.verdict_reopens:
+                self._verdict_reopened.discard(loc)
 
         for c in self.citizens.values():
             if c.active_crisis == template_key:
                 c.fear = max(0.0, c.fear - 0.3)
                 c.active_crisis = None
 
+        # Mark all registry crises with this template key as resolved
+        for crisis in self.crises._crises.values():
+            if crisis.template_key == template_key:
+                crisis.resolved = True
+
         res_text = (
             tmpl_obj.resolution_text
             if tmpl_obj
-            else f"The crisis has been resolved."
+            else "The crisis has been resolved."
         )
         self._log_event(self.tick_count, "event", f"RESOLVED: {res_text}")
         res_id = f"res_{template_key}_{self.tick_count}"
+        self.causal_graph.add_event(
+            res_id, text=res_text, tick=self.tick_count, kind="resolution",
+        )
+        return res_text
+
+    def resolve_crisis_by_id(self, crisis_id: str) -> str | None:
+        """Resolve any crisis by its registry ID — works for both template and custom crises."""
+        crisis = self.crises.get_crisis(crisis_id)
+        if crisis is None or crisis.resolved:
+            return None
+
+        self.crises.mark_resolved(crisis_id)
+
+        if crisis.template_key:
+            # Delegate to template resolution for full world-state effects
+            result = self.resolve_crisis(crisis.template_key)
+            if result:
+                return result
+            # Template already expired naturally — return resolution text anyway
+            tmpl = CRISIS_TEMPLATES.get(crisis.template_key)
+            return tmpl.resolution_text if tmpl else "The crisis has concluded."
+
+        # Custom (free-text) crisis — generic resolution
+        for c in self.citizens.values():
+            c.fear = max(0.0, c.fear - 0.15)
+        res_text = "The crisis has been brought under control through institutional action."
+        self._log_event(self.tick_count, "event", f"RESOLVED (custom): {res_text}")
+        res_id = f"res_{crisis_id}_{self.tick_count}"
         self.causal_graph.add_event(
             res_id, text=res_text, tick=self.tick_count, kind="resolution",
         )
