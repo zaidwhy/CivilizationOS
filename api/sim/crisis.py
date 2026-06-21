@@ -25,6 +25,7 @@ class Crisis:
     debate_id: str           # populated once council is activated
     causal_event_id: str     # id of the node added to the CausalGraph
     template_key: str | None = None  # set when crisis originated from a template
+    resolved: bool = False   # set when crisis is explicitly resolved
 
 
 class CrisisRegistry:
