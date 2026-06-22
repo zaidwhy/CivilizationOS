@@ -173,4 +173,28 @@ CRISIS_TEMPLATES: dict[str, CrisisTemplate] = {
         ),
         verdict_reopens=["exchange"],
     ),
+    "power_outage": CrisisTemplate(
+        key="power_outage",
+        name="Power Outage",
+        description=(
+            "A cascading grid failure has blacked out large sections of the city. "
+            "Hospitals are on backup power, traffic systems are down, and panic-buying "
+            "has emptied the market shelves."
+        ),
+        primary_institution="inst_gov",
+        secondary_institutions=["inst_economy", "inst_health"],
+        closed_locations=["market", "park"],
+        base_fear=0.4,
+        workplace_fear_boost={"hall": 0.25, "clinic": 0.2, "market": 0.15},
+        duration_ticks=480,
+        citizen_observation=(
+            "A massive power outage has darkened the city — the market is shuttered, "
+            "traffic is gridlocked, and emergency services are stretched to breaking point."
+        ),
+        resolution_text=(
+            "Power has been restored to all city districts. The market is reopening "
+            "and emergency crews are clearing the backlogs."
+        ),
+        verdict_reopens=["market", "park"],
+    ),
 }
