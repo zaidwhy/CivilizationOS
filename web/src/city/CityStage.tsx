@@ -146,9 +146,9 @@ export default function CityStage() {
         bubble.visible = false;
         (bubble as unknown as { _bg: Graphics })._bg = bubbleBg;
 
-        container.addChild(ring, dot, nameText, bubble);
+        container.addChild(fearAura, ring, dot, nameText, bubble);
         peopleLayer.addChild(container);
-        return { container, dot, ring, bubble, bubbleText, dispX: 0, dispY: 0, tgtX: 0, tgtY: 0 };
+        return { container, dot, ring, fearAura, bubble, bubbleText, dispX: 0, dispY: 0, tgtX: 0, tgtY: 0 };
       };
 
       const sync = () => {
