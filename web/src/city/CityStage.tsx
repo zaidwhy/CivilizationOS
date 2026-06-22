@@ -161,6 +161,26 @@ export default function CityStage() {
           built = true;
         }
         drawLocations(w, closed);
+
+        // Fear heatmap — semi-transparent tile overlays at each location
+        const fearByLoc = new Map<string, number>();
+        for (const c of w.citizens) {
+          if ((c.fear ?? 0) > 0.08 && c.location_id) {
+            fearByLoc.set(c.location_id, Math.max(fearByLoc.get(c.location_id) ?? 0, c.fear));
+          }
+        }
+        heatLayer.clear();
+        for (const loc of w.locations) {
+          const locFear = fearByLoc.get(loc.id) ?? 0;
+          if (locFear < 0.1) continue;
+          const { sx, sy } = toScreen(loc.x, loc.y);
+          const heatColor = locFear > 0.65 ? 0xf87171 : locFear > 0.35 ? 0xfbbf24 : 0xa3e635;
+          const alpha = 0.10 + locFear * 0.28;
+          heatLayer
+            .poly([sx, sy - TILE_H / 2, sx + TILE_W / 2, sy, sx, sy + TILE_H / 2, sx - TILE_W / 2, sy])
+            .fill({ color: heatColor, alpha });
+        }
+
         const selected = useWorld.getState().selectedId;
         const seen = new Set<string>();
         for (const c of w.citizens) {
@@ -180,6 +200,14 @@ export default function CityStage() {
             .fill({ color: citizenColorWithFear(c.id, c.fear ?? 0) })
             .stroke({ width: 1.5, color: 0x0b0e14 });
           s.ring.alpha = selected === c.id ? 1 : 0;
+
+          // Fear aura — glowing halo behind dot for frightened citizens
+          s.fearAura.clear();
+          const fear = c.fear ?? 0;
+          if (fear > 0.12) {
+            const auraColor = fear > 0.65 ? 0xf87171 : fear > 0.35 ? 0xfbbf24 : 0xa3e635;
+            s.fearAura.circle(0, 0, 8 + fear * 10).fill({ color: auraColor, alpha: 0.15 + fear * 0.30 });
+          }
           if (c.speech) {
             // Strip "Name: " prefix — name is already shown in the label below
             const raw = c.speech;
