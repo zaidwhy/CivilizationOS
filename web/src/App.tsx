@@ -52,6 +52,33 @@ function SpeedControl() {
   );
 }
 
+function StabilityBadge() {
+  const citizens = useWorld((s) => s.world?.citizens) ?? [];
+  const activeCrises = useWorld((s) => s.world?.active_crises) ?? [];
+
+  if (citizens.length === 0) return null;
+
+  const avgFear = citizens.reduce((sum, c) => sum + (c.fear ?? 0), 0) / citizens.length;
+  const score = Math.max(0, Math.min(100, Math.round(100 - avgFear * 65 - activeCrises.length * 12)));
+
+  const [label, color] =
+    score >= 80 ? ["THRIVING", "#4ade80"]
+    : score >= 60 ? ["STABLE", "#a3e635"]
+    : score >= 40 ? ["TENSE", "#fbbf24"]
+    : score >= 20 ? ["UNSTABLE", "#fb923c"]
+    : ["CRITICAL", "#f87171"];
+
+  return (
+    <span
+      className="pill"
+      title={`City stability ${score}/100 — avg fear ${Math.round(avgFear * 100)}%, ${activeCrises.length} active crisis`}
+      style={{ color, borderColor: color, cursor: "default", fontWeight: 700 }}
+    >
+      ◈ {label} {score}
+    </span>
+  );
+}
+
 function SpendCounter() {
   const health = useWorld((s) => s.health);
   if (!health) return <span className="pill">brains · loading…</span>;
