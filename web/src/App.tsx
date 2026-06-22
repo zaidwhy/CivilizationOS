@@ -8,6 +8,7 @@ import RelationshipGraph from "./panels/RelationshipGraph";
 import Timeline from "./panels/Timeline";
 import StatsPanel from "./panels/StatsPanel";
 import Onboarding from "./components/Onboarding";
+import Chronicle from "./panels/Chronicle";
 
 const PHASE_LABEL: Record<string, string> = {
   night: "🌙 Night",
