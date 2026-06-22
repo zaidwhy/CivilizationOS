@@ -139,6 +139,7 @@ export default function App() {
           </span>
         ))}
         <span className="grow" />
+        <StabilityBadge />
         <SpeedControl />
         <SpendCounter />
       </header>
