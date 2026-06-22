@@ -127,6 +127,7 @@ export default function CityStage() {
         container.hitArea = new Circle(0, 0, 14);
         container.on("pointertap", () => useWorld.getState().select(id));
 
+        const fearAura = new Graphics();
         const ring = new Graphics();
         ring.circle(0, 0, 9).stroke({ width: 2, color: 0xffffff, alpha: 0 });
         const dot = new Graphics();
