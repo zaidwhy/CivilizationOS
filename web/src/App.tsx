@@ -154,6 +154,7 @@ export default function App() {
           <EventFeed />
           <CouncilChamber />
           <Timeline />
+          <Chronicle />
           <StatsPanel />
         </aside>
       </main>
