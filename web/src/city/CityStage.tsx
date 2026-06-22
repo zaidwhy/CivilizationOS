@@ -15,6 +15,7 @@ type CitizenSprite = {
   container: Container;
   dot: Graphics;
   ring: Graphics;
+  fearAura: Graphics;
   bubble: Container;
   bubbleText: Text;
   dispX: number;
