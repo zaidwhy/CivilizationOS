@@ -44,6 +44,7 @@ const CRISIS_EMOJI: Record<string, string> = {
   election:       "🗳️",
   crime_wave:     "🔫",
   housing_crisis: "🏚️",
+  power_outage:   "⚡",
 };
 
 function Dots() {
@@ -76,6 +77,50 @@ function TurnCard({ turn }: { turn: DebateTurn }) {
   );
 }
 
+function CompletedDebateCard({
+  turns, expanded, onToggle,
+}: {
+  turns: DebateTurn[];
+  expanded: boolean;
+  onToggle: () => void;
+}) {
+  const verdict = turns.find((t) => t.is_final);
+  const inst = (turns[0]?.institution_id ?? "").replace("inst_", "");
+  const preview = verdict?.text.slice(0, 95) ?? turns[0]?.text?.slice(0, 95) ?? "";
+
+  return (
+    <div style={{ marginBottom: 4, borderRadius: 6, border: "1px solid var(--line)", overflow: "hidden" }}>
+      <div
+        onClick={onToggle}
+        style={{
+          padding: "6px 10px",
+          background: expanded ? "rgba(124,58,237,0.1)" : "rgba(255,255,255,0.03)",
+          cursor: "pointer",
+          display: "flex",
+          alignItems: "center",
+          gap: 8,
+        }}
+      >
+        <span style={{ fontSize: 10, color: "#fbbf24", flexShrink: 0 }}>★</span>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontSize: 10, color: "#64748b", textTransform: "capitalize", marginBottom: 1 }}>
+            {inst} · tick {turns[0]?.tick ?? "?"}
+          </div>
+          <div style={{ fontSize: 11, color: "#94a3b8", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+            {preview}{preview.length >= 95 ? "…" : ""}
+          </div>
+        </div>
+        <span style={{ fontSize: 10, color: "#475569", flexShrink: 0 }}>{expanded ? "▲" : "▼"}</span>
+      </div>
+      {expanded && (
+        <div style={{ padding: "8px", maxHeight: 260, overflowY: "auto", background: "rgba(0,0,0,0.2)" }}>
+          {turns.map((t, i) => <TurnCard key={i} turn={t} />)}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function CouncilChamber() {
   const [templates, setTemplates] = useState<Template[]>([]);
   const [customCrises, setCustomCrises] = useState<CrisisRecord[]>([]);
@@ -85,19 +130,31 @@ export default function CouncilChamber() {
   const [injecting, setInjecting] = useState(false);
   const [resolving, setResolving] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [showHistory, setShowHistory] = useState(false);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [showOlderHistory, setShowOlderHistory] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
 
   const debates = useWorld((s) => s.debates);
   const activeDebateId = useWorld((s) => s.activeDebateId);
   const activeCrises = useWorld((s) => s.world?.active_crises) ?? [];
-  const activeTurns: DebateTurn[] = activeDebateId ? (debates[activeDebateId] ?? []) : [];
-  const isComplete = activeTurns.some((t) => t.is_final);
 
-  // Scroll to bottom when new turns arrive
+  // Live = the most-recently-streaming debate if it has no verdict yet
+  const activeTurns: DebateTurn[] = activeDebateId ? (debates[activeDebateId] ?? []) : [];
+  const isActiveComplete = activeTurns.some((t) => t.is_final);
+  const liveId = activeDebateId && !isActiveComplete ? activeDebateId : null;
+  const liveTurns = liveId ? activeTurns : [];
+
+  // Completed debates — newest first (Object.keys insertion order)
+  const allDebateIds = Object.keys(debates);
+  const completedIds = [...allDebateIds]
+    .filter((id) => debates[id].some((t) => t.is_final))
+    .reverse();
+  const latestCompletedId = completedIds[0] ?? null;
+  const olderIds = completedIds.slice(1);
+
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [activeTurns.length]);
+    if (liveId) bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [liveTurns.length, liveId]);
 
   useEffect(() => {
     fetch("/api/events/templates")
@@ -106,7 +163,6 @@ export default function CouncilChamber() {
       .catch(() => {});
   }, []);
 
-  // Poll /crises to surface unresolved custom (non-template) crises
   useEffect(() => {
     const fetchCrises = () => {
       fetch("/api/crises")
@@ -194,24 +250,17 @@ export default function CouncilChamber() {
     }
   }
 
-  const allDebateIds = Object.keys(debates);
-
   return (
     <div className="panel" style={{ display: "flex", flexDirection: "column", gap: 10, borderTop: "1px solid var(--line)" }}>
+      {/* Header */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <h3 style={{ margin: 0, fontSize: 13, color: "#fbbf24", letterSpacing: 1 }}>
           ⚖ PANTHEON COUNCIL
         </h3>
-        {allDebateIds.length > 1 && (
-          <button
-            onClick={() => setShowHistory(!showHistory)}
-            style={{
-              background: "none", border: "1px solid var(--line)", borderRadius: 4,
-              color: "#64748b", fontSize: 10, cursor: "pointer", padding: "2px 6px",
-            }}
-          >
-            {showHistory ? "current" : `history (${allDebateIds.length})`}
-          </button>
+        {completedIds.length > 0 && (
+          <span style={{ fontSize: 10, color: "#475569" }}>
+            {completedIds.length} debate{completedIds.length !== 1 ? "s" : ""} archived
+          </span>
         )}
       </div>
 
@@ -345,54 +394,59 @@ export default function CouncilChamber() {
         {error && <div style={{ fontSize: 11, color: "#f87171" }}>Error: {error}</div>}
       </div>
 
-      {/* Debate transcript */}
-      {!showHistory ? (
-        <div style={{ maxHeight: 320, overflowY: "auto", minHeight: 0 }}>
-          {activeTurns.length === 0 ? (
-            <div style={{ fontSize: 11, color: "#64748b", textAlign: "center", marginTop: 12 }}>
-              No active debate. Pick a preset or describe a crisis above.
-            </div>
-          ) : (
-            <>
-              <div style={{ fontSize: 10, color: "#64748b", marginBottom: 8 }}>
-                Debate #{activeDebateId}
-                {isComplete
-                  ? " · complete ✓"
-                  : <> · {activeTurns.length}/5 <Dots /></>
-                }
-              </div>
-              {activeTurns.map((t, i) => <TurnCard key={i} turn={t} />)}
-              <div ref={bottomRef} />
-            </>
-          )}
-        </div>
-      ) : (
+      {/* Live debate — expanded, auto-scrolls */}
+      {liveId ? (
         <div style={{ maxHeight: 280, overflowY: "auto" }}>
-          <div style={{ fontSize: 10, color: "#64748b", marginBottom: 8 }}>All debates (newest first)</div>
-          {[...allDebateIds].reverse().map((did) => {
-            const turns = debates[did];
-            const final = turns.find((t) => t.is_final);
-            const inst = turns[0]?.institution_id ?? "";
-            return (
-              <div
-                key={did}
-                onClick={() => { useWorld.getState().setActiveDebate(did); setShowHistory(false); }}
-                style={{
-                  padding: "6px 8px", marginBottom: 4, borderRadius: 6,
-                  background: did === activeDebateId ? "rgba(124,58,237,0.15)" : "rgba(255,255,255,0.03)",
-                  border: `1px solid ${did === activeDebateId ? "#7c3aed" : "var(--line)"}`,
-                  cursor: "pointer",
-                }}
-              >
-                <div style={{ fontSize: 10, color: "#64748b", marginBottom: 2 }}>
-                  #{did} · {inst.replace("inst_", "")} {final ? "✓" : "⋯"}
-                </div>
-                <div style={{ fontSize: 11, color: "#94a3b8", lineHeight: 1.4 }}>
-                  {final ? final.text.slice(0, 90) + "…" : turns[0]?.text?.slice(0, 60) + "…"}
-                </div>
-              </div>
-            );
-          })}
+          <div style={{ fontSize: 10, color: "#64748b", marginBottom: 8 }}>
+            Debate #{liveId} · {liveTurns.length}/5 <Dots />
+          </div>
+          {liveTurns.map((t, i) => <TurnCard key={i} turn={t} />)}
+          <div ref={bottomRef} />
+        </div>
+      ) : !latestCompletedId ? (
+        <div style={{ fontSize: 11, color: "#64748b", textAlign: "center", marginTop: 12 }}>
+          No active debate. Pick a preset or describe a crisis above.
+        </div>
+      ) : null}
+
+      {/* Latest completed debate — collapsed card, click to expand */}
+      {latestCompletedId && (
+        <CompletedDebateCard
+          turns={debates[latestCompletedId]}
+          expanded={expandedId === latestCompletedId}
+          onToggle={() =>
+            setExpandedId(expandedId === latestCompletedId ? null : latestCompletedId)
+          }
+        />
+      )}
+
+      {/* Older debates — hidden behind accordion */}
+      {olderIds.length > 0 && (
+        <div>
+          <button
+            onClick={() => setShowOlderHistory((v) => !v)}
+            style={{
+              background: "none", border: "1px solid var(--line)", borderRadius: 4,
+              color: "#64748b", fontSize: 10, cursor: "pointer",
+              padding: "3px 8px", width: "100%",
+            }}
+          >
+            {showOlderHistory
+              ? "▲ hide older debates"
+              : `▼ ${olderIds.length} older debate${olderIds.length !== 1 ? "s" : ""}`}
+          </button>
+          {showOlderHistory && (
+            <div style={{ marginTop: 4, maxHeight: 200, overflowY: "auto" }}>
+              {olderIds.map((id) => (
+                <CompletedDebateCard
+                  key={id}
+                  turns={debates[id]}
+                  expanded={expandedId === id}
+                  onToggle={() => setExpandedId(expandedId === id ? null : id)}
+                />
+              ))}
+            </div>
+          )}
         </div>
       )}
     </div>
