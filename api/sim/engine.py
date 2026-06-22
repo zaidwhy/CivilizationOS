@@ -84,10 +84,31 @@ class Engine:
 
         self._maybe_converse(tick)
 
+        # Auto-escalation: simmering fear with no active crisis can spontaneously erupt
+        if tick % 45 == 0 and self.use_llm and not self._active_templates:
+            fears = [c.fear for c in self.citizens.values()]
+            avg_fear = sum(fears) / len(fears) if fears else 0.0
+            if avg_fear >= 0.60 and self.rng.random() < 0.14:
+                self._spawn(self._auto_escalate(tick, avg_fear))
+
         if tick % TICKS_PER_DAY == 0:
             self._schedule_reflections(tick)
 
         return self.snapshot()
+
+    async def _auto_escalate(self, tick: int, avg_fear: float) -> None:
+        """Spontaneously inject a crisis when city-wide fear stays high with no active crisis."""
+        candidates = ["crime_wave", "cyberattack", "housing_crisis", "pandemic"]
+        key = self.rng.choice(candidates)
+        tmpl = CRISIS_TEMPLATES[key]
+        logger.info("Auto-escalation: %s triggered at avg_fear=%.2f tick=%d", key, avg_fear, tick)
+        self._log_event(tick, "event", f"Tension erupts — {tmpl.name} breaks out spontaneously.")
+        await self.inject_crisis(
+            text=tmpl.description,
+            institution_id=tmpl.primary_institution,
+            severity=round(0.50 + avg_fear * 0.25, 2),
+            template_key=key,
+        )
 
     def _record_arrival(self, c: Citizen, tick: int) -> None:
         prev = self._prev_location.get(c.p.id, "")
