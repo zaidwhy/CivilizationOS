@@ -338,6 +338,58 @@ async def get_stats() -> dict:
     }
 
 
+_chronicle_cache: dict = {"text": "", "tick_bucket": -1, "ts": 0.0, "avg_fear": 0.0, "active_crises": []}
+
+
+@app.get("/chronicle")
+async def get_chronicle() -> dict:
+    """LLM-generated prose dispatch about the current city state. Cached ~75 s."""
+    now = _time.time()
+    tick_bucket = engine.tick_count // 75
+    if now - _chronicle_cache["ts"] < 70 and _chronicle_cache["tick_bucket"] == tick_bucket:
+        return _chronicle_cache
+
+    fears = [c.fear for c in engine.citizens.values()]
+    avg_fear = round(sum(fears) / len(fears), 3) if fears else 0.0
+    active_crises = [t.name for t, _ in engine._active_templates]
+    high_fear_names = [c.p.name.split()[0] for c in engine.citizens.values() if c.fear > 0.45][:3]
+    debate_count = len(engine.crises.all_debates())
+
+    crisis_line = f"Active crises: {', '.join(active_crises)}." if active_crises else "No active crises."
+    fear_line = f"Most afraid: {', '.join(high_fear_names)}." if high_fear_names else "Citizens are calm."
+
+    prompt = (
+        "You are the narrator of a city simulation called CivilizationOS. "
+        "Write exactly 2-3 sentences of atmospheric, vivid prose about the city's current state — "
+        "like a field dispatch from inside the city. Vary your opening (do not start with 'The city').\n\n"
+        f"CITY STATE:\n"
+        f"  Tick: {engine.tick_count}\n"
+        f"  Average fear: {avg_fear:.0%}\n"
+        f"  {crisis_line}\n"
+        f"  {fear_line}\n"
+        f"  Council debates held: {debate_count}\n\n"
+        "Write the dispatch now."
+    )
+
+    try:
+        router = get_router()
+        result = await router.complete(prompt=prompt, tier=Tier(0), max_tokens=110, temperature=0.88)
+        text = result.text.strip()
+    except Exception:
+        logger.exception("chronicle generation failed")
+        if active_crises:
+            text = f"The city braces under the weight of {active_crises[0]}, its citizens navigating each day with quiet dread."
+        else:
+            text = "Quiet reigns across the city for now — but beneath the surface, its citizens carry the memory of harder days."
+
+    _chronicle_cache.update({
+        "text": text, "tick_bucket": tick_bucket, "ts": now,
+        "avg_fear": avg_fear, "active_crises": active_crises,
+        "tick": engine.tick_count,
+    })
+    return _chronicle_cache
+
+
 @app.get("/crises")
 async def get_crises() -> dict:
     return {
