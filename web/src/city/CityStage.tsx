@@ -49,10 +49,11 @@ export default function CityStage() {
       const world = new Container();
       app.stage.addChild(world);
       const ground = new Graphics();
+      const heatLayer = new Graphics();
       const locLayer = new Container();
       const peopleLayer = new Container();
       const night = new Graphics();
-      world.addChild(ground, locLayer, peopleLayer);
+      world.addChild(ground, heatLayer, locLayer, peopleLayer);
       app.stage.addChild(night);
 
       let built = false;
