@@ -403,6 +403,7 @@ async def get_crises() -> dict:
                 "severity": c.severity,
                 "template_key": c.template_key,
                 "resolved": c.resolved,
+                "emergent": c.emergent,
             }
             for c in engine.crises.list_crises()
         ]
