@@ -23,6 +23,15 @@ export type LocationT = {
 
 export type WorldEvent = { tick: number; kind: string; text: string };
 
+export type Faction = {
+  id: string;
+  name: string;
+  member_ids: string[];
+  member_names: string[];
+  avg_affinity: number;
+  avg_fear: number;
+};
+
 export type WorldMessage = {
   type: "world";
   tick: number;
