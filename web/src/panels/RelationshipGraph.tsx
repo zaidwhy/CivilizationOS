@@ -39,6 +39,7 @@ export default function RelationshipGraph() {
   const citizens = useWorld((s) => s.world?.citizens);
   const selectedId = useWorld((s) => s.selectedId);
   const select = useWorld((s) => s.select);
+  const factions = useWorld((s) => s.world?.factions) ?? ([] as Faction[]);
   const [graph, setGraph] = useState<GraphData | null>(null);
   const [tooltip, setTooltip] = useState<TooltipData | null>(null);
 
@@ -46,12 +47,14 @@ export default function RelationshipGraph() {
   const citizensRef = useRef(citizens);
   const selectedIdRef = useRef(selectedId);
   const graphRef = useRef(graph);
+  const factionsRef = useRef(factions);
   const physRef = useRef<Map<string, PhysNode>>(new Map());
   const rafRef = useRef<number>(0);
 
   useEffect(() => { citizensRef.current = citizens; }, [citizens]);
   useEffect(() => { selectedIdRef.current = selectedId; }, [selectedId]);
   useEffect(() => { graphRef.current = graph; }, [graph]);
+  useEffect(() => { factionsRef.current = factions; }, [factions]);
 
   // Poll /api/graph every 6 s
   useEffect(() => {
