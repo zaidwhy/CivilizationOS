@@ -145,6 +145,12 @@ export default function RelationshipGraph() {
       const hasGraph = graphRef.current !== null;
       const phys = physRef.current;
 
+      // Build faction lookup: citizen_id -> faction color index
+      const factionMap = new Map<string, number>();
+      factionsRef.current.forEach((f, fi) => {
+        f.member_ids.forEach((id) => factionMap.set(id, fi));
+      });
+
       ctx.clearRect(0, 0, W, H);
 
       if (hasGraph && edges.length > 0) {
