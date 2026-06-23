@@ -167,6 +167,7 @@ export default function App() {
             ⚠ {name}
           </span>
         ))}
+        <TensionMeter />
         <span className="grow" />
         <StabilityBadge />
         <SpeedControl />
