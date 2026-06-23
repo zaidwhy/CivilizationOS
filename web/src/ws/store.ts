@@ -35,6 +35,7 @@ export type WorldMessage = {
   events: WorldEvent[];
   active_crises: string[];
   closed_locations: string[];
+  fear_pressure: number;
 };
 
 export type AgentDetail = {
