@@ -195,7 +195,18 @@ export default function RelationshipGraph() {
           ctx.arc(p.x, p.y, isSel ? R + 2 : R, 0, 2 * Math.PI);
           ctx.fillStyle = fearColor(c.fear ?? 0);
           ctx.fill();
+          // Faction ring (drawn before selection ring so selection wins)
+          const fi = factionMap.get(c.id);
+          if (fi !== undefined) {
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, R + 3.5, 0, 2 * Math.PI);
+            ctx.strokeStyle = FACTION_COLORS[fi % FACTION_COLORS.length];
+            ctx.lineWidth = 2;
+            ctx.stroke();
+          }
           if (isSel) {
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, isSel ? R + 2 : R, 0, 2 * Math.PI);
             ctx.strokeStyle = "#fbbf24";
             ctx.lineWidth = 2;
             ctx.stroke();
