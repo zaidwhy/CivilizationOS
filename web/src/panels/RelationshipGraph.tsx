@@ -21,6 +21,7 @@ type TooltipData = {
   name: string;
   occupation: string;
   fear: number;
+  faction?: string;
   bonds: { name: string; weight: number; positive: boolean }[];
   x: number;
   y: number;
