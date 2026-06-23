@@ -78,19 +78,87 @@ function FearHistogram({ buckets }: { buckets: number[] }) {
   );
 }
 
+function CouncilScorecard({ councils }: { councils: CouncilRecord[] }) {
+  const INST_COLORS: Record<string, string> = {
+    inst_gov: "#6ea8fe",
+    inst_economy: "#fbbf24",
+    inst_health: "#34d399",
+    inst_media: "#f472b6",
+    inst_police: "#fb923c",
+  };
+
+  return (
+    <div style={{ marginTop: 10 }}>
+      <div style={{ fontSize: 10, color: "#64748b", marginBottom: 6 }}>
+        Council track record
+      </div>
+      <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
+        {councils.map((c) => {
+          const color = INST_COLORS[c.institution_id] ?? "#94a3b8";
+          const eff = c.effectiveness;
+          const barColor = eff === null ? "#334155"
+            : eff >= 65 ? "#4ade80"
+            : eff >= 40 ? "#fbbf24"
+            : "#f87171";
+          const effLabel = eff === null
+            ? (c.pending_snapshots > 0 ? "measuring…" : "no data")
+            : `${eff}%`;
+
+          return (
+            <div key={c.institution_id} style={{ display: "grid", gridTemplateColumns: "62px 1fr 46px", gap: 6, alignItems: "center" }}>
+              <span style={{ fontSize: 10, color, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                {c.name}
+              </span>
+              <div
+                title={`${c.debates} debates · ${c.verdicts} verdicts · ${c.measured_verdicts} measured · avg fear delta ${c.avg_fear_delta !== null ? (c.avg_fear_delta > 0 ? "-" : "+") + Math.abs(Math.round((c.avg_fear_delta ?? 0) * 100)) + "%" : "n/a"}`}
+                style={{ height: 5, background: "var(--line)", borderRadius: 999, overflow: "hidden" }}
+              >
+                <div style={{
+                  height: "100%", borderRadius: 999,
+                  width: eff !== null ? `${eff}%` : "0%",
+                  background: barColor,
+                  transition: "width 0.5s, background 0.3s",
+                }} />
+              </div>
+              <span style={{ fontSize: 9, color: barColor, textAlign: "right", whiteSpace: "nowrap" }}>
+                {effLabel}
+              </span>
+            </div>
+          );
+        })}
+      </div>
+      <div style={{ fontSize: 9, color: "#1e3a5f", marginTop: 4 }}>
+        effectiveness = fear reduction 60 ticks after verdict
+      </div>
+    </div>
+  );
+}
+
 export default function StatsPanel() {
   const [stats, setStats] = useState<StatsData | null>(null);
+  const [councils, setCouncils] = useState<CouncilRecord[]>([]);
 
   useEffect(() => {
-    const fetch_ = async () => {
+    const fetchStats = async () => {
       try {
         const res = await fetch("/api/stats");
         if (res.ok) setStats(await res.json());
       } catch { /* transient */ }
     };
-    fetch_();
-    const id = setInterval(fetch_, 5000);
-    return () => clearInterval(id);
+    const fetchTrack = async () => {
+      try {
+        const res = await fetch("/api/track_record");
+        if (res.ok) {
+          const d = await res.json();
+          setCouncils(d.councils ?? []);
+        }
+      } catch { /* transient */ }
+    };
+    fetchStats();
+    fetchTrack();
+    const id1 = setInterval(fetchStats, 5000);
+    const id2 = setInterval(fetchTrack, 8000);
+    return () => { clearInterval(id1); clearInterval(id2); };
   }, []);
 
   if (!stats) return null;
