@@ -73,6 +73,9 @@ class Engine:
         self._active_templates: list[tuple[CrisisTemplate, int]] = []  # (template, expiry_tick)
         self._closed_locations: set[str] = set()
         self._verdict_reopened: set[str] = set()  # locations partially reopened by council verdict
+        # Emergent auto-crisis tracking
+        self._fear_high_since: int | None = None       # tick when fear first crossed threshold
+        self._auto_crisis_cooldown_until: int = 0      # tick after which next auto-crisis is allowed
 
     # ---- main step ----
     async def advance(self) -> dict:
