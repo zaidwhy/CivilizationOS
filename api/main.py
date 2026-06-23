@@ -390,6 +390,12 @@ async def get_chronicle() -> dict:
     return _chronicle_cache
 
 
+@app.get("/track_record")
+async def get_track_record() -> dict:
+    """Per-council debate count, verdict count, and effectiveness score."""
+    return {"councils": engine.track_record()}
+
+
 @app.get("/crises")
 async def get_crises() -> dict:
     return {
