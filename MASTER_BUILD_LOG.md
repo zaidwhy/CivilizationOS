@@ -748,6 +748,81 @@ All three Phase 8 items complete: speech bubbles ✅, graph tooltip ✅, fine-tu
 
 ---
 
+### Phase 10 — Citizen Faction System
+**Duration:** 1 session (2026-06-23) | **Not in original plan — emergent social structure layer**
+
+#### What was built
+
+**A. Faction detection (backend)**
+
+`api/sim/engine.py`:
+- Five module-level constants: `_FACTION_AFFINITY_THRESHOLD=0.60`, `_FACTION_RECOMPUTE_EVERY=60`, `_OCCUPATION_GROUPS` (occupation → group label), `_GROUP_SUFFIXES` (group label → faction suffix)
+- `self._factions: list[dict] = []` in `__init__`
+- `advance()` calls `_compute_factions()` every 60 ticks
+- `_compute_factions()` — union-find with path compression over all citizen pairs; two citizens join the same component when **both** directions of relationship exceed 0.60; components of ≥2 members become named factions; anchor = most socially connected member (highest sum of positive affinities); suffix derived from dominant occupation group:
+  - doctor/nurse → Care Alliance
+  - journalist/analyst → Press Circle
+  - police/lawyer → Justice Front
+  - trader/cook/engineer → Trade Guild
+  - teacher → Civic League
+  - mixed → Alliance
+  - 2-member name: `"Ava & Finn's Care Alliance"`, 3+ member name: `"Ava's Care Alliance"`
+- Each faction dict: `{id, name, member_ids, member_names, avg_affinity, avg_fear}`
+- `snapshot()` includes `"factions": self._factions`
+
+**B. Faction context injected into council debates**
+
+`api/sim/engine.py` — `_run_debate()`:
+- After TCMF retrieval, if `self._factions` is non-empty, appends `ACTIVE CITIZEN FACTIONS` block to `ctx.context_text`
+- Format: one line per faction listing name and member first names, plus a note that these alliances may affect how directives land
+- All five specialist roles (including Synthesizer) see this context — councils now reason about real social alliances when deliberating
+
+**C. Frontend — Inspector faction badge**
+
+`web/src/panels/Inspector.tsx`:
+- Reads `world.factions` from Zustand store
+- Finds the selected citizen's faction by `member_ids.includes(selectedId)`
+- Renders purple `🤝 FactionName · other members` badge between backstory and current action when citizen is in a faction; hidden otherwise
+
+**D. Frontend — RelationshipGraph faction rings + legend**
+
+`web/src/panels/RelationshipGraph.tsx`:
+- `FACTION_COLORS` constant: 5-colour palette (purple, pink, green, orange, blue)
+- `factionsRef` updated via `useEffect` — RAG loop reads current faction state without restarting
+- Per-frame `factionMap: Map<citizen_id, faction_index>` built inside `draw()`
+- Each citizen node that belongs to a faction gets a coloured outer ring (radius R + 3.5, 2 px stroke) in that faction's colour; yellow selection ring draws on top
+- `TooltipData` gains `faction?: string`; `handleMouseMove` looks up faction and sets it
+- Tooltip shows `🤝 FactionName` in purple above the fear line when applicable
+- Faction legend `◉ FactionName` rendered above the canvas, colour-coded, only when factions exist
+
+**E. Store type**
+
+`web/src/ws/store.ts`:
+- `Faction` type exported
+- `WorldMessage` gains `factions: Faction[]`
+
+#### Files changed
+
+| File | Change |
+|---|---|
+| `api/sim/engine.py` | `_compute_factions()`, `_factions`, recompute in `advance()`, faction context in `_run_debate()`, `factions` in snapshot |
+| `web/src/ws/store.ts` | `Faction` type + `factions: Faction[]` in `WorldMessage` |
+| `web/src/panels/Inspector.tsx` | Faction badge (purple, between backstory and action) |
+| `web/src/panels/RelationshipGraph.tsx` | `factionsRef`, faction ring draw, tooltip faction line, legend |
+
+#### Key design decisions
+
+| Decision | Why |
+|---|---|
+| Union-find (not simple pairwise filter) | Transitivity matters — if Ava trusts Ben and Ben trusts Cara, all three should be one bloc, not isolated pairs. Union-find captures this in O(n α(n)). |
+| Mutual threshold (both directions > 0.60) | One-sided affinity is not a faction — Ava liking Ben without Ben liking Ava is a fan, not an alliance. Both directions required for social solidarity. |
+| Recompute every 60 ticks (not every tick) | Relationships change slowly; O(n²) pair scan every tick is wasteful. 60 ticks ≈ 1 min at default speed — frequent enough to catch forming alliances. |
+| Anchor = most connected member | Produces stable, sensible names — the most socially central person becomes the faction's face, which reflects how real social networks actually organise. |
+| Inject into TCMF context (not a separate prompt) | All five council specialists already read `ctx.context_text`. Appending there means no API changes — factions automatically enter all role prompts (Historian cites precedents involving the bloc; Synthesizer issues directives with faction buy-in in mind). |
+| Canvas ring (not filled halo) | A filled halo would obscure the fear-colour node. A thin ring is additive — faction colour + fear colour both visible simultaneously. |
+
+---
+
 ## 6. Original Plan vs Reality - Cross-Reference Table
 
 | Item from original plan | Status | Notes |
