@@ -928,13 +928,13 @@ Phase 9 items (emergent crisis + council track record) are complete. Remaining b
 
 ---
 
-## 9. API Endpoints - Complete Reference (v0.9.0)
+## 9. API Endpoints - Complete Reference (v0.10.0)
 
 | Method | Path | Description | Added |
 |---|---|---|---|
 | GET | `/health` | Status, version, spend, tick interval, brains (incl. `council` model) | Phase 0 / Phase 8 |
 | GET | `/agent/{id}` | Citizen detail: memories, relationships, backstory | Phase 1 |
-| WS | `/ws` | Live world snapshots + debate turn stream (incl. `fear_pressure`) | Phase 0 / Phase 9 |
+| WS | `/ws` | Live world snapshots + debate turn stream (incl. `fear_pressure`, `factions`) | Phase 0 / Phase 9–10 |
 | GET | `/llm/ping?tier=0` | Smoke-test a specific LLM tier | Phase 0 |
 | POST | `/crisis` | Inject crisis (triggers council debate) | Phase 2 |
 | GET | `/crises` | All registry crises with template_key, resolved, emergent | Phase 2 / Phase 9 |
