@@ -695,6 +695,7 @@ class Engine:
             "active_crises": active_crises,
             "closed_locations": list(self._closed_locations),
             "fear_pressure": self._fear_pressure(),
+            "factions": self._factions,
         }
 
     def agent_detail(self, agent_id: str) -> dict | None:
