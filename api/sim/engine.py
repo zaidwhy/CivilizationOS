@@ -91,6 +91,8 @@ class Engine:
         # Emergent auto-crisis tracking
         self._fear_high_since: int | None = None       # tick when fear first crossed threshold
         self._auto_crisis_cooldown_until: int = 0      # tick after which next auto-crisis is allowed
+        # Faction system
+        self._factions: list[dict] = []
         # Council track record
         _INST_IDS = ["inst_gov", "inst_economy", "inst_health", "inst_media", "inst_police"]
         self._track_record: dict[str, dict] = {
