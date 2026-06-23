@@ -973,3 +973,8 @@ Phase 9 items (emergent crisis + council track record) are complete. Remaining b
 | 300-tick cooldown after auto-crisis | Phase 9 | Gives the council time to respond before a second auto-wave — avoids rapid-fire auto-injection if fear stays elevated post-eruption. |
 | Fear delta measured 60 ticks post-verdict (not 0) | Phase 9 | Immediate drop from `_apply_verdict_effects` is mechanical; 60-tick measurement captures whether the narrative/memory effect actually changed citizen behaviour. |
 | `effectiveness = 50 + delta × 150`, centred on 50 | Phase 9 | Baseline 50% = no change. Centred to avoid penalising councils for external fear shocks they didn't cause. |
+| Union-find for faction formation (not pairwise filter) | Phase 10 | Transitivity matters — Ava→Ben→Cara should be one bloc. Union-find captures this in O(n α(n)). |
+| Mutual affinity threshold (both directions > 0.60) | Phase 10 | One-sided affinity is a fan, not an alliance. Both directions required for social solidarity. |
+| Recompute factions every 60 ticks (not every tick) | Phase 10 | Relationships change slowly; O(n²) scan every tick is wasteful. 60 ticks is frequent enough to catch forming alliances. |
+| Faction context appended to TCMF `ctx.context_text` | Phase 10 | All five council specialists already read this field — no API changes needed, and factions automatically inform all role prompts. |
+| Canvas ring for faction membership (not filled halo) | Phase 10 | A filled halo would obscure the fear-colour node; a thin ring is additive — faction colour and fear colour visible simultaneously. |
