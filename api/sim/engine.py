@@ -37,6 +37,12 @@ logger = logging.getLogger("civos.sim")
 CONVO_COOLDOWN_TICKS = 12
 IMPORTANCE = {"observation": 2.0, "conversation": 4.0, "reflection": 6.0, "event": 8.0, "decision": 9.0}
 
+# Emergent auto-crisis thresholds
+_AUTO_FEAR_THRESHOLD = 0.62      # avg fear that starts the countdown
+_AUTO_SUSTAIN_TICKS = 180        # ticks of sustained fear before eruption (~3 min at 1 s/tick)
+_AUTO_COMPOUND_THRESHOLD = 0.78  # at this severity a second crisis fires even if one is active
+_AUTO_COOLDOWN_TICKS = 300       # min ticks between auto-generated crises
+
 
 class Engine:
     def __init__(
