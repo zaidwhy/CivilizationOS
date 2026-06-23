@@ -43,6 +43,21 @@ _AUTO_SUSTAIN_TICKS = 180        # ticks of sustained fear before eruption (~3 m
 _AUTO_COMPOUND_THRESHOLD = 0.78  # at this severity a second crisis fires even if one is active
 _AUTO_COOLDOWN_TICKS = 300       # min ticks between auto-generated crises
 
+# Faction formation
+_FACTION_AFFINITY_THRESHOLD = 0.60  # mutual affinity above this forms a faction
+_FACTION_RECOMPUTE_EVERY = 60       # ticks between faction recalculations
+_OCCUPATION_GROUPS: dict[str, str] = {
+    "doctor": "Care", "nurse": "Care",
+    "journalist": "Press", "analyst": "Press",
+    "police": "Order", "lawyer": "Order",
+    "trader": "Guild", "cook": "Guild", "engineer": "Guild",
+    "teacher": "Civic",
+}
+_GROUP_SUFFIXES: dict[str, str] = {
+    "Care": "Care Alliance", "Press": "Press Circle",
+    "Order": "Justice Front", "Guild": "Trade Guild", "Civic": "Civic League",
+}
+
 
 class Engine:
     def __init__(
