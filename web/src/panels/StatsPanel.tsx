@@ -229,6 +229,8 @@ export default function StatsPanel() {
         })}
       </div>
 
+      {councils.length > 0 && <CouncilScorecard councils={councils} />}
+
       <div style={{ fontSize: 9, color: "#334155", marginTop: 8, textAlign: "right" }}>
         tick {stats.tick}
       </div>
