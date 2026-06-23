@@ -505,6 +505,16 @@ class Engine:
             k=12,
             router=router if self.use_llm else None,
         )
+        if self._factions:
+            lines = "; ".join(
+                f"{f['name']} ({', '.join(f['member_names'])})"
+                for f in self._factions
+            )
+            ctx.context_text += (
+                f"\n\nACTIVE CITIZEN FACTIONS:\n  {lines}\n"
+                "  These alliances reflect real mutual trust between citizens and may "
+                "influence how council directives are received on the ground."
+            )
 
         verdict_text: str | None = None
         first_turn = True
