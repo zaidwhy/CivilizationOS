@@ -795,6 +795,8 @@ All three Phase 8 items complete: speech bubbles ✅, graph tooltip ✅, fine-tu
 | Force-directed graph layout | ✅ Done (Phase 7) | |
 | Stats panel | ✅ Done (Phase 6) | Fear histogram, counters, memory league |
 | Custom crisis resolution by ID | ✅ Done (Phase 7) | `POST /crisis/id/{id}/resolve` |
+| **Emergent auto-crisis injection** | ✅ Done (Phase 9) | Sustained fear → LLM-synthesised crisis; compound cascade; `TensionMeter` UI |
+| **Council track record** | ✅ Done (Phase 9) | Per-institution debates/verdicts/effectiveness; 60-tick fear delta; `CouncilScorecard` |
 
 ---
 
