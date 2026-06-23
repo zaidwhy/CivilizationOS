@@ -192,6 +192,65 @@ class Engine:
             return 0.0
         return min(1.0, round((self.tick_count - self._fear_high_since) / _AUTO_SUSTAIN_TICKS, 3))
 
+    # ---- faction system ----
+    def _compute_factions(self) -> list[dict]:
+        """Union-find over citizens with mutual affinity > threshold → named faction blocs."""
+        citizens = list(self.citizens.values())
+        parent = {c.p.id: c.p.id for c in citizens}
+
+        def find(x: str) -> str:
+            while parent[x] != x:
+                parent[x] = parent[parent[x]]  # path compression
+                x = parent[x]
+            return x
+
+        def union(x: str, y: str) -> None:
+            rx, ry = find(x), find(y)
+            if rx != ry:
+                parent[rx] = ry
+
+        for i, a in enumerate(citizens):
+            for b in citizens[i + 1:]:
+                if (a.relationships.get(b.p.id, 0.0) > _FACTION_AFFINITY_THRESHOLD
+                        and b.relationships.get(a.p.id, 0.0) > _FACTION_AFFINITY_THRESHOLD):
+                    union(a.p.id, b.p.id)
+
+        groups: dict[str, list] = {}
+        for c in citizens:
+            groups.setdefault(find(c.p.id), []).append(c)
+
+        factions = []
+        for idx, members in enumerate(g for g in groups.values() if len(g) >= 2):
+            # Anchor = most socially connected member
+            members.sort(
+                key=lambda c: sum(v for v in c.relationships.values() if v > 0),
+                reverse=True,
+            )
+            occ_groups = [_OCCUPATION_GROUPS.get(c.p.occupation.lower(), "Mixed") for c in members]
+            dominant = max(set(occ_groups), key=occ_groups.count)
+            suffix = _GROUP_SUFFIXES.get(dominant, "Alliance")
+            anchor = members[0].p.name.split()[0]
+            if len(members) == 2:
+                name = f"{anchor} & {members[1].p.name.split()[0]}'s {suffix}"
+            else:
+                name = f"{anchor}'s {suffix}"
+
+            pairs = [(a, b) for i2, a in enumerate(members) for b in members[i2 + 1:]]
+            avg_aff = (
+                sum(a.relationships.get(b.p.id, 0.0) + b.relationships.get(a.p.id, 0.0)
+                    for a, b in pairs) / (2 * len(pairs))
+                if pairs else 0.0
+            )
+            factions.append({
+                "id": f"faction_{idx + 1}",
+                "name": name,
+                "member_ids": [c.p.id for c in members],
+                "member_names": [c.p.name.split()[0] for c in members],
+                "avg_affinity": round(avg_aff, 2),
+                "avg_fear": round(sum(c.fear for c in members) / len(members), 2),
+            })
+        return factions
+
     # ---- council track record ----
     def _resolve_verdict_snapshots(self, tick: int) -> None:
         """60 ticks after each verdict, measure fear and close the delta record."""
