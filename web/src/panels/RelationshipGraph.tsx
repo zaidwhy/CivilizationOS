@@ -339,9 +339,14 @@ export default function RelationshipGraph() {
             <div style={{ fontWeight: 700, color: "#f1f5f9", marginBottom: 1, fontSize: 12 }}>
               {tooltip.name}
             </div>
-            <div style={{ color: "#64748b", marginBottom: 5, fontSize: 10 }}>
+            <div style={{ color: "#64748b", marginBottom: tooltip.faction ? 3 : 5, fontSize: 10 }}>
               {tooltip.occupation}
             </div>
+            {tooltip.faction && (
+              <div style={{ color: "#a78bfa", fontSize: 10, marginBottom: 4 }}>
+                🤝 {tooltip.faction}
+              </div>
+            )}
             <div style={{ color: fearColor(tooltip.fear), marginBottom: tooltip.bonds.length ? 5 : 0, fontSize: 11 }}>
               fear&nbsp;{Math.round(tooltip.fear * 100)}%
             </div>
