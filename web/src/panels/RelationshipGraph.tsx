@@ -309,6 +309,15 @@ export default function RelationshipGraph() {
         <span>Edge: <span style={{ color: "#4ade80" }}>trust</span> · <span style={{ color: "#f87171" }}>tension</span></span>
         {edgeCount > 0 && <span style={{ marginLeft: "auto" }}>{edgeCount} bonds</span>}
       </div>
+      {factions.length > 0 && (
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 5, fontSize: 9 }}>
+          {factions.map((f, i) => (
+            <span key={f.id} style={{ color: FACTION_COLORS[i % FACTION_COLORS.length] }}>
+              ◉ {f.name}
+            </span>
+          ))}
+        </div>
+      )}
       <div style={{ position: "relative", display: "inline-block" }}>
         <canvas
           ref={canvasRef}
