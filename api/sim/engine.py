@@ -113,6 +113,72 @@ class Engine:
             template_key=key,
         )
 
+    # ---- emergent auto-crisis ----
+    def _track_fear_pressure(self, tick: int) -> None:
+        """Sustain-track avg fear and fire an emergent crisis when threshold is held long enough."""
+        fears = [c.fear for c in self.citizens.values()]
+        avg_fear = sum(fears) / len(fears) if fears else 0.0
+
+        if avg_fear >= _AUTO_FEAR_THRESHOLD:
+            if self._fear_high_since is None:
+                self._fear_high_since = tick
+            elif (
+                tick - self._fear_high_since >= _AUTO_SUSTAIN_TICKS
+                and tick >= self._auto_crisis_cooldown_until
+                and self.use_llm
+                and (not self._active_templates or avg_fear >= _AUTO_COMPOUND_THRESHOLD)
+            ):
+                self._fear_high_since = None
+                self._auto_crisis_cooldown_until = tick + _AUTO_COOLDOWN_TICKS
+                self._spawn(self._auto_escalate(tick, avg_fear))
+        else:
+            self._fear_high_since = None
+
+    async def _auto_escalate(self, tick: int, avg_fear: float) -> None:
+        """Auto-generate a vivid, situation-specific crisis using LLM when fear stays critically high."""
+        active_keys = {t.key for t, _ in self._active_templates}
+        candidates = [k for k in CRISIS_TEMPLATES if k not in active_keys]
+        if not candidates:
+            return
+        key = self.rng.choice(candidates)
+        tmpl = CRISIS_TEMPLATES[key]
+
+        high_fear_names = [c.p.name for c in self.citizens.values() if c.fear > 0.50][:3]
+        recent_texts = [e["text"] for e in self.event_log[-5:] if e.get("kind") in ("crisis", "event", "decision")]
+
+        prompt = (
+            "You are narrating a city-simulation crisis. A new crisis has spontaneously erupted "
+            "because citizens have been under sustained fear.\n\n"
+            f"Crisis type: {tmpl.name}\n"
+            f"City avg fear: {avg_fear:.0%}\n"
+            f"Most distressed citizens: {', '.join(high_fear_names) if high_fear_names else 'widespread'}\n"
+            f"Recent events: {'; '.join(recent_texts[-3:]) if recent_texts else 'none'}\n\n"
+            f"Write exactly ONE sentence (max 35 words) describing this {tmpl.name} as if it just "
+            f"erupted from these exact conditions. Vivid, present tense, no preamble."
+        )
+        try:
+            res = await self._router.complete(prompt=prompt, tier=Tier.LOCAL, max_tokens=80, temperature=0.87)
+            crisis_text = res.text.strip().split("\n")[0][:300]
+        except Exception:
+            logger.exception("auto-escalate LLM failed; falling back to template text")
+            crisis_text = tmpl.description
+
+        logger.info("Emergent crisis: %s at avg_fear=%.2f tick=%d", key, avg_fear, tick)
+        self._log_event(tick, "emergent", f"⚡ {tmpl.name} erupts — {crisis_text[:70]}…")
+        await self.inject_crisis(
+            text=crisis_text,
+            institution_id=tmpl.primary_institution,
+            severity=round(0.55 + avg_fear * 0.20, 2),
+            template_key=key,
+            emergent=True,
+        )
+
+    def _fear_pressure(self) -> float:
+        """0.0 = calm, 1.0 = auto-crisis about to fire."""
+        if self._fear_high_since is None:
+            return 0.0
+        return min(1.0, round((self.tick_count - self._fear_high_since) / _AUTO_SUSTAIN_TICKS, 3))
+
     def _record_arrival(self, c: Citizen, tick: int) -> None:
         prev = self._prev_location.get(c.p.id, "")
         if c.location_id and c.location_id != prev and c.at_shared_location():
