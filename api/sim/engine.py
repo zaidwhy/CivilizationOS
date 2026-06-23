@@ -550,6 +550,7 @@ class Engine:
             "events": self.event_log[-8:],
             "active_crises": active_crises,
             "closed_locations": list(self._closed_locations),
+            "fear_pressure": self._fear_pressure(),
         }
 
     def agent_detail(self, agent_id: str) -> dict | None:
