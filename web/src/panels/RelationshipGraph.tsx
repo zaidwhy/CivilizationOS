@@ -192,7 +192,7 @@ export default function RelationshipGraph() {
           if (!p) return;
           const isSel = c.id === selId;
           ctx.beginPath();
-          ctx.arc(p.x, p.y, isSel ? R + 2 : R, 0, 2 * Math.PI);
+          ctx.arc(p.x, p.y, R, 0, 2 * Math.PI);
           ctx.fillStyle = fearColor(c.fear ?? 0);
           ctx.fill();
           // Faction ring (drawn before selection ring so selection wins)
