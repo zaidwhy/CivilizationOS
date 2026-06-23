@@ -326,9 +326,10 @@ class Engine:
         institution_id: str,
         severity: float = 0.7,
         template_key: str | None = None,
+        emergent: bool = False,
     ) -> Crisis:
         tick = self.tick_count
-        crisis = self.crises.create(text, tick, institution_id, severity, template_key=template_key)
+        crisis = self.crises.create(text, tick, institution_id, severity, template_key=template_key, emergent=emergent)
 
         embedding: list[float] | None = None
         if self.use_llm and self._router:
