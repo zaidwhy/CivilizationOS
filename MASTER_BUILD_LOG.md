@@ -669,6 +669,85 @@ All three Phase 8 items complete: speech bubbles ✅, graph tooltip ✅, fine-tu
 
 ---
 
+### Phase 9 — Emergent Crisis Injection + Council Track Record
+**Duration:** 1 session (2026-06-23) | **Not in original plan — portfolio depth additions**
+
+#### What was built
+
+**A. Emergent auto-crisis injection (sustained-fear → spontaneous crisis)**
+
+`api/sim/engine.py`:
+- Four module-level constants: `_AUTO_FEAR_THRESHOLD=0.62`, `_AUTO_SUSTAIN_TICKS=180`, `_AUTO_COMPOUND_THRESHOLD=0.78`, `_AUTO_COOLDOWN_TICKS=300`
+- `_fear_high_since: int | None` — tick when avg fear first crossed threshold; resets when fear drops
+- `_auto_crisis_cooldown_until: int` — tick gate preventing back-to-back auto-crises
+- `_track_fear_pressure(tick)` — called every tick; starts counting when avg_fear ≥ 0.62; fires after 180 consecutive ticks; allows compound cascade (second crisis while one is already active) if avg_fear ≥ 0.78; sets 300-tick cooldown after firing
+- `_auto_escalate(tick, avg_fear)` — async method: picks a template not already active, builds a context prompt with distressed citizen names + recent causal events, calls Tier 0 LLM for one vivid situation-specific sentence, falls back to template description on LLM failure, logs as `kind="emergent"` and calls `inject_crisis(..., emergent=True)`
+- `_fear_pressure()` → float 0.0–1.0: how far through the countdown we are; 0.0 when calm, 1.0 when about to fire
+- `inject_crisis()` gains `emergent: bool = False` param, forwarded to `crises.create()`
+- `snapshot()` includes `fear_pressure` key
+
+`api/sim/crisis.py`:
+- `Crisis` dataclass gains `emergent: bool = False` field
+- `CrisisRegistry.create()` accepts and stores `emergent`
+
+`api/main.py`:
+- `/crises` response includes `emergent` per record
+
+`web/src/ws/store.ts`:
+- `WorldMessage` type gains `fear_pressure: number`
+
+`web/src/App.tsx` — new `TensionMeter` component:
+- Shows `⚡ TENSION N%` pill (amber → red) when `fear_pressure > 0.05`
+- Shows `⚡ COMPOUND N%` if a crisis is already active (compound cascade pending)
+- Pulses with `crisis-pulse` animation when pressure ≥ 85%
+- Hidden at 0 pressure — zero clutter during normal operation
+
+`web/src/panels/EventFeed.tsx`:
+- Added `emergent` kind: ⚡ icon, orange colour
+- Added `decision` kind: ✅ icon, green colour (was missing)
+
+**B. Council track record — per-institution effectiveness measurement**
+
+`api/sim/engine.py`:
+- `_track_record: dict[str, dict]` — one entry per institution with `debates`, `verdicts`, `fear_deltas: list[float]`
+- `_verdict_pending: list[dict]` — `{institution_id, tick, fear_before}` queued when each Synthesizer turn fires
+- In `_run_debate()`: first turn increments `debates`; Synthesizer turn increments `verdicts` + appends a pending snapshot
+- `_resolve_verdict_snapshots(tick)` — called every tick; closes any snapshot 60+ ticks old by measuring current avg fear and recording `fear_before − fear_after` delta
+- `track_record()` — returns list with per-institution `debates`, `verdicts`, `avg_fear_delta`, `effectiveness` (0–100, where 50 = no change, >65 = green, <40 = red), `measured_verdicts`, `pending_snapshots`
+
+`api/main.py`:
+- `GET /track_record` — returns `{ councils: [...] }`
+
+`web/src/panels/StatsPanel.tsx`:
+- `CouncilRecord` type
+- Second polling interval (every 8 s) hitting `/api/track_record`
+- `CouncilScorecard` component: 5 rows (one per institution), institution-coloured name, horizontal progress bar filled to effectiveness %, colour-coded green/amber/red, hover tooltip with raw debate/verdict/delta counts, "measuring…" while pending, "no data" before first verdict
+
+#### Files changed
+
+| File | Change |
+|---|---|
+| `api/sim/crisis.py` | `emergent` field on `Crisis` + `create()` |
+| `api/sim/engine.py` | Auto-crisis sustain tracking, LLM synthesis, council track record, `fear_pressure` in snapshot |
+| `api/main.py` | `emergent` in `/crises`; new `GET /track_record` |
+| `web/src/ws/store.ts` | `fear_pressure` in `WorldMessage` |
+| `web/src/App.tsx` | `TensionMeter` component |
+| `web/src/panels/EventFeed.tsx` | `emergent` + `decision` kind styling |
+| `web/src/panels/StatsPanel.tsx` | `CouncilScorecard` + second poll |
+
+#### Key design decisions
+
+| Decision | Why |
+|---|---|
+| Sustained-tick counter (not random dice roll) | Old `tick % 45 + 14% chance` had no memory — fear could spike and drop without triggering. Sustained tracking is the minimal correct model: fire only when fear persists. |
+| Compound threshold (0.78 > single threshold 0.62) | Compound crises are rare and dramatic; requiring higher fear to trigger one during an active crisis prevents spam while still allowing cascades in genuine emergencies. |
+| 300-tick cooldown after auto-crisis | Prevents rapid-fire auto-injection if fear stays high post-eruption — gives the council time to respond before a second wave. |
+| `kind="emergent"` log entry (not `"crisis"`) | Separates auto-generated events from user-injected ones in the EventFeed; lets the frontend style them distinctly without backend/frontend coupling. |
+| Fear delta measured 60 ticks post-verdict (not immediately) | Immediate fear drop from `_apply_verdict_effects` is mechanical; measuring 60 ticks later captures whether the verdict's narrative and memory effect actually changed citizen behaviour. |
+| `effectiveness = 50 + delta × 150` | Baseline 50% = neutral (no change); +20% fear drop → 80% effective; −15% fear rise → 27.5%. Centred on 50 to avoid penalising councils for external shocks. |
+
+---
+
 ## 6. Original Plan vs Reality - Cross-Reference Table
 
 | Item from original plan | Status | Notes |
