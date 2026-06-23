@@ -92,13 +92,7 @@ class Engine:
             self._record_arrival(c, tick)
 
         self._maybe_converse(tick)
-
-        # Auto-escalation: simmering fear with no active crisis can spontaneously erupt
-        if tick % 45 == 0 and self.use_llm and not self._active_templates:
-            fears = [c.fear for c in self.citizens.values()]
-            avg_fear = sum(fears) / len(fears) if fears else 0.0
-            if avg_fear >= 0.60 and self.rng.random() < 0.14:
-                self._spawn(self._auto_escalate(tick, avg_fear))
+        self._track_fear_pressure(tick)
 
         if tick % TICKS_PER_DAY == 0:
             self._schedule_reflections(tick)
