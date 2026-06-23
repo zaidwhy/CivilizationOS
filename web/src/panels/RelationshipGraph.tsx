@@ -281,10 +281,12 @@ export default function RelationshipGraph() {
     }
 
     const p = physRef.current.get(hoveredId)!;
+    const faction = factions.find((f) => f.member_ids.includes(hoveredId));
     setTooltip({
       name: citizen.name,
       occupation: citizen.occupation,
       fear: citizen.fear,
+      faction: faction?.name,
       bonds: bonds.slice(0, 3),
       x: p.x,
       y: p.y,
