@@ -41,6 +41,7 @@ class CrisisRegistry:
         institution_id: str,
         severity: float = 0.7,
         template_key: str | None = None,
+        emergent: bool = False,
     ) -> Crisis:
         cid = f"crisis_{next(_crisis_ids)}"
         crisis = Crisis(
@@ -52,6 +53,7 @@ class CrisisRegistry:
             debate_id="",
             causal_event_id=cid,
             template_key=template_key,
+            emergent=emergent,
         )
         self._crises[cid] = crisis
         return crisis
