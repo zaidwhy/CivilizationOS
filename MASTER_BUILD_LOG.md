@@ -893,3 +893,8 @@ Phase 9 items (emergent crisis + council track record) are complete. Remaining b
 | HTML overlay div for graph tooltip (not canvas-drawn) | Phase 8 | Canvas text is hard to style and position; HTML div gives font, border, colour control for free |
 | Tooltip left-flip at `x > W/2` | Phase 8 | Prevents tooltip clipping the canvas right edge without needing to measure DOM width |
 | Name prefix stripped in speech bubble via colon heuristic | Phase 8 | LLM outputs `"Name: dialogue"` format; stripping keeps bubble readable without backend changes |
+| Sustained-tick counter for auto-crisis (not dice roll) | Phase 9 | Old `tick % 45 + 14% chance` had no memory — fear could spike and drop without triggering. Sustained tracking is the minimal correct model. |
+| Compound threshold 0.78 > base threshold 0.62 | Phase 9 | Compound crises during an existing crisis are rare and dramatic; requiring higher fear prevents spam while still allowing cascades in genuine emergencies. |
+| 300-tick cooldown after auto-crisis | Phase 9 | Gives the council time to respond before a second auto-wave — avoids rapid-fire auto-injection if fear stays elevated post-eruption. |
+| Fear delta measured 60 ticks post-verdict (not 0) | Phase 9 | Immediate drop from `_apply_verdict_effects` is mechanical; 60-tick measurement captures whether the narrative/memory effect actually changed citizen behaviour. |
+| `effectiveness = 50 + delta × 150`, centred on 50 | Phase 9 | Baseline 50% = no change. Centred to avoid penalising councils for external fear shocks they didn't cause. |
