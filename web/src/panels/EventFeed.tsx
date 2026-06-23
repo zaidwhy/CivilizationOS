@@ -3,19 +3,23 @@ import { useWorld } from "../ws/store";
 const KIND_ICON: Record<string, string> = {
   conversation: "💬",
   crisis:       "⚠️",
+  emergent:     "⚡",
   debate:       "⚖️",
   observation:  "👁",
   reflection:   "💭",
   event:        "📡",
+  decision:     "✅",
 };
 
 const KIND_COLOR: Record<string, string> = {
   conversation: "#6ea8fe",
   crisis:       "#f87171",
+  emergent:     "#fb923c",
   debate:       "#fbbf24",
   observation:  "#8b97a7",
   reflection:   "#b388ff",
   event:        "#34d399",
+  decision:     "#4ade80",
 };
 
 export default function EventFeed() {
