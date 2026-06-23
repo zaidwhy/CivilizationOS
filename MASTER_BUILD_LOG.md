@@ -895,14 +895,16 @@ Phase 9 items (emergent crisis + council track record) are complete. Remaining b
 
 ### Nice-to-have in-code additions
 
-**C. Citizen faction system**
-- Citizens with mutual affinity > 0.6 auto-form named blocs (e.g. "Civic Bloc")
-- Surface in Inspector + Chronicle; mention active factions in Synthesizer prompt
-- Files: `api/agents/citizen.py`, `api/sim/engine.py`, `api/agents/council.py`, `web/src/panels/Inspector.tsx`
+**C. ~~Citizen faction system~~ — DONE (Phase 10)**
+- Union-find faction detection, named blocs, Inspector badge, RelationshipGraph rings + legend, council debate context injection
 
 **D. CouncilChamber debate archiving**
 - Many debates pile up with no collapse/archive UX; older debates crowd the panel
-- Files: `web/src/panels/CouncilChamber.tsx`
+- File: `web/src/panels/CouncilChamber.tsx`
+
+**E. Chronicle faction integration**
+- Chronicle panel generates city dispatch without faction awareness; could mention active blocs by name
+- File: `web/src/panels/Chronicle.tsx`, `api/main.py`
 
 ### Original plan items never attempted
 
