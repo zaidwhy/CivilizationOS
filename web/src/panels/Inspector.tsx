@@ -61,6 +61,23 @@ export default function Inspector() {
         </div>
       )}
 
+      {myFaction && (
+        <div style={{
+          display: "flex", alignItems: "baseline", gap: 6,
+          margin: "6px 0",
+          padding: "5px 9px",
+          background: "rgba(167,139,250,0.07)",
+          border: "1px solid rgba(167,139,250,0.2)",
+          borderRadius: 6,
+          fontSize: 11,
+        }}>
+          <span style={{ color: "#a78bfa", whiteSpace: "nowrap" }}>🤝 {myFaction.name}</span>
+          <span style={{ color: "#475569", fontSize: 10 }}>
+            · {myFaction.member_names.filter((n) => n !== detail.name.split(" ")[0]).join(", ")}
+          </span>
+        </div>
+      )}
+
       <div className="now">{detail.action}</div>
 
       {fearLabel && (
