@@ -100,6 +100,7 @@ class Engine:
 
         self._maybe_converse(tick)
         self._track_fear_pressure(tick)
+        self._resolve_verdict_snapshots(tick)
 
         if tick % TICKS_PER_DAY == 0:
             self._schedule_reflections(tick)
