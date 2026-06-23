@@ -20,6 +20,8 @@ export default function Inspector() {
   const detail = useWorld((s) => s.detail);
   const selectedId = useWorld((s) => s.selectedId);
   const select = useWorld((s) => s.select);
+  const factions = useWorld((s) => s.world?.factions) ?? [];
+  const myFaction = factions.find((f) => f.member_ids.includes(selectedId ?? ""));
 
   if (!selectedId) {
     return (
