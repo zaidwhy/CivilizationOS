@@ -173,6 +173,54 @@ class Engine:
             return 0.0
         return min(1.0, round((self.tick_count - self._fear_high_since) / _AUTO_SUSTAIN_TICKS, 3))
 
+    # ---- council track record ----
+    def _resolve_verdict_snapshots(self, tick: int) -> None:
+        """60 ticks after each verdict, measure fear and close the delta record."""
+        still_pending = []
+        fears_now: list[float] | None = None
+        for p in self._verdict_pending:
+            if tick - p["tick"] >= 60:
+                if fears_now is None:
+                    fears_now = [c.fear for c in self.citizens.values()]
+                fear_after = sum(fears_now) / len(fears_now) if fears_now else 0.0
+                delta = p["fear_before"] - fear_after  # positive = good (fear dropped)
+                rec = self._track_record.get(p["institution_id"])
+                if rec is not None:
+                    rec["fear_deltas"].append(round(delta, 4))
+            else:
+                still_pending.append(p)
+        self._verdict_pending = still_pending
+
+    def track_record(self) -> list[dict]:
+        """Per-council stats: debates, verdicts, avg fear delta, effectiveness score."""
+        INST_NAMES = {
+            "inst_gov": "Government",
+            "inst_economy": "Economy",
+            "inst_health": "Healthcare",
+            "inst_media": "Media",
+            "inst_police": "Police",
+        }
+        result = []
+        for iid, rec in self._track_record.items():
+            deltas = rec["fear_deltas"]
+            avg_delta = round(sum(deltas) / len(deltas), 3) if deltas else None
+            if avg_delta is not None:
+                effectiveness = max(0, min(100, round(50 + avg_delta * 150)))
+            else:
+                effectiveness = None
+            pending = sum(1 for p in self._verdict_pending if p["institution_id"] == iid)
+            result.append({
+                "institution_id": iid,
+                "name": INST_NAMES[iid],
+                "debates": rec["debates"],
+                "verdicts": rec["verdicts"],
+                "avg_fear_delta": avg_delta,
+                "effectiveness": effectiveness,
+                "measured_verdicts": len(deltas),
+                "pending_snapshots": pending,
+            })
+        return result
+
     def _record_arrival(self, c: Citizen, tick: int) -> None:
         prev = self._prev_location.get(c.p.id, "")
         if c.location_id and c.location_id != prev and c.at_shared_location():
