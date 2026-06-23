@@ -76,6 +76,13 @@ class Engine:
         # Emergent auto-crisis tracking
         self._fear_high_since: int | None = None       # tick when fear first crossed threshold
         self._auto_crisis_cooldown_until: int = 0      # tick after which next auto-crisis is allowed
+        # Council track record
+        _INST_IDS = ["inst_gov", "inst_economy", "inst_health", "inst_media", "inst_police"]
+        self._track_record: dict[str, dict] = {
+            iid: {"debates": 0, "verdicts": 0, "fear_deltas": []}
+            for iid in _INST_IDS
+        }
+        self._verdict_pending: list[dict] = []  # {institution_id, tick, fear_before}
 
     # ---- main step ----
     async def advance(self) -> dict:
