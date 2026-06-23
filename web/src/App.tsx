@@ -53,6 +53,35 @@ function SpeedControl() {
   );
 }
 
+function TensionMeter() {
+  const pressure = useWorld((s) => s.world?.fear_pressure ?? 0);
+  const activeCrises = useWorld((s) => s.world?.active_crises) ?? [];
+  if (pressure <= 0.05) return null;
+
+  const pct = Math.round(pressure * 100);
+  const color = pressure >= 0.75 ? "#f87171" : pressure >= 0.40 ? "#fb923c" : "#fbbf24";
+  const label = pressure >= 0.99
+    ? "⚡ ERUPTING"
+    : activeCrises.length > 0
+    ? `⚡ COMPOUND ${pct}%`
+    : `⚡ TENSION ${pct}%`;
+
+  return (
+    <span
+      className="pill"
+      title={`Fear has been critically high for ${pct}% of the auto-crisis threshold. A new crisis will erupt if it stays this high.`}
+      style={{
+        color,
+        borderColor: color,
+        cursor: "default",
+        animation: pressure >= 0.85 ? "crisis-pulse 1s ease-in-out infinite" : undefined,
+      }}
+    >
+      {label}
+    </span>
+  );
+}
+
 function StabilityBadge() {
   const citizens = useWorld((s) => s.world?.citizens) ?? [];
   const activeCrises = useWorld((s) => s.world?.active_crises) ?? [];
