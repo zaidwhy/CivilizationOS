@@ -853,24 +853,26 @@ Phase 9 items (emergent crisis + council track record) are complete. Remaining b
 
 ---
 
-## 9. API Endpoints - Complete Reference (v0.8.0)
+## 9. API Endpoints - Complete Reference (v0.9.0)
 
 | Method | Path | Description | Added |
 |---|---|---|---|
 | GET | `/health` | Status, version, spend, tick interval, brains (incl. `council` model) | Phase 0 / Phase 8 |
 | GET | `/agent/{id}` | Citizen detail: memories, relationships, backstory | Phase 1 |
-| WS | `/ws` | Live world snapshots + debate turn stream | Phase 0 |
+| WS | `/ws` | Live world snapshots + debate turn stream (incl. `fear_pressure`) | Phase 0 / Phase 9 |
 | GET | `/llm/ping?tier=0` | Smoke-test a specific LLM tier | Phase 0 |
 | POST | `/crisis` | Inject crisis (triggers council debate) | Phase 2 |
-| GET | `/crises` | All registry crises with template_key + resolved | Phase 2 / Phase 7 |
+| GET | `/crises` | All registry crises with template_key, resolved, emergent | Phase 2 / Phase 9 |
 | GET | `/debates/{id}` | Full debate transcript | Phase 2 |
-| GET | `/events/templates` | All 5 crisis template presets | Phase 2 |
+| GET | `/events/templates` | All 7 crisis template presets | Phase 2 |
 | GET | `/timeline?k=60` | Causal event history newest-first | Phase 5 |
 | POST | `/speed` | Set tick interval 0.1–5.0 s | Phase 5 |
 | POST | `/crisis/{key}/resolve` | Resolve active crisis by template key | Phase 5 |
 | GET | `/graph` | Social graph: nodes + weighted affinity edges | Phase 6 |
 | GET | `/stats` | Fear histogram, debate count, memory counts | Phase 6 |
 | POST | `/crisis/id/{id}/resolve` | Resolve any crisis by registry ID | Phase 7 |
+| GET | `/chronicle` | LLM-generated prose city dispatch (cached 75 s) | Phase 8 |
+| GET | `/track_record` | Per-council debates, verdicts, effectiveness score | Phase 9 |
 
 ---
 
