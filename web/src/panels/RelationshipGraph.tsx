@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from "react";
-import { useWorld } from "../ws/store";
+import { useWorld, Faction } from "../ws/store";
 
 const W = 260;
 const H = 210;
+const FACTION_COLORS = ["#a78bfa", "#f472b6", "#34d399", "#fb923c", "#60a5fa"] as const;
 const R = 7;
 const REPULSION = 1400;
 const SPRING_STRENGTH = 0.05;
