@@ -434,10 +434,24 @@ class Engine:
             if first_turn:
                 self.crises.set_debate_id(crisis.id, turn.debate_id)
                 first_turn = False
+                rec = self._track_record.get(crisis.institution_id)
+                if rec is not None:
+                    rec["debates"] += 1
             self.crises.add_turn(turn.debate_id, turn)
             self._log_event(crisis.tick, "debate", f"[{turn.name}] {turn.text[:80]}…")
             if turn.is_final:
                 verdict_text = turn.text
+                # Snapshot fear now; delta measured 60 ticks later
+                fears = [c.fear for c in self.citizens.values()]
+                fear_now = sum(fears) / len(fears) if fears else 0.0
+                rec = self._track_record.get(crisis.institution_id)
+                if rec is not None:
+                    rec["verdicts"] += 1
+                self._verdict_pending.append({
+                    "institution_id": crisis.institution_id,
+                    "tick": self.tick_count,
+                    "fear_before": round(fear_now, 4),
+                })
             if self._on_debate_turn:
                 try:
                     await self._on_debate_turn(turn)
