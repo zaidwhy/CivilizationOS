@@ -99,20 +99,6 @@ class Engine:
 
         return self.snapshot()
 
-    async def _auto_escalate(self, tick: int, avg_fear: float) -> None:
-        """Spontaneously inject a crisis when city-wide fear stays high with no active crisis."""
-        candidates = ["crime_wave", "cyberattack", "housing_crisis", "pandemic"]
-        key = self.rng.choice(candidates)
-        tmpl = CRISIS_TEMPLATES[key]
-        logger.info("Auto-escalation: %s triggered at avg_fear=%.2f tick=%d", key, avg_fear, tick)
-        self._log_event(tick, "event", f"Tension erupts — {tmpl.name} breaks out spontaneously.")
-        await self.inject_crisis(
-            text=tmpl.description,
-            institution_id=tmpl.primary_institution,
-            severity=round(0.50 + avg_fear * 0.25, 2),
-            template_key=key,
-        )
-
     # ---- emergent auto-crisis ----
     def _track_fear_pressure(self, tick: int) -> None:
         """Sustain-track avg fear and fire an emergent crisis when threshold is held long enough."""
