@@ -800,9 +800,9 @@ All three Phase 8 items complete: speech bubbles ✅, graph tooltip ✅, fine-tu
 
 ---
 
-## 7. What Remains - Phase 9 Candidates
+## 7. What Remains - Phase 10 Candidates
 
-All Phase 8 items are complete. The remaining backlog from the original plan:
+Phase 9 items (emergent crisis + council track record) are complete. Remaining backlog:
 
 ### Requires external setup
 
@@ -820,9 +820,10 @@ All Phase 8 items are complete. The remaining backlog from the original plan:
 
 ### Nice-to-have in-code additions
 
-**C. Sixth crisis template**
-- **Housing Crisis** (inst_economy) is the most natural addition: affordable housing collapse, market speculation, eviction wave
-- Files: `api/sim/events.py` (new template), `api/agents/citizen.py` (occupation-specific observations)
+**C. Citizen faction system**
+- Citizens with mutual affinity > 0.6 auto-form named blocs (e.g. "Civic Bloc")
+- Surface in Inspector + Chronicle; mention active factions in Synthesizer prompt
+- Files: `api/agents/citizen.py`, `api/sim/engine.py`, `api/agents/council.py`, `web/src/panels/Inspector.tsx`
 
 **D. CouncilChamber debate archiving**
 - Many debates pile up with no collapse/archive UX; older debates crowd the panel
