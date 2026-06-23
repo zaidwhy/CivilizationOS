@@ -10,6 +10,17 @@ type StatsData = {
   causal_events: number;
 };
 
+type CouncilRecord = {
+  institution_id: string;
+  name: string;
+  debates: number;
+  verdicts: number;
+  avg_fear_delta: number | null;
+  effectiveness: number | null;
+  measured_verdicts: number;
+  pending_snapshots: number;
+};
+
 const BUCKET_LABELS = ["0–20%", "20–40%", "40–60%", "60–80%", "80–100%"];
 const BUCKET_COLORS = ["#4ade80", "#a3e635", "#fbbf24", "#fb923c", "#f87171"];
 
