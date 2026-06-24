@@ -59,6 +59,7 @@ export type AgentDetail = {
   active_crisis: string | null;
   memories: { tick: number; kind: string; text: string; importance: number }[];
   relationships: { id: string; name: string; affinity: number }[];
+  fear_history: [number, number][];  // [tick, fear] samples
 };
 
 export type DebateTurn = {

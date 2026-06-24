@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 
 type StatsData = {
   tick: number;
@@ -19,6 +19,7 @@ type CouncilRecord = {
   effectiveness: number | null;
   measured_verdicts: number;
   pending_snapshots: number;
+  averted_fear: number;
 };
 
 const BUCKET_LABELS = ["0–20%", "20–40%", "40–60%", "60–80%", "80–100%"];
@@ -104,13 +105,14 @@ function CouncilScorecard({ councils }: { councils: CouncilRecord[] }) {
             ? (c.pending_snapshots > 0 ? "measuring…" : "no data")
             : `${eff}%`;
 
+          const avertedPts = Math.round(c.averted_fear * 100);
           return (
             <div key={c.institution_id} style={{ display: "grid", gridTemplateColumns: "62px 1fr 46px", gap: 6, alignItems: "center" }}>
               <span style={{ fontSize: 10, color, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                 {c.name}
               </span>
               <div
-                title={`${c.debates} debates · ${c.verdicts} verdicts · ${c.measured_verdicts} measured · avg fear delta ${c.avg_fear_delta !== null ? (c.avg_fear_delta > 0 ? "-" : "+") + Math.abs(Math.round((c.avg_fear_delta ?? 0) * 100)) + "%" : "n/a"}`}
+                title={`${c.debates} debates · ${c.verdicts} verdicts · ${c.measured_verdicts} measured · avg fear delta ${c.avg_fear_delta !== null ? (c.avg_fear_delta > 0 ? "-" : "+") + Math.abs(Math.round((c.avg_fear_delta ?? 0) * 100)) + "%" : "n/a"} · averted ${avertedPts}% fear pts`}
                 style={{ height: 5, background: "var(--line)", borderRadius: 999, overflow: "hidden" }}
               >
                 <div style={{
@@ -137,6 +139,25 @@ function CouncilScorecard({ councils }: { councils: CouncilRecord[] }) {
 export default function StatsPanel() {
   const [stats, setStats] = useState<StatsData | null>(null);
   const [councils, setCouncils] = useState<CouncilRecord[]>([]);
+  const [exporting, setExporting] = useState(false);
+
+  const handleExport = useCallback(async () => {
+    setExporting(true);
+    try {
+      const res = await fetch("/api/export");
+      const blob = await res.blob();
+      const disp = res.headers.get("Content-Disposition") ?? "";
+      const match = disp.match(/filename=([^\s;]+)/);
+      const filename = match ? match[1] : "civos_export.json";
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch { /* transient */ }
+    finally { setExporting(false); }
+  }, []);
 
   useEffect(() => {
     const fetchStats = async () => {
@@ -231,7 +252,44 @@ export default function StatsPanel() {
 
       {councils.length > 0 && <CouncilScorecard councils={councils} />}
 
-      <div style={{ fontSize: 9, color: "#334155", marginTop: 8, textAlign: "right" }}>
+      {/* What-if summary */}
+      {councils.some((c) => c.averted_fear > 0) && (() => {
+        const totalAverted = councils.reduce((s, c) => s + c.averted_fear, 0);
+        const totalVerdicts = councils.reduce((s, c) => s + c.verdicts, 0);
+        return (
+          <div style={{
+            marginTop: 8, padding: "6px 8px",
+            background: "rgba(52,211,153,0.06)",
+            border: "1px solid rgba(52,211,153,0.12)",
+            borderRadius: 5,
+          }}>
+            <div style={{ fontSize: 9, color: "#34d399" }}>What if no council verdicts?</div>
+            <div style={{ fontSize: 10, color: "#94a3b8", marginTop: 2 }}>
+              City fear would be ~<span style={{ color: "#34d399" }}>{Math.round(totalAverted * 100)}pts</span> higher across {totalVerdicts} ruling{totalVerdicts !== 1 ? "s" : ""}
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* Export button */}
+      <div style={{ marginTop: 10, display: "flex", justifyContent: "flex-end" }}>
+        <button
+          onClick={handleExport}
+          disabled={exporting}
+          title="Download full session as JSON"
+          style={{
+            fontSize: 10, padding: "4px 10px",
+            background: "rgba(110,168,254,0.08)",
+            border: "1px solid rgba(110,168,254,0.2)",
+            borderRadius: 5, color: exporting ? "#334155" : "#6ea8fe",
+            cursor: exporting ? "not-allowed" : "pointer",
+          }}
+        >
+          {exporting ? "exporting…" : "⬇ Export session JSON"}
+        </button>
+      </div>
+
+      <div style={{ fontSize: 9, color: "#334155", marginTop: 6, textAlign: "right" }}>
         tick {stats.tick}
       </div>
     </div>

@@ -1,3 +1,4 @@
+import { useEffect, useRef } from "react";
 import { useWorld } from "../ws/store";
 
 const KIND_COLOR: Record<string, string> = {
@@ -7,6 +8,71 @@ const KIND_COLOR: Record<string, string> = {
   event: "#fbbf24",
   decision: "#fbbf24",
 };
+
+function FearSparkline({ history }: { history: [number, number][] }) {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const W = 220, H = 28;
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas || history.length < 2) return;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    ctx.clearRect(0, 0, W, H);
+    const fears = history.map(([, f]) => f);
+    const maxF = Math.max(...fears, 0.01);
+    const step = W / (history.length - 1);
+
+    const toY = (f: number) => H - 4 - (f / maxF) * (H - 8);
+    const toX = (i: number) => i * step;
+
+    // Filled area
+    const grad = ctx.createLinearGradient(0, 0, 0, H);
+    grad.addColorStop(0, "rgba(248,113,113,0.45)");
+    grad.addColorStop(1, "rgba(248,113,113,0.04)");
+
+    ctx.beginPath();
+    ctx.moveTo(toX(0), H);
+    ctx.lineTo(toX(0), toY(fears[0]));
+    fears.forEach((f, i) => { if (i > 0) ctx.lineTo(toX(i), toY(f)); });
+    ctx.lineTo(toX(fears.length - 1), H);
+    ctx.closePath();
+    ctx.fillStyle = grad;
+    ctx.fill();
+
+    // Line
+    ctx.beginPath();
+    ctx.moveTo(toX(0), toY(fears[0]));
+    fears.forEach((f, i) => { if (i > 0) ctx.lineTo(toX(i), toY(f)); });
+    ctx.strokeStyle = "#f87171";
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+
+    // Current dot
+    const lastX = toX(fears.length - 1);
+    const lastY = toY(fears[fears.length - 1]);
+    ctx.beginPath();
+    ctx.arc(lastX, lastY, 2.5, 0, Math.PI * 2);
+    ctx.fillStyle = "#fca5a5";
+    ctx.fill();
+  }, [history]);
+
+  if (history.length < 3) return null;
+  return (
+    <div style={{ marginTop: 4 }}>
+      <div style={{ fontSize: 9, color: "#475569", marginBottom: 2 }}>
+        Fear history ({history.length} samples)
+      </div>
+      <canvas
+        ref={canvasRef}
+        width={W}
+        height={H}
+        style={{ borderRadius: 3, background: "rgba(0,0,0,0.12)", display: "block" }}
+      />
+    </div>
+  );
+}
 
 const FEAR_LABEL = (pct: number) => {
   if (pct < 10) return null;
@@ -88,6 +154,7 @@ export default function Inspector() {
           <div className="fear-track">
             <div className="fear-fill" style={{ width: `${fearPct}%` }} />
           </div>
+          <FearSparkline history={detail.fear_history ?? []} />
         </div>
       )}
 

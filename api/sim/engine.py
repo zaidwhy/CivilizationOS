@@ -46,6 +46,7 @@ _AUTO_COOLDOWN_TICKS = 300       # min ticks between auto-generated crises
 # Faction formation
 _FACTION_AFFINITY_THRESHOLD = 0.60  # mutual affinity above this forms a faction
 _FACTION_RECOMPUTE_EVERY = 60       # ticks between faction recalculations
+_FEAR_SAMPLE_EVERY = 5              # ticks between fear history samples (keep last 60 = 300 ticks)
 _OCCUPATION_GROUPS: dict[str, str] = {
     "doctor": "Care", "nurse": "Care",
     "journalist": "Press", "analyst": "Press",
@@ -93,10 +94,15 @@ class Engine:
         self._auto_crisis_cooldown_until: int = 0      # tick after which next auto-crisis is allowed
         # Faction system
         self._factions: list[dict] = []
+        # Citizen emotion history: {citizen_id: [(tick, fear), ...]}
+        self._fear_history: dict[str, list[tuple[int, float]]] = {cid: [] for cid in self.citizens}
+        # Alliance/rivalry tracking
+        self._prev_faction_member_sets: set[frozenset] = set()
+        self._rivalry_pairs: set[tuple[str, str]] = set()
         # Council track record
         _INST_IDS = ["inst_gov", "inst_economy", "inst_health", "inst_media", "inst_police"]
         self._track_record: dict[str, dict] = {
-            iid: {"debates": 0, "verdicts": 0, "fear_deltas": []}
+            iid: {"debates": 0, "verdicts": 0, "fear_deltas": [], "averted_fear": 0.0}
             for iid in _INST_IDS
         }
         self._verdict_pending: list[dict] = []  # {institution_id, tick, fear_before}
@@ -118,8 +124,12 @@ class Engine:
         self._maybe_converse(tick)
         self._track_fear_pressure(tick)
         self._resolve_verdict_snapshots(tick)
+        if tick % _FEAR_SAMPLE_EVERY == 0:
+            self._sample_fear_history(tick)
         if tick % _FACTION_RECOMPUTE_EVERY == 0:
-            self._factions = self._compute_factions()
+            new_factions = self._compute_factions()
+            self._check_faction_events(new_factions, tick)
+            self._factions = new_factions
 
         if tick % TICKS_PER_DAY == 0:
             self._schedule_reflections(tick)
@@ -251,6 +261,38 @@ class Engine:
             })
         return factions
 
+    # ---- citizen emotion history ----
+    def _sample_fear_history(self, tick: int) -> None:
+        for cid, c in self.citizens.items():
+            hist = self._fear_history.setdefault(cid, [])
+            hist.append((tick, round(c.fear, 3)))
+            if len(hist) > 60:
+                del hist[0]
+
+    # ---- alliance / rivalry events ----
+    def _check_faction_events(self, new_factions: list[dict], tick: int) -> None:
+        new_sets = {frozenset(f["member_ids"]) for f in new_factions}
+        for members in new_sets - self._prev_faction_member_sets:
+            for f in new_factions:
+                if frozenset(f["member_ids"]) == members:
+                    names = ", ".join(f["member_names"])
+                    self._log_event(tick, "event", f"Bloc formed: {f['name']} ({names})")
+                    break
+        if self._prev_faction_member_sets - new_sets:
+            self._log_event(tick, "event", "A citizen alliance has dissolved")
+        # Rivalry detection — runs each recompute cycle
+        for a in self.citizens.values():
+            for bid, aff in a.relationships.items():
+                if bid not in self.citizens or aff >= -0.40:
+                    continue
+                pair = (min(a.p.id, bid), max(a.p.id, bid))
+                if pair not in self._rivalry_pairs:
+                    self._rivalry_pairs.add(pair)
+                    b_name = self.citizens[bid].p.name.split()[0]
+                    self._log_event(tick, "event",
+                                    f"Rivalry: {a.p.name.split()[0]} and {b_name} are at odds")
+        self._prev_faction_member_sets = new_sets
+
     # ---- council track record ----
     def _resolve_verdict_snapshots(self, tick: int) -> None:
         """60 ticks after each verdict, measure fear and close the delta record."""
@@ -296,6 +338,7 @@ class Engine:
                 "effectiveness": effectiveness,
                 "measured_verdicts": len(deltas),
                 "pending_snapshots": pending,
+                "averted_fear": round(rec.get("averted_fear", 0.0), 3),
             })
         return result
 
@@ -571,7 +614,7 @@ class Engine:
             if crisis.template_key:
                 tmpl = CRISIS_TEMPLATES.get(crisis.template_key)
                 if tmpl:
-                    self._apply_verdict_effects(tmpl, verdict_text)
+                    self._apply_verdict_effects(tmpl, verdict_text, crisis.institution_id)
 
         logger.info("Debate complete for crisis %s", crisis.id)
 
@@ -646,7 +689,7 @@ class Engine:
         )
         return res_text
 
-    def _apply_verdict_effects(self, tmpl: CrisisTemplate, verdict_text: str) -> None:
+    def _apply_verdict_effects(self, tmpl: CrisisTemplate, verdict_text: str, institution_id: str = "") -> None:
         """Partial fear reduction + decision memory + partial location reopening on verdict."""
         summary = verdict_text[:100].rstrip()
         tick = self.tick_count
@@ -658,6 +701,11 @@ class Engine:
                 tick,
                 "decision",
             )
+
+        # Track how much fear this institution's verdict averted (what-if metric)
+        rec = self._track_record.get(institution_id)
+        if rec is not None:
+            rec["averted_fear"] = round(rec["averted_fear"] + tmpl.verdict_fear_reduction, 4)
 
         # Partially reopen locations designated safe by this verdict
         for loc in tmpl.verdict_reopens:
@@ -720,6 +768,7 @@ class Engine:
                 for oid, v in sorted(c.relationships.items(), key=lambda kv: kv[1], reverse=True)
                 if oid in self.citizens
             ],
+            "fear_history": self._fear_history.get(agent_id, []),
         }
 
     def timeline(self, k: int = 60) -> list[dict]:

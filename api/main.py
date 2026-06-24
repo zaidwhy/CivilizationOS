@@ -357,6 +357,8 @@ async def get_chronicle() -> dict:
 
     crisis_line = f"Active crises: {', '.join(active_crises)}." if active_crises else "No active crises."
     fear_line = f"Most afraid: {', '.join(high_fear_names)}." if high_fear_names else "Citizens are calm."
+    faction_blocs = [f["name"] for f in engine._factions[:3]]
+    faction_line = f"Active citizen blocs: {', '.join(faction_blocs)}." if faction_blocs else "No active blocs."
 
     prompt = (
         "You are the narrator of a city simulation called CivilizationOS. "
@@ -367,6 +369,7 @@ async def get_chronicle() -> dict:
         f"  Average fear: {avg_fear:.0%}\n"
         f"  {crisis_line}\n"
         f"  {fear_line}\n"
+        f"  {faction_line}\n"
         f"  Council debates held: {debate_count}\n\n"
         "Write the dispatch now."
     )
@@ -394,6 +397,53 @@ async def get_chronicle() -> dict:
 async def get_track_record() -> dict:
     """Per-council debate count, verdict count, and effectiveness score."""
     return {"councils": engine.track_record()}
+
+
+@app.get("/export")
+async def export_session() -> dict:
+    """Full session snapshot for portfolio/sharing — triggers JSON download."""
+    from fastapi.responses import JSONResponse
+    fears = [c.fear for c in engine.citizens.values()]
+    data = {
+        "exported_at_tick": engine.tick_count,
+        "citizens": [
+            {
+                "id": c.p.id,
+                "name": c.p.name,
+                "occupation": c.p.occupation,
+                "fear": round(c.fear, 3),
+                "memory_count": len(c.memory),
+                "faction": next(
+                    (f["name"] for f in engine._factions if c.p.id in f["member_ids"]), None
+                ),
+            }
+            for c in engine.citizens.values()
+        ],
+        "factions": engine._factions,
+        "timeline": engine.timeline(k=200),
+        "track_record": engine.track_record(),
+        "stats": {
+            "avg_fear": round(sum(fears) / len(fears), 3) if fears else 0,
+            "total_debates": len(engine.crises.all_debates()),
+            "causal_events": len(engine.causal_graph),
+            "active_crises": [t.name for t, _ in engine._active_templates],
+        },
+        "crises": [
+            {
+                "id": c.id,
+                "text": c.text,
+                "tick": c.tick,
+                "institution_id": c.institution_id,
+                "resolved": c.resolved,
+                "emergent": c.emergent,
+            }
+            for c in engine.crises.list_crises()
+        ],
+    }
+    return JSONResponse(
+        content=data,
+        headers={"Content-Disposition": f"attachment; filename=civos_tick{engine.tick_count}.json"},
+    )
 
 
 @app.get("/crises")
