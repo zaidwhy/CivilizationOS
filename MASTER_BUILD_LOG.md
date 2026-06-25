@@ -1,7 +1,7 @@
 # CivilizationOS - Master Build Log
-**Phases 0 through 10 | Complete cross-reference with original plan**
+**Phases 0 through 12 | Complete cross-reference with original plan**
 
-> Updated: 2026-06-23 | Version: 0.10.0 | Tests: 54 passing | TS errors: 0
+> Updated: 2026-06-25 | Version: 0.12.0 | Tests: 54 written | TS errors: 0
 
 ---
 
@@ -14,7 +14,7 @@ CivilizationOS is a portfolio-grade AI project demonstrating **four required aca
 | Multi-agent system + domain problem | 10 autonomous citizen-agents (AGORA) + 5 institutional councils × 5 specialist agents (PANTHEON) = **35 agents total** governing a simulated society |
 | RAG - novel retrieval | **Temporal-Causal Memory Fusion (TCMF)** - fuses per-agent episodic memory streams with a society-wide causal event graph; not reproducible with any off-the-shelf RAG |
 | Fine-tuned model + MLOps | LoRA fine-tune on Qwen2.5 3B (Unsloth, free Colab T4), MLflow run tracking, persona-consistency + debate-quality eval harness |
-| Full-stack + Claude API | React + PixiJS isometric city ↔ FastAPI/WebSocket backend; Claude Haiku/Sonnet powers council debates in premium mode |
+| Full-stack + Claude API | React + **Three.js 3D city** ↔ FastAPI/WebSocket backend; Claude Haiku/Sonnet powers council debates in premium mode |
 
 **Hard constraints from day one:** near-zero budget ($20 cap), Windows 11 laptop, local Ollama, no GPU except free Colab.
 
@@ -48,7 +48,8 @@ civilizationos/
 │   └── src/
 │       ├── App.tsx             Layout, speed slider, spend counter, crisis header pills
 │       ├── city/
-│       │   ├── CityStage.tsx   PixiJS isometric city (citizens, buildings, crisis visuals, day/night)
+│       │   ├── CityStage3D.tsx Three.js 3D city — delegation-style, PCF shadows, bloom, orbit cam (v0.12)
+│       │   ├── CityStage.tsx   PixiJS isometric city (fallback, kept intact)
 │       │   └── iso.ts          Isometric math, palettes, closedLocationColor()
 │       ├── panels/
 │       │   ├── Inspector.tsx         Citizen mind viewer (memory, relationships, backstory, fear)
@@ -835,7 +836,8 @@ All three Phase 8 items complete: speech bubbles ✅, graph tooltip ✅, fine-tu
 | World clock, locations, async tick loop | ✅ Done | |
 | Citizen perceive→plan→act→converse | ✅ Done | |
 | Memory stream + reflection loop | ✅ Done | |
-| PixiJS isometric city | ✅ Done | |
+| PixiJS isometric city | ✅ Done (Phase 1–11b, fallback kept) | |
+| **Three.js 3D city (delegation-style)** | ✅ Done (Phase 12) | Orbit cam, PCF shadows, subtle bloom, jewel-tone palette, star sky |
 | **Speech bubbles above sprites** | ✅ Done (Phase 8) | Rounded bubble, name-prefix stripped, pointer tail, 10-tick TTL |
 | WebSocket world state → Zustand | ✅ Done | |
 | 10 citizens live a day (milestone) | ✅ Done | 48 then 54 tests verify it |
@@ -875,9 +877,95 @@ All three Phase 8 items complete: speech bubbles ✅, graph tooltip ✅, fine-tu
 
 ---
 
-## 7. What Remains - Phase 10 Candidates
+### Phase 11 — Citizen Emotion History, Alliance Events, What-If Verdicts, Session Export
+**Duration:** 1 session (2026-06-25) | **Not in original plan — depth + export layer**
 
-Phase 9 items (emergent crisis + council track record) are complete. Remaining backlog:
+#### What was built
+
+- **FearSparkline** canvas in Inspector: samples citizen `fear` every 5 ticks, draws 80×22px area chart
+- **Alliance/rivalry events** in engine: faction formation → `"⚡ {name} formed"` event; dissolution → `"dissolved"` event; rivalry threshold `< -0.40` → `"💔 rivalry"` logged to EventFeed
+- **Chronicle bloc awareness**: `/chronicle` LLM dispatch now receives list of active faction names
+- **What-if verdict summary** in StatsPanel: `averted_fear` per institution — how much fear a verdict prevented vs baseline
+- **Session export**: `GET /export` returns full JSON snapshot (citizens, events, crises, causal graph, factions, tick, version); frontend download button in StatsPanel
+
+#### Files changed
+`api/sim/engine.py`, `api/main.py`, `web/src/panels/Inspector.tsx`, `web/src/panels/StatsPanel.tsx`, `web/src/panels/Chronicle.tsx`, `web/src/ws/store.ts`
+
+---
+
+### Phase 11b — Crisis Pulse, Event Toasts, Stability Sparkline, Scenario Launcher
+**Duration:** 1 session (2026-06-25) | **Visual polish + QoL layer**
+
+#### What was built
+
+- **PixiJS crisis pulse rings**: pulsing red rings animate over crisis-closed buildings on every tick
+- **Full-screen flash**: red overlay on new crisis injection (1s fade-out) — now ported to Three.js flash div
+- **Toast notifications**: `ToastStack` component bottom-left overlay — new crisis / verdict / social events → 5s toast with colour + icon
+- **Stability sparkline** in topbar: `StabilitySparkline` canvas (80×22px), gradient fill, colour-coded green/amber/red
+- **Scenario quick-launch**: `ScenarioLauncher` overlay (top-right) — 5 preset scenarios (epidemic, crime wave, blackout, drought, cyberattack) fire instantly via `POST /crisis`
+
+#### Files changed
+`web/src/App.tsx`, `web/src/city/CityStage.tsx`
+
+---
+
+### Phase 12 — Three.js 3D City (Delegation-Style)
+**Duration:** 1 session (2026-06-25) | **Complete frontend renderer replacement**
+
+#### What was built
+
+`web/src/city/CityStage3D.tsx` (~430 lines, replaces PixiJS `CityStage.tsx`):
+
+**Renderer:**
+- `THREE.WebGLRenderer` with `ACESFilmicToneMapping`, `PCFSoftShadowMap` (2048² atlas, radius 3)
+- `EffectComposer` → `RenderPass` → `UnrealBloomPass` (strength 0.28, subtle) → `OutputPass` (required Three.js r152+)
+- `CSS2DRenderer` for HTML-based name/speech-bubble overlays (pointer-events: none)
+
+**Scene:**
+- Sky dome: large sphere with canvas-gradient texture (zenith midnight-blue → near-black horizon), no fog writing
+- 1400 star points in upper hemisphere only (opacity 0.55, no sizeAttenuation noise)
+- 140×140 reflective metallic base plane (roughness 0.08, metalness 0.85)
+- Subtle grid lines over city tiles (LineSegments, opacity 0.6)
+- `FogExp2` for atmospheric depth
+
+**Lighting (delegation-style):**
+- Key: `DirectionalLight(0xd0dcf0, 1.6)` at `(14,28,16)` — casts soft PCF shadows
+- Fill: `DirectionalLight(0x2a1a08, 0.35)` from low-left (bounce)
+- Ambient: `AmbientLight(0x0d1525, 6.0)` very subtle
+
+**Buildings (clean jewel tones, no neon):**
+- `BoxGeometry` per location, matte (roughness 0.72, metalness 0.18), casts + receives shadows
+- Type palette: home `#1c2b3a`/accent `#4b7fa8`, workplace `#2a1f14`/`#b07d3a`, commons `#122318`/`#3a8a5c`, institution `#16122a`/`#6b5db8`
+- Thin roof accent band (emissiveIntensity 0.55) — hint of glow, not neon
+- Crisis override: body `0x2a1010`, roof → crisis red, `PointLight` pulses at `2.0 + 0.7 sin(t×2.8)`
+
+**Citizens:**
+- `CapsuleGeometry` body (clean matte white `0xe8eef5`) + `SphereGeometry` head (emissive fear-tinted)
+- Head emissive: `0x7cb4e0` (calm) → `0xe0c47c` (tense) → `0xe07c7c` (fearful)
+- Body color lerps toward fear color at high fear (≤ 28% mix)
+- Faint blob shadow (`CircleGeometry`, opacity 0.22) scales with fear
+- Gentle float: `y = 0.014 × sin(1.5t + x×0.8)`
+- Click-to-select via `Raycaster` on body + head meshes
+
+**Labels:**
+- Building: type-accent color, 8.5px SF Mono uppercase, opacity 0.8
+- Citizen name: muted `rgba(180,200,225,0.55)`, 7px SF Mono uppercase
+- Speech bubble: dark glass `rgba(6,10,18,0.82)`, indigo border, sans-serif body text
+
+**Fixes vs initial implementation:**
+- `ResizeObserver` (not just `window.resize`) for correct canvas size on layout changes
+- Canvas `position:absolute;inset:0` so it fills the city div at all times
+- `OutputPass` added — required for correct color output in Three.js r152+ (was black screen without it)
+- `.venv312` identified as correct Python env (`.venv` has Python 3.14 ABI mismatch)
+
+#### Files changed
+`web/src/city/CityStage3D.tsx` (new), `web/src/App.tsx` (import swap), `web/package.json`, `web/package-lock.json`
+
+---
+
+## 7. What Remains - Phase 13+ Candidates
+
+Phases 0–12 complete. Remaining backlog:
 
 ### Requires external setup
 
