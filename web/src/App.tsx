@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { connectWorldSocket, useWorld } from "./ws/store";
-import CityStage from "./city/CityStage";
+import CityStage from "./city/CityStage3D";
 import Inspector from "./panels/Inspector";
 import EventFeed from "./panels/EventFeed";
 import CouncilChamber from "./panels/CouncilChamber";
