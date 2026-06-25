@@ -87,6 +87,7 @@ type ConnState = "connecting" | "open" | "closed";
 interface WorldStore {
   conn: ConnState;
   world: WorldMessage | null;
+  stabilityHistory: [number, number][];  // [tick, score 0-100] sampled every 5 ticks
   selectedId: string | null;
   detail: AgentDetail | null;
   debates: Record<string, DebateTurn[]>;
@@ -106,13 +107,21 @@ const emptyDebates: Record<string, DebateTurn[]> = {};
 export const useWorld = create<WorldStore>((set, get) => ({
   conn: "connecting",
   world: null,
+  stabilityHistory: [],
   selectedId: null,
   detail: null,
   debates: emptyDebates,
   activeDebateId: null,
   health: null,
   setConn: (conn) => set({ conn }),
-  apply: (msg) => set({ world: msg }),
+  apply: (msg) => set((s) => {
+    if (msg.tick % 5 !== 0) return { world: msg };
+    const fears = msg.citizens.map(c => c.fear ?? 0);
+    const avgFear = fears.length ? fears.reduce((a, b) => a + b, 0) / fears.length : 0;
+    const score = Math.max(0, Math.min(100, Math.round(100 - avgFear * 65 - msg.active_crises.length * 12)));
+    const next: [number, number][] = ([...s.stabilityHistory, [msg.tick, score] as [number, number]]).slice(-120);
+    return { world: msg, stabilityHistory: next };
+  }),
   select: (id) => {
     set({ selectedId: id, detail: null });
     if (id) get().refreshDetail();

@@ -50,6 +50,10 @@ body { margin: 0; background: var(--bg); color: var(--text); overflow: hidden; }
   0%, 100% { opacity: 1; }
   50%       { opacity: 0.65; }
 }
+@keyframes toast-slide-in {
+  from { transform: translateX(-20px); opacity: 0; }
+  to   { transform: translateX(0);     opacity: 1; }
+}
 
 /* ---- layout ---- */
 .layout { display: grid; grid-template-columns: 1fr 340px; min-height: 0; }

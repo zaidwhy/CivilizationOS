@@ -50,13 +50,18 @@ export default function CityStage() {
       app.stage.addChild(world);
       const ground = new Graphics();
       const heatLayer = new Graphics();
+      const pulseLayer = new Graphics();  // crisis location pulse rings (animated in ticker)
       const locLayer = new Container();
       const peopleLayer = new Container();
+      const flashLayer = new Graphics();  // full-screen red flash on crisis injection
       const night = new Graphics();
-      world.addChild(ground, heatLayer, locLayer, peopleLayer);
-      app.stage.addChild(night);
+      world.addChild(ground, heatLayer, pulseLayer, locLayer, peopleLayer);
+      app.stage.addChild(flashLayer, night);
 
       let built = false;
+      let closedPos: Array<{ sx: number; sy: number }> = [];
+      let prevCrisisCount = 0;
+      let crisisFlashUntil = 0;
 
       const fitWorld = (w: number, h: number) => {
         const corners = [toScreen(0, 0), toScreen(w - 1, 0), toScreen(0, h - 1), toScreen(w - 1, h - 1)];
@@ -162,6 +167,16 @@ export default function CityStage() {
         }
         drawLocations(w, closed);
 
+        // Track closed building screen positions for pulse animation
+        closedPos = w.locations
+          .filter(l => closed.includes(l.id))
+          .map(l => toScreen(l.x, l.y));
+
+        // Red flash when a new crisis is injected
+        const crisisCount = w.active_crises?.length ?? 0;
+        if (crisisCount > prevCrisisCount) crisisFlashUntil = performance.now() + 1000;
+        prevCrisisCount = crisisCount;
+
         // Fear heatmap — semi-transparent tile overlays at each location
         const fearByLoc = new Map<string, number>();
         for (const c of w.citizens) {
@@ -253,6 +268,27 @@ export default function CityStage() {
           s.container.zIndex = s.dispY;
         }
         peopleLayer.sortableChildren = true;
+
+        // Pulsing red rings over crisis-closed buildings
+        pulseLayer.clear();
+        if (closedPos.length) {
+          const t = performance.now() / 1000;
+          const alpha = 0.20 + 0.28 * (0.5 + 0.5 * Math.sin(t * 2.8));
+          const r = 13 + 5 * (0.5 + 0.5 * Math.sin(t * 2.8));
+          for (const { sx, sy } of closedPos) {
+            pulseLayer.circle(sx, sy - 16, r).fill({ color: 0xf87171, alpha });
+          }
+        }
+
+        // Full-screen red flash on new crisis injection
+        flashLayer.clear();
+        const nowMs = performance.now();
+        if (nowMs < crisisFlashUntil) {
+          const frac = (crisisFlashUntil - nowMs) / 1000;
+          flashLayer
+            .rect(0, 0, app.renderer.width, app.renderer.height)
+            .fill({ color: 0xf87171, alpha: frac * 0.20 });
+        }
       });
 
       unsub = useWorld.subscribe(sync);
