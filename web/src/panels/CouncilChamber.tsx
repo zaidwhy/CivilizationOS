@@ -37,6 +37,22 @@ const ROLE_COLORS: Record<string, string> = {
   Synthesizer: "#fbbf24",
 };
 
+const INST_COLORS: Record<string, string> = {
+  inst_gov:     "#6b5db8",
+  inst_economy: "#b07d3a",
+  inst_health:  "#3a8a5c",
+  inst_media:   "#4b7fa8",
+  inst_police:  "#c96060",
+};
+
+const INST_LABELS: Record<string, string> = {
+  inst_gov:     "Government",
+  inst_economy: "Economy",
+  inst_health:  "Healthcare",
+  inst_media:   "Media",
+  inst_police:  "Police",
+};
+
 const CRISIS_EMOJI: Record<string, string> = {
   pandemic:       "🦠",
   drought:        "🌵",
@@ -85,29 +101,40 @@ function CompletedDebateCard({
   onToggle: () => void;
 }) {
   const verdict = turns.find((t) => t.is_final);
-  const inst = (turns[0]?.institution_id ?? "").replace("inst_", "");
-  const preview = verdict?.text.slice(0, 95) ?? turns[0]?.text?.slice(0, 95) ?? "";
+  const instId = turns[0]?.institution_id ?? "";
+  const instColor = INST_COLORS[instId] ?? "#475569";
+  const instLabel = INST_LABELS[instId] ?? instId.replace("inst_", "");
+  const preview = verdict?.text.slice(0, 90) ?? turns[0]?.text?.slice(0, 90) ?? "";
 
   return (
-    <div style={{ marginBottom: 4, borderRadius: 6, border: "1px solid var(--line)", overflow: "hidden" }}>
+    <div style={{
+      marginBottom: 4, borderRadius: 6,
+      border: `1px solid ${expanded ? instColor + "50" : "var(--line)"}`,
+      overflow: "hidden", transition: "border-color 0.2s",
+    }}>
       <div
         onClick={onToggle}
         style={{
           padding: "6px 10px",
-          background: expanded ? "rgba(124,58,237,0.1)" : "rgba(255,255,255,0.03)",
+          background: expanded ? `${instColor}10` : "rgba(255,255,255,0.02)",
           cursor: "pointer",
-          display: "flex",
-          alignItems: "center",
-          gap: 8,
+          display: "flex", alignItems: "center", gap: 8,
+          borderLeft: `3px solid ${instColor}`,
         }}
       >
-        <span style={{ fontSize: 10, color: "#fbbf24", flexShrink: 0 }}>★</span>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontSize: 10, color: "#64748b", textTransform: "capitalize", marginBottom: 1 }}>
-            {inst} · tick {turns[0]?.tick ?? "?"}
+          <div style={{ display: "flex", gap: 6, alignItems: "center", marginBottom: 2 }}>
+            <span style={{
+              fontSize: 9, fontWeight: 700, letterSpacing: 0.5,
+              color: instColor, textTransform: "uppercase",
+            }}>
+              {instLabel}
+            </span>
+            <span style={{ fontSize: 9, color: "#475569" }}>t{turns[0]?.tick ?? "?"}</span>
+            <span style={{ fontSize: 9, color: "#fbbf24" }}>★ verdict</span>
           </div>
           <div style={{ fontSize: 11, color: "#94a3b8", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-            {preview}{preview.length >= 95 ? "…" : ""}
+            {preview}{preview.length >= 90 ? "…" : ""}
           </div>
         </div>
         <span style={{ fontSize: 10, color: "#475569", flexShrink: 0 }}>{expanded ? "▲" : "▼"}</span>

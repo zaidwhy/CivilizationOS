@@ -1,7 +1,7 @@
 # CivilizationOS - Master Build Log
-**Phases 0 through 12 | Complete cross-reference with original plan**
+**Phases 0 through 13 | Complete cross-reference with original plan**
 
-> Updated: 2026-06-25 | Version: 0.12.0 | Tests: 54 written | TS errors: 0
+> Updated: 2026-06-27 | Version: 0.13.0 | Tests: 54 written | TS errors: 0
 
 ---
 
@@ -963,9 +963,56 @@ All three Phase 8 items complete: speech bubbles ✅, graph tooltip ✅, fine-tu
 
 ---
 
-## 7. What Remains - Phase 13+ Candidates
+### Phase 13 — Story Rewind, Chronicle Redesign, UI Polish
+**Duration:** 1 session (2026-06-27) | **UX depth + dispatch redesign**
 
-Phases 0–12 complete. Remaining backlog:
+#### What was built
+
+**A. Story Rewind (Timeline enhanced)**
+
+`web/src/panels/Timeline.tsx` — complete upgrade:
+- Renamed to "⏪ STORY REWIND" in header; fetches up to k=200 events (was k=40)
+- **Tick scrubber**: range input from t0 → current tick; drag left to rewind history; events filter to those with `tick ≤ selected`; "↩ return to present" button resets to live
+- **Click-to-expand**: any event card is clickable; collapsed shows 2-line clip, expanded shows full text with `fade-in` animation; clicking again collapses
+- Increased poll interval to 8s (was 6s, fewer requests at larger k)
+
+**B. Chronicle — Newspaper Redesign + Faction Awareness**
+
+`web/src/panels/Chronicle.tsx` — full visual redesign:
+- **Masthead**: "📰 CITY CHRONICLE" header + dateline line "DISPATCH · DAY N · TICK N · CIVOSVILLE BUREAU"
+- **Gradient rule** between masthead and body (left-to-right blue → transparent)
+- **Body text** now `#a8b8cc` at 12.5px / 1.8 line-height with `fade-in` animation on each refresh
+- **Fear bar**: labelled "CITY FEAR LEVEL" + percentage, animated progress bar with green→amber→red gradient
+- **Active crises**: red pill badges below fear bar
+- **Faction blocs**: purple pill badges for each active faction (reads from Zustand `world.factions`) — the backend already injects faction context into the LLM prompt; frontend now surfaces those blocs visually
+- Day number computed as `Math.floor(tick / 96) + 1` (96 ticks = 1 in-world day at 4 phases × 24)
+
+**C. CouncilChamber — Institution-Coloured Debate Archive**
+
+`web/src/panels/CouncilChamber.tsx`:
+- Added `INST_COLORS` dict matching building accent palette from Phase 12: gov=`#6b5db8`, economy=`#b07d3a`, health=`#3a8a5c`, media=`#4b7fa8`, police=`#c96060`
+- Added `INST_LABELS` dict for display names
+- `CompletedDebateCard` now has institution-coloured left border strip (`borderLeft: 3px solid instColor`)
+- Card header shows institution name in its colour + tick + "★ verdict" badge (replaces plain "★" + "inst · tick" layout)
+- Card border and background tint changes on expand using the institution colour
+- Consistent with building colours in 3D view — visual coherence across the whole UI
+
+**D. Global CSS polish**
+
+`web/src/index.css`:
+- `@keyframes fade-in` added (used by Timeline expanded text + Chronicle body)
+- Sidebar width increased 340px → 360px (more breathing room for debate cards and chronicle)
+- `.panel h3` gets `animation: fade-in` on mount
+- `.panel` top padding reduced 14px → 12px for tighter vertical rhythm
+
+#### Files changed
+`web/src/panels/Timeline.tsx`, `web/src/panels/Chronicle.tsx`, `web/src/panels/CouncilChamber.tsx`, `web/src/index.css`
+
+---
+
+## 7. What Remains - Phase 14+ Candidates
+
+Phases 0–13 complete. Remaining backlog:
 
 ### Requires external setup
 
