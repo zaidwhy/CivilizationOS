@@ -1,0 +1,58 @@
+# CivilizationOS - Claude Instructions
+
+Multi-agent society sim (AGORA x PANTHEON): FastAPI backend + React/Vite/Three.js frontend.
+Repo: https://github.com/syzayd/CivilizationOS
+
+## Run (two terminals)
+
+Terminal 1 - API (port 8000):
+```powershell
+cd C:\Users\Asus\projects\CivilizationOS
+$env:PYTHONIOENCODING = "utf-8"
+& ".venv\Scripts\uvicorn" api.main:app --reload --port 8000
+```
+
+Terminal 2 - frontend (port 5173):
+```powershell
+cd C:\Users\Asus\projects\CivilizationOS\web
+npm run dev
+```
+
+Open http://localhost:5173. Health check: `Invoke-RestMethod http://localhost:8000/health` (the `brains.council` field should be `civos-council`).
+
+## Python environment
+
+- Use `.venv` (Python 3.14; deps upgraded 2026-07-02, numpy 2.5 / pydantic 2.13 verified importing). `.venv312` (Python 3.12) is a fallback only.
+- Any doc line saying "Python 3.14 is broken, use 3.12" is stale; fixed in the Phase 14 refinement.
+- ALWAYS set `$env:PYTHONIOENCODING = "utf-8"` before running Python here; output contains Unicode and crashes cp1252 consoles otherwise.
+- `uvicorn` is not on PATH; invoke it as `& ".venv\Scripts\uvicorn"`.
+
+## Tests
+
+```powershell
+$env:PYTHONIOENCODING = "utf-8"
+& ".venv\Scripts\python" -m pytest api/tests -q
+```
+Expected: 61 passed.
+
+## LLM setup
+
+- Ollama must be running with `qwen2.5:3b-instruct`, `nomic-embed-text`, and the fine-tuned `civos-council` model. Recreate the latter with `ollama create civos-council -f ml/Modelfile` (needs `ml/unsloth.Q4_K_M.gguf`, 1.84 GB, not in git).
+- App runs at $0/day on Ollama alone; Gemini (tier 1) and Claude (tier 2, `PREMIUM_MODE=true`) are optional.
+
+## Env
+
+- `.env` at repo root; template in `.env.example`. Key var: `OLLAMA_COUNCIL_MODEL=civos-council`. Optional: `GEMINI_API_KEY`, `ANTHROPIC_API_KEY`, `PREMIUM_MODE`.
+- Never read `.env` directly; ask the user for values. Restart the API after changing `.env`.
+
+## Logs and handoffs (required every session)
+
+- Master log: `MASTER_BUILD_LOG.md` - append only, read just the tail (it is very long).
+- Handoffs: `handoffs/HANDOFF-YYYY-MM-DD-HHMM.md`.
+- Before ending a session: update the master log AND write a handoff.
+
+## Gotchas
+
+- Three.js r152+: the EffectComposer chain MUST end with `OutputPass` or the screen renders black.
+- Never use the em dash character (U+2014) anywhere; use " - " instead.
+- `HOW_TO_RUN.md` has crisis-injection API examples and the full feature test checklist.
