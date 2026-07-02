@@ -1044,12 +1044,12 @@ Everything else originally scoped, plus everything added along the way (factions
 | `test_vectorstore.py` | L2 cosine search correctness | 7 |
 | `test_router.py` | 3-tier routing, downgrade logic, spend tracking | 9 |
 | `test_tcmf.py` | TCMF retrieval ordering, causal boost, context format | 10 |
-| `test_crisis.py` | Templates, fear, location closure, resolve-by-ID, verdict reopening | 16 |
-| **Total** | | **54 passed** |
+| `test_crisis.py` | Templates, fear, location closure, resolve-by-ID, verdict reopening, emergent crisis, faction/track-record edge cases | 23 |
+| **Total** | | **61 passed** |
 
 ---
 
-## 9. API Endpoints - Complete Reference (v0.10.0)
+## 9. API Endpoints - Complete Reference (v0.13.0)
 
 | Method | Path | Description | Added |
 |---|---|---|---|
