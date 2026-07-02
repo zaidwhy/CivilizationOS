@@ -1100,3 +1100,20 @@ Everything else originally scoped, plus everything added along the way (factions
 | Recompute factions every 60 ticks (not every tick) | Phase 10 | Relationships change slowly; O(n²) scan every tick is wasteful. 60 ticks is frequent enough to catch forming alliances. |
 | Faction context appended to TCMF `ctx.context_text` | Phase 10 | All five council specialists already read this field — no API changes needed, and factions automatically inform all role prompts. |
 | Canvas ring for faction membership (not filled halo) | Phase 10 | A filled halo would obscure the fear-colour node; a thin ring is additive — faction colour and fear colour visible simultaneously. |
+
+---
+
+## Phase 14 - Refinement pass (2026-07-02)
+
+Not a feature phase: an audit + polish sweep over everything built in Phases 0-13.
+
+- **Environment repair:** the .venv had broken under Python 3.14 (numpy 2.2.1 / pydantic 2.10.4 predate 3.14 support and fail at import). Upgraded the stack in-place and updated requirements.txt pins so a fresh clone works on 3.12-3.14. All 61 tests pass.
+- **Bundle:** three.js split into its own chunk (with pixi/vendor chunks) so the app shell loads first and render engines cache independently.
+- **UI polish (no new features):** Inter + JetBrains Mono type system, refined wordmark with accent OS, tinted glowing status pills, section headers with gradient rules, hover/focus-visible states, softer scrollbars/slider, cinematic vignette over the 3D stage, tone-mapping exposure 0.95 -> 1.18 + ambient lift so walls read on uncalibrated monitors, stability sparkline fill softened.
+- **Docs:** README screenshots were still from the retired PixiJS era; replaced with live captures of the Three.js city mid-pandemic and the Story Rewind showing two council verdicts (one crisis injected by hand, one emergent). Em dashes purged from README, HOW_TO_RUN, and all UI copy. Stale .venv312 references fixed.
+
+| Decision | Phase | Why |
+|---|---|---|
+| requirements.txt moved to >= floors at verified-working versions | 14 | The == pins could never install on modern Python; floors keep fresh clones working without freezing the project to a dead interpreter |
+| Exposure lift over light redesign | 14 | The noir mood comes from the key/fill ratio; raising exposure + ambient preserves the aesthetic while fixing readability |
+| MASTER_BUILD_LOG em dashes left in place | 14 | Historical record; rewriting history is worse than the style violation |
