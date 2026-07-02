@@ -1,12 +1,12 @@
 # CivilizationOS — How to Run & Test
 
-**Version 0.8.0** | Last updated: 2026-06-22
+**Version 0.13.0** | Last updated: 2026-07-02
 
 ---
 
 ## Prerequisites
 
-- Python 3.11+ with `.venv` set up (`pip install -r requirements.txt`)
+- Python 3.12 with `.venv312` set up (`pip install -r api/requirements.txt`) — Python 3.14 has a numpy ABI mismatch, use 3.12
 - Node.js 18+ for the frontend
 - [Ollama](https://ollama.com) running locally
 - `qwen2.5:3b-instruct` pulled: `ollama pull qwen2.5:3b-instruct`
@@ -19,7 +19,8 @@
 ### 1. API (Terminal 1)
 ```powershell
 cd C:\Users\Asus\projects\CivilizationOS
-& ".venv\Scripts\uvicorn" api.main:app --reload --port 8000
+$env:PYTHONIOENCODING="utf-8"
+& ".venv312\Scripts\uvicorn" api.main:app --reload --port 8000
 ```
 
 ### 2. Frontend (Terminal 2)
