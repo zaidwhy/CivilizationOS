@@ -195,6 +195,8 @@ Open **http://localhost:5173** in your browser.
 
 ## Demo Walkthrough
 
+![Citizen Inspector - memories, relationships, fear history](docs/screenshots/inspector.png)
+
 1. Wait a few ticks for citizens to start moving and talking.
 2. Click any citizen → **Inspector panel** shows their mind, memories, backstory, and fear history.
 3. Scroll the right sidebar to **⚖ PANTHEON COUNCIL**.
