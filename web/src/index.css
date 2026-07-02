@@ -110,7 +110,7 @@ body {
   pointer-events: none;
   z-index: 5;
   background:
-    radial-gradient(140% 100% at 50% 40%, transparent 55%, rgba(4, 6, 10, 0.42) 100%);
+    radial-gradient(150% 110% at 50% 42%, transparent 72%, rgba(4, 6, 10, 0.28) 100%);
 }
 
 .sidebar {
