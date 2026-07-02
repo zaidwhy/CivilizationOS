@@ -29,8 +29,8 @@ function StabilitySparkline() {
     const last = scores[scores.length - 1];
     const color = last >= 60 ? "#4ade80" : last >= 35 ? "#fbbf24" : "#f87171";
     const grad = ctx.createLinearGradient(0, 0, 0, H);
-    grad.addColorStop(0, color + "50");
-    grad.addColorStop(1, color + "08");
+    grad.addColorStop(0, color + "2e");
+    grad.addColorStop(1, color + "05");
     ctx.beginPath();
     ctx.moveTo(toX(0), H);
     ctx.lineTo(toX(0), toY(scores[0]));
@@ -53,7 +53,7 @@ function StabilitySparkline() {
     <canvas
       ref={canvasRef} width={W} height={H}
       style={{ borderRadius: 3, background: "rgba(0,0,0,0.2)", cursor: "default" }}
-      title={`City stability over ${history.length * 5} ticks — current: ${last}`}
+      title={`City stability over ${history.length * 5} ticks - current: ${last}`}
     />
   );
 }
@@ -285,7 +285,7 @@ function StabilityBadge() {
   return (
     <span
       className="pill"
-      title={`City stability ${score}/100 — avg fear ${Math.round(avgFear * 100)}%, ${activeCrises.length} active crisis`}
+      title={`City stability ${score}/100 - avg fear ${Math.round(avgFear * 100)}%, ${activeCrises.length} active crisis`}
       style={{ color, borderColor: color, cursor: "default", fontWeight: 700 }}
     >
       ◈ {label} {score}
