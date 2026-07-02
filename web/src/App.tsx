@@ -335,7 +335,7 @@ export default function App() {
     <div className="app">
       <Onboarding />
       <header className="topbar">
-        <h1>CIVILIZATION&nbsp;OS</h1>
+        <h1>CIVILIZATION&nbsp;<span className="os">OS</span></h1>
         <span className={`pill ${conn === "open" ? "live" : "off"}`}>
           {conn === "open" ? "● live" : conn}
         </span>
