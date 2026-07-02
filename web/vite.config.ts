@@ -4,6 +4,9 @@ import react from "@vitejs/plugin-react";
 export default defineConfig({
   plugins: [react()],
   build: {
+    // three.js alone minifies to ~520 kB; it has its own chunk and caches
+    // independently, so the default 500 kB warning is expected noise here.
+    chunkSizeWarningLimit: 600,
     rollupOptions: {
       output: {
         // three.js and pixi.js dominate bundle size; splitting them lets the
