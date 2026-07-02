@@ -1,8 +1,10 @@
 # CivilizationOS
 
-> A multi-agent society simulation powered by autonomous AI citizens, institutional councils, and a novel RAG architecture — built as a portfolio-grade AI project on a near-zero budget.
+> A multi-agent society simulation powered by autonomous AI citizens, institutional councils, and a novel RAG architecture - built as a portfolio-grade AI project on a near-zero budget.
 
-**Status: feature-complete (Phases 0–13).** 61 backend tests passing, 0 TypeScript errors.
+**Status: feature-complete (Phases 0-13).** 61 backend tests passing, 0 TypeScript errors.
+
+![CivilizationOS - 3D city with live citizen agents](docs/screenshots/city.png)
 
 ---
 
