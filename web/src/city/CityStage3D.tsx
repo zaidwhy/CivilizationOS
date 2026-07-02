@@ -171,8 +171,9 @@ export default function CityStage3D() {
     fillLight.position.set(-10, 4, -12);
     scene.add(fillLight);
 
-    // Subtle ambient
-    scene.add(new THREE.AmbientLight(0x0d1525, 6.0));
+    // Subtle ambient (slightly lifted so building walls read on any monitor,
+    // not just calibrated ones; the noir mood comes from the key/fill ratio)
+    scene.add(new THREE.AmbientLight(0x131d30, 7.5));
 
     // ── Camera ────────────────────────────────────────────────────────────────
     const W0 = el.offsetWidth || 800, H0 = el.offsetHeight || 600;
