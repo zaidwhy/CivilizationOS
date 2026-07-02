@@ -9,7 +9,7 @@ import { CSS2DRenderer, CSS2DObject } from "three/examples/jsm/renderers/CSS2DRe
 import { useWorld } from "../ws/store";
 import type { LocationT, Citizen } from "../ws/store";
 
-// ── Palette — delegation-inspired: rich, muted jewel tones, clean geometry ──
+// ── Palette - delegation-inspired: rich, muted jewel tones, clean geometry ──
 const BG   = 0x080c14;
 const CELL = 2.4;
 
@@ -50,9 +50,9 @@ function makeSkyDome(): THREE.Mesh {
   canvas.width = 2; canvas.height = 256;
   const ctx = canvas.getContext("2d")!;
   const grad = ctx.createLinearGradient(0, 0, 0, 256);
-  grad.addColorStop(0,    "#0b1428"); // zenith  — deep midnight blue
+  grad.addColorStop(0,    "#0b1428"); // zenith  - deep midnight blue
   grad.addColorStop(0.55, "#0d1520"); // mid
-  grad.addColorStop(1,    "#060a10"); // horizon — almost black
+  grad.addColorStop(1,    "#060a10"); // horizon - almost black
   ctx.fillStyle = grad;
   ctx.fillRect(0, 0, 2, 256);
   const tex = new THREE.CanvasTexture(canvas);
@@ -128,7 +128,7 @@ export default function CityStage3D() {
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     renderer.toneMapping          = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure  = 0.95;
+    renderer.toneMappingExposure  = 1.18;
     renderer.setClearColor(BG, 1);
     renderer.shadowMap.enabled    = true;
     renderer.shadowMap.type       = THREE.PCFSoftShadowMap;
@@ -188,7 +188,7 @@ export default function CityStage3D() {
     controls.minDistance    = 6;
     controls.maxDistance    = 55;
 
-    // ── Post-processing — very subtle bloom only for accent glows ────────────
+    // ── Post-processing - very subtle bloom only for accent glows ────────────
     const composer = new EffectComposer(renderer);
     composer.addPass(new RenderPass(scene, camera));
     const bloom = new UnrealBloomPass(new THREE.Vector2(W0, H0), 0.28, 0.6, 0.55);
@@ -263,7 +263,7 @@ export default function CityStage3D() {
         const p   = gridToWorld(loc.x, loc.y, gw, gh);
         const bw  = CELL * 0.50;
 
-        // Body — clean matte, casts + receives shadow
+        // Body - clean matte, casts + receives shadow
         const bodyGeo = new THREE.BoxGeometry(bw, def.height, bw);
         const bodyMat = new THREE.MeshStandardMaterial({
           color: def.color, roughness: 0.72, metalness: 0.18,
@@ -273,7 +273,7 @@ export default function CityStage3D() {
         body.castShadow = body.receiveShadow = true;
         buildingGroup.add(body);
 
-        // Thin roof accent — slight emissive glow (not neon, just a hint)
+        // Thin roof accent - slight emissive glow (not neon, just a hint)
         const roofGeo = new THREE.BoxGeometry(bw + 0.07, 0.045, bw + 0.07);
         const roofMat = new THREE.MeshStandardMaterial({
           color: def.accent, emissive: new THREE.Color(def.accent),
@@ -283,7 +283,7 @@ export default function CityStage3D() {
         roof.position.set(p.x, def.height + 0.022, p.z);
         buildingGroup.add(roof);
 
-        // Name label — minimal, appears above building
+        // Name label - minimal, appears above building
         const div = document.createElement("div");
         div.textContent = loc.name;
         div.style.cssText = [
@@ -390,7 +390,7 @@ export default function CityStage3D() {
       shadow.rotation.x = -Math.PI / 2;
       shadow.position.y = 0.003;
 
-      // Citizen label — first name only, ultra minimal
+      // Citizen label - first name only, ultra minimal
       const nameDiv = document.createElement("div");
       nameDiv.textContent = name.split(" ")[0];
       nameDiv.style.cssText = [
@@ -405,7 +405,7 @@ export default function CityStage3D() {
       const label = new CSS2DObject(nameDiv);
       label.position.set(0, 1.45, 0);
 
-      // Speech bubble — clean dark glass
+      // Speech bubble - clean dark glass
       const bubbleEl = document.createElement("div");
       bubbleEl.style.cssText = [
         "background:rgba(6,10,18,0.82)",
