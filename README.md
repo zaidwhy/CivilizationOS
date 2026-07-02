@@ -37,6 +37,8 @@ Fused score = episodic_score(m, q) × (1 + λ × causal_boost(m))
 
 The `causal_boost` rewards memories that are semantically near the **causal ancestors** of the current crisis. A witness at the scene of a root cause outranks someone who heard about it second-hand. No off-the-shelf RAG system does this.
 
+**Full design write-up: [docs/tcmf.md](./docs/tcmf.md)** - the scoring formulas with code, a worked plague-outbreak example, the honest tradeoffs (inferred causality is noisy, three tunable parameters, BFS latency at scale), and what v2 would change.
+
 ### 2. 3-Tier LLM Router — runs at $0 in dev
 
 | Tier | Brain | Used for | Cost |
