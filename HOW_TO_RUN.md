@@ -47,7 +47,7 @@ Expected output:
 ```json
 {
   "status": "ok",
-  "version": "0.8.0",
+  "version": "0.13.0",
   "brains": {
     "local":   "qwen2.5:3b-instruct",
     "council": "civos-council",      ← purple pill in header
