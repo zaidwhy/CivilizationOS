@@ -6,7 +6,7 @@
 
 ## Prerequisites
 
-- Python 3.12 with `.venv` set up (`pip install -r api/requirements.txt`) - Python 3.14 has a numpy ABI mismatch, use 3.12
+- Python 3.14 with `.venv` set up (`pip install -r api/requirements.txt`) - requirements.txt was refreshed 2026-07-02 so numpy/pydantic work on 3.14; `.venv312` (Python 3.12) remains only as a legacy fallback
 - Node.js 18+ for the frontend
 - [Ollama](https://ollama.com) running locally
 - `qwen2.5:3b-instruct` pulled: `ollama pull qwen2.5:3b-instruct`
