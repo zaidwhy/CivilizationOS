@@ -1069,6 +1069,7 @@ Everything else originally scoped, plus everything added along the way (factions
 | POST | `/crisis/id/{id}/resolve` | Resolve any crisis by registry ID | Phase 7 |
 | GET | `/chronicle` | LLM-generated prose city dispatch (cached 75 s) | Phase 8 |
 | GET | `/track_record` | Per-council debates, verdicts, effectiveness score | Phase 9 |
+| GET | `/export` | Full session JSON snapshot (citizens, events, crises, causal graph, factions) | Phase 11 |
 
 ---
 
