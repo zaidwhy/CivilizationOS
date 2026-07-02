@@ -140,12 +140,11 @@ Invoke-RestMethod "http://localhost:8000/crisis" -Method POST `
 
 ## Run Tests
 
-> Note: Tests require Python 3.11/3.12. NumPy C extensions don't support Python 3.14 yet.
+> Note: Tests require Python 3.12 (`.venv312`). NumPy C extensions don't support Python 3.14 yet.
 
 ```powershell
-# With compatible Python
-python -m pytest api/tests/ -q
-# Expected: 54 passed
+.venv312\Scripts\python -m pytest api/tests/ -q
+# Expected: 61 passed
 ```
 
 ---
