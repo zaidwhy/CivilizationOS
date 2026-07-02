@@ -174,5 +174,5 @@ All settings default to free/local if omitted. The app runs at $0/day on Ollama 
 | Purple pill not showing | Check `.env` has `OLLAMA_COUNCIL_MODEL=civos-council`, restart API |
 | `civos-council` not found by Ollama | Run `ollama create civos-council -f ml/Modelfile` (needs GGUF at `ml/unsloth.Q4_K_M.gguf`) |
 | Debate turns don't appear | WebSocket disconnected — refresh browser, check API is running |
-| `uvicorn` command not found | Use `& ".venv\Scripts\uvicorn"` in PowerShell |
-| Tests fail with numpy error | Use Python 3.11/3.12 virtual env, not 3.14 |
+| `uvicorn` command not found | Use `& ".venv312\Scripts\uvicorn"` in PowerShell |
+| Tests fail with numpy error | Use the Python 3.12 virtual env (`.venv312`), not 3.14 |
