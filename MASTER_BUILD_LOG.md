@@ -1010,44 +1010,28 @@ All three Phase 8 items complete: speech bubbles ✅, graph tooltip ✅, fine-tu
 
 ---
 
-## 7. What Remains - Phase 14+ Candidates
+## 7. Project Closed Out (2026-07-02)
 
-Phases 0–13 complete. Remaining backlog:
-
-### Requires external setup
+Phases 0–13 complete. This build is considered final. Two items remain, both intentionally left for outside this codebase rather than unfinished work:
 
 **A. Fine-tuned GGUF export (to fully activate the council model)**
 - `ml/train_lora.ipynb` - run on Colab T4, export GGUF
 - `ollama create civos-council -f Modelfile`
 - `OLLAMA_COUNCIL_MODEL=civos-council` in `.env`
-- Routing code and header pill are already live and waiting
+- Routing code and header pill are already live and waiting - this is a one-env-var activation once the GGUF exists locally
 
 **B. Deploy frontend to Vercel**
 - `cd web && vercel` - one command
-- Backend has Ollama dependency (needs local + ngrok or self-hosted API)
+- Backend has an Ollama dependency (needs local + tunnel, or a self-hosted API)
 - Set `VITE_API_BASE_URL` for the Vercel build
 - Explicitly deferred by user (2026-06-21): "we will deploy it after i say we should"
 
-### Nice-to-have in-code additions
+Everything else originally scoped, plus everything added along the way (factions, emergent crises, council track record, Story Rewind, 3D city), shipped:
 
-**C. ~~Citizen faction system~~ — DONE (Phase 10)**
-- Union-find faction detection, named blocs, Inspector badge, RelationshipGraph rings + legend, council debate context injection
-
-**D. CouncilChamber debate archiving**
-- Many debates pile up with no collapse/archive UX; older debates crowd the panel
-- File: `web/src/panels/CouncilChamber.tsx`
-
-**E. Chronicle faction integration**
-- Chronicle panel generates city dispatch without faction awareness; could mention active blocs by name
-- File: `web/src/panels/Chronicle.tsx`, `api/main.py`
-
-### Original plan items never attempted
-
-**E. "Rewind story" scrubber**
-- Causal graph exists and is queryable via `/timeline`; but no timeline scrubbing UI was ever built
-
-**F. Demo video recording**
-- No recording tooling or scripts in repo
+- **Story Rewind scrubber** - done in Phase 13 (`Timeline.tsx`), closing the one item that had been open since Phase 3.
+- **Chronicle faction integration** - done across Phase 11 (backend context) and Phase 13 (frontend faction pill badges).
+- **CouncilChamber debate archive** - done in Phase 13 (institution-coloured, collapsible completed-debate cards).
+- **Demo video recording** - never attempted; no recording tooling in repo, and not required for the four pillars this project demonstrates.
 
 ---
 
