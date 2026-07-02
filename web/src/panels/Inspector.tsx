@@ -92,7 +92,7 @@ export default function Inspector() {
   if (!selectedId) {
     return (
       <div className="panel hint">
-        <p>Click a citizen on the city map to inspect their mind — memories, relationships, and current state.</p>
+        <p>Click a citizen on the city map to inspect their mind - memories, relationships, and current state.</p>
       </div>
     );
   }
@@ -149,7 +149,7 @@ export default function Inspector() {
       {fearLabel && (
         <div className="fear-bar">
           <div className="fear-label">
-            ⚠ {fearLabel}{detail.active_crisis ? ` — ${detail.active_crisis}` : ""} ({fearPct}%)
+            ⚠ {fearLabel}{detail.active_crisis ? ` - ${detail.active_crisis}` : ""} ({fearPct}%)
           </div>
           <div className="fear-track">
             <div className="fear-fill" style={{ width: `${fearPct}%` }} />

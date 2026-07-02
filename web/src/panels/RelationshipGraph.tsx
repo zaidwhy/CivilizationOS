@@ -43,7 +43,7 @@ export default function RelationshipGraph() {
   const [graph, setGraph] = useState<GraphData | null>(null);
   const [tooltip, setTooltip] = useState<TooltipData | null>(null);
 
-  // Refs for RAF loop — avoids stale closure / restart on every render
+  // Refs for RAF loop - avoids stale closure / restart on every render
   const citizensRef = useRef(citizens);
   const selectedIdRef = useRef(selectedId);
   const graphRef = useRef(graph);
@@ -69,7 +69,7 @@ export default function RelationshipGraph() {
     return () => clearInterval(id);
   }, []);
 
-  // Single RAF loop — runs once on mount, reads everything from refs
+  // Single RAF loop - runs once on mount, reads everything from refs
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -227,7 +227,7 @@ export default function RelationshipGraph() {
 
     rafRef.current = requestAnimationFrame(frame);
     return () => cancelAnimationFrame(rafRef.current);
-  }, []); // intentionally empty — loop runs once and reads from refs
+  }, []); // intentionally empty - loop runs once and reads from refs
 
   function handleClick(e: React.MouseEvent<HTMLCanvasElement>) {
     const rect = canvasRef.current!.getBoundingClientRect();

@@ -1,4 +1,4 @@
-# CivilizationOS — How to Run & Test
+# CivilizationOS - How to Run & Test
 
 **Version 0.13.0** | Last updated: 2026-07-02
 
@@ -6,7 +6,7 @@
 
 ## Prerequisites
 
-- Python 3.12 with `.venv312` set up (`pip install -r api/requirements.txt`) — Python 3.14 has a numpy ABI mismatch, use 3.12
+- Python 3.12 with `.venv` set up (`pip install -r api/requirements.txt`) - Python 3.14 has a numpy ABI mismatch, use 3.12
 - Node.js 18+ for the frontend
 - [Ollama](https://ollama.com) running locally
 - `qwen2.5:3b-instruct` pulled: `ollama pull qwen2.5:3b-instruct`
@@ -20,7 +20,7 @@
 ```powershell
 cd C:\Users\Asus\projects\CivilizationOS
 $env:PYTHONIOENCODING="utf-8"
-& ".venv312\Scripts\uvicorn" api.main:app --reload --port 8000
+& ".venv\Scripts\uvicorn" api.main:app --reload --port 8000
 ```
 
 ### 2. Frontend (Terminal 2)
@@ -103,7 +103,7 @@ Restart the API after changing `.env`.
 
 ### Fine-Tuned Model (if civos-council active)
 - [ ] Purple 🧠 civos-council pill visible in header
-- [ ] Inject a crisis and watch 4 debate turns — they come from local Ollama (fast, no API cost)
+- [ ] Inject a crisis and watch 4 debate turns - they come from local Ollama (fast, no API cost)
 - [ ] `tier2_spent_usd` stays at 0.0 when `premium_mode: false`
 
 ### Relationship Graph
@@ -140,10 +140,10 @@ Invoke-RestMethod "http://localhost:8000/crisis" -Method POST `
 
 ## Run Tests
 
-> Note: Tests require Python 3.12 (`.venv312`). NumPy C extensions don't support Python 3.14 yet.
+> Note: Tests require Python 3.12 (`.venv`). NumPy C extensions don't support Python 3.14 yet.
 
 ```powershell
-.venv312\Scripts\python -m pytest api/tests/ -q
+.venv\Scripts\python -m pytest api/tests/ -q
 # Expected: 61 passed
 ```
 
@@ -155,10 +155,10 @@ Invoke-RestMethod "http://localhost:8000/crisis" -Method POST `
 # Fine-tuned council model
 OLLAMA_COUNCIL_MODEL=civos-council
 
-# Optional: Tier 1 — Gemini free tier
+# Optional: Tier 1 - Gemini free tier
 GEMINI_API_KEY=your_key_here
 
-# Optional: Tier 2 — Claude (requires PREMIUM_MODE=true)
+# Optional: Tier 2 - Claude (requires PREMIUM_MODE=true)
 ANTHROPIC_API_KEY=your_key_here
 PREMIUM_MODE=false
 ```
@@ -173,6 +173,6 @@ All settings default to free/local if omitted. The app runs at $0/day on Ollama 
 |---|---|
 | Purple pill not showing | Check `.env` has `OLLAMA_COUNCIL_MODEL=civos-council`, restart API |
 | `civos-council` not found by Ollama | Run `ollama create civos-council -f ml/Modelfile` (needs GGUF at `ml/unsloth.Q4_K_M.gguf`) |
-| Debate turns don't appear | WebSocket disconnected — refresh browser, check API is running |
-| `uvicorn` command not found | Use `& ".venv312\Scripts\uvicorn"` in PowerShell |
-| Tests fail with numpy error | Use the Python 3.12 virtual env (`.venv312`), not 3.14 |
+| Debate turns don't appear | WebSocket disconnected - refresh browser, check API is running |
+| `uvicorn` command not found | Use `& ".venv\Scripts\uvicorn"` in PowerShell |
+| Tests fail with numpy error | Use the Python 3.12 virtual env (`.venv`), not 3.14 |

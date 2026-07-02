@@ -3,7 +3,7 @@ import { useState } from "react";
 const STEPS = [
   {
     title: "Welcome to CivilizationOS",
-    body: "A living city of 10 AI citizens governed by 5 institutional councils. Watch society evolve — or break it yourself by injecting crises.",
+    body: "A living city of 10 AI citizens governed by 5 institutional councils. Watch society evolve - or break it yourself by injecting crises.",
     icon: "🏙️",
   },
   {
@@ -13,12 +13,12 @@ const STEPS = [
   },
   {
     title: "The PANTHEON Council",
-    body: "Scroll the right sidebar to ⚖ PANTHEON COUNCIL. Pick a crisis preset (Pandemic, Drought, etc.) and click Inject. Five AI specialists — Historian, Strategist, Skeptic, Predictor, Synthesizer — debate live.",
+    body: "Scroll the right sidebar to ⚖ PANTHEON COUNCIL. Pick a crisis preset (Pandemic, Drought, etc.) and click Inject. Five AI specialists - Historian, Strategist, Skeptic, Predictor, Synthesizer - debate live.",
     icon: "⚖️",
   },
   {
     title: "TCMF: Novel RAG",
-    body: "Each council debate is grounded by Temporal-Causal Memory Fusion — a retrieval system that fuses citizen episodic memories with the society-wide causal graph. The Historian literally argues from precedent.",
+    body: "Each council debate is grounded by Temporal-Causal Memory Fusion - a retrieval system that fuses citizen episodic memories with the society-wide causal graph. The Historian literally argues from precedent.",
     icon: "🧠",
   },
   {

@@ -171,7 +171,7 @@ export default function CouncilChamber() {
   const liveId = activeDebateId && !isActiveComplete ? activeDebateId : null;
   const liveTurns = liveId ? activeTurns : [];
 
-  // Completed debates — newest first (Object.keys insertion order)
+  // Completed debates - newest first (Object.keys insertion order)
   const allDebateIds = Object.keys(debates);
   const completedIds = [...allDebateIds]
     .filter((id) => debates[id].some((t) => t.is_final))
@@ -421,7 +421,7 @@ export default function CouncilChamber() {
         {error && <div style={{ fontSize: 11, color: "#f87171" }}>Error: {error}</div>}
       </div>
 
-      {/* Live debate — expanded, auto-scrolls */}
+      {/* Live debate - expanded, auto-scrolls */}
       {liveId ? (
         <div style={{ maxHeight: 280, overflowY: "auto" }}>
           <div style={{ fontSize: 10, color: "#64748b", marginBottom: 8 }}>
@@ -436,7 +436,7 @@ export default function CouncilChamber() {
         </div>
       ) : null}
 
-      {/* Latest completed debate — collapsed card, click to expand */}
+      {/* Latest completed debate - collapsed card, click to expand */}
       {latestCompletedId && (
         <CompletedDebateCard
           turns={debates[latestCompletedId]}
@@ -447,7 +447,7 @@ export default function CouncilChamber() {
         />
       )}
 
-      {/* Older debates — hidden behind accordion */}
+      {/* Older debates - hidden behind accordion */}
       {olderIds.length > 0 && (
         <div>
           <button

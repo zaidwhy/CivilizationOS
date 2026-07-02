@@ -177,7 +177,7 @@ export default function CityStage() {
         if (crisisCount > prevCrisisCount) crisisFlashUntil = performance.now() + 1000;
         prevCrisisCount = crisisCount;
 
-        // Fear heatmap — semi-transparent tile overlays at each location
+        // Fear heatmap - semi-transparent tile overlays at each location
         const fearByLoc = new Map<string, number>();
         for (const c of w.citizens) {
           if ((c.fear ?? 0) > 0.08 && c.location_id) {
@@ -216,7 +216,7 @@ export default function CityStage() {
             .stroke({ width: 1.5, color: 0x0b0e14 });
           s.ring.alpha = selected === c.id ? 1 : 0;
 
-          // Fear aura — glowing halo behind dot for frightened citizens
+          // Fear aura - glowing halo behind dot for frightened citizens
           s.fearAura.clear();
           const fear = c.fear ?? 0;
           if (fear > 0.12) {
@@ -224,7 +224,7 @@ export default function CityStage() {
             s.fearAura.circle(0, 0, 8 + fear * 10).fill({ color: auraColor, alpha: 0.15 + fear * 0.30 });
           }
           if (c.speech) {
-            // Strip "Name: " prefix — name is already shown in the label below
+            // Strip "Name: " prefix - name is already shown in the label below
             const raw = c.speech;
             const colonIdx = raw.indexOf(": ");
             const dialogue = colonIdx !== -1 ? raw.slice(colonIdx + 2) : raw;
