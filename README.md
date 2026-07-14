@@ -1,5 +1,8 @@
 # CivilizationOS
 
+[![CI](https://github.com/syzayd/CivilizationOS/actions/workflows/ci.yml/badge.svg)](https://github.com/syzayd/CivilizationOS/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
+
 > A multi-agent society simulation powered by autonomous AI citizens, institutional councils, and a novel RAG architecture - built as a portfolio-grade AI project on a near-zero budget.
 
 **Status: feature-complete (Phases 0-13).** 61 backend tests passing, 0 TypeScript errors.
