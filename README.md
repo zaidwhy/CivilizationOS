@@ -1,6 +1,9 @@
 # CivilizationOS
 
 [![CI](https://github.com/syzayd/CivilizationOS/actions/workflows/ci.yml/badge.svg)](https://github.com/syzayd/CivilizationOS/actions/workflows/ci.yml)
+![Tests](https://img.shields.io/badge/tests-61%20passed-brightgreen)
+![Python](https://img.shields.io/badge/python-3.12%2B-blue)
+![Node](https://img.shields.io/badge/node-18%2B-blue)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
 > A multi-agent society simulation powered by autonomous AI citizens, institutional councils, and a novel RAG architecture - built as a portfolio-grade AI project on a near-zero budget.
@@ -282,3 +285,15 @@ Full phase-by-phase build record (0 through 13), design decisions, and plan-vs-r
 **Deliberately out of scope for this build:**
 - **Vercel deployment** - the frontend is deploy-ready (`cd web && vercel`), but the backend depends on a local Ollama instance, so a public deploy needs either a tunnel or a self-hosted API. Deferred by explicit choice, not left unfinished.
 - **Demo video recording** - no recording tooling in-repo.
+
+---
+
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md). The short version: `api/tests/` stays fully
+offline (no live Ollama/Gemini/Claude calls - router tests exercise tier-selection
+logic only), and `PREMIUM_MODE` must stay `false` by default so the app runs at $0.
+
+## License
+
+[MIT](LICENSE).
