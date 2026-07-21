@@ -1117,3 +1117,40 @@ Not a feature phase: an audit + polish sweep over everything built in Phases 0-1
 | requirements.txt moved to >= floors at verified-working versions | 14 | The == pins could never install on modern Python; floors keep fresh clones working without freezing the project to a dead interpreter |
 | Exposure lift over light redesign | 14 | The noir mood comes from the key/fill ratio; raising exposure + ambient preserves the aesthetic while fixing readability |
 | MASTER_BUILD_LOG em dashes left in place | 14 | Historical record; rewriting history is worse than the style violation |
+
+---
+
+## Research - TCMF paper benchmark + retriever fixes (2026-07-21)
+
+Not a feature phase: a research effort to evaluate whether TCMF (Temporal-Causal Memory Fusion)
+is a publishable retrieval contribution, plus the code fixes that effort surfaced. All work in
+`research/tcmf_paper/` (self-contained `tcmfbench` package + FINDINGS.md); the four fixes land
+in `api/memory/tcmf.py`. All 61+ tests pass (66 collected).
+
+- **Benchmark harness built** (`tcmfbench/`): a controlled, offline, deterministic benchmark
+  that drives the REAL `TCMFRetriever` against scenarios with known causal ground truth. Three
+  tiers: synthetic pure-regime (angle-mixed embeddings), synthetic mixed-regime (causal-gold +
+  semantic-gold + edge dropout), and a real-text tier (Ollama nomic-embed-text, 6 crisis
+  domains, disk-cached). Six baselines (random, recency, semantic RAG, episodic, causal-only,
+  HippoRAG-style graph PPR) + additive / RRF / multiplicative fusion variants. Metrics:
+  recall@k, root-cause MRR/rank, nDCG.
+- **Go/no-go finding (the crux):** the causal signal is strong (causal-only recall@5 = 1.00)
+  but the ORIGINAL multiplicative fusion `episodic x (1 + lambda*boost)` exploited none of it
+  (recall@5 = 0.00, lambda-ablation flat) - a near-zero episodic base cannot be lifted. A
+  normalized ADDITIVE fusion of the identical scores recovers the full signal. In the mixed
+  regime additive TCMF strictly beats every single-signal baseline at recall@10 and degrades
+  gracefully under edge dropout. Effect survives real embeddings (recall@10 = 1.00, root at
+  rank 1.1).
+- **Four `TCMFRetriever` defects fixed** (see decision table): fusion operator, crisis
+  self-ancestor leak, depth-weight direction, pre-fusion per-citizen pruning.
+- **Anisotropy lesson:** real nomic embeddings sit at cosine ~0.5 for unrelated text, so the
+  causal-similarity threshold must be retuned per encoder (0.45 -> 0.60) or distractors leak a
+  spurious boost.
+
+| Decision | Why |
+|---|---|
+| Multiplicative fusion -> normalized-additive `minmax(episodic) + lambda*boost` | A root-cause memory is semantically far from the crisis, so episodic ~ 0; multiplicative can never lift it. Additive lets the causal signal surface it. Default lambda raised 0.6 -> 2.0 (additive weights are O(1-4)). |
+| Exclude the crisis node from its own ancestor set | The institution-scoped weak-ancestor fallback re-added the crisis at depth 3, leaking a boost to semantically-similar distractors. |
+| Depth weight `1-(d-1)/D` -> `d/D` (favor root) | The old form gave the deepest (root) ancestor the LOWEST weight, contradicting the docstring; root cause now surfaces at rank 1. |
+| Remove per-citizen episodic top-8 prune (pull full candidate pool) | The prune ran before the causal boost, dropping low-relevance root-cause memories before they could be rescued. |
+| Keep synthetic embeddings as the controlled core, add real-text as a tier | Synthetic gives exact ground truth and full causal-vs-semantic control; real text tests whether the effect survives real geometry. Both matter. |

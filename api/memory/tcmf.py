@@ -8,16 +8,25 @@ information streams:
     2. PANTHEON stream — society-wide causal graph: which past events causally
                         preceded the current crisis, and how deep in that chain?
 
-The fused score for a citizen memory m given crisis q is:
+The fused score for a citizen memory m given crisis q is the normalized-additive
+combination of the two streams:
 
-    tcmf_score(m) = episodic_score(m, q) × (1 + λ × causal_boost(m))
+    tcmf_score(m) = normalize(episodic_score(m, q)) + lambda * causal_boost(m)
 
-where causal_boost(m) = max causal-depth of any graph node whose embedding is
-cosine-similar to m (similarity ≥ threshold), normalized to [0, 1].
+where episodic scores are min-max normalized across the candidate pool so the
+causal term can compete, and causal_boost(m) = max over causal ancestors a of
+[cos(emb(m), emb(a)) * depth_weight(a)] for cos >= threshold, in [0, 1]. The depth
+weight rewards ancestors closer to the root cause (deeper in the chain).
+
+Additive (not multiplicative) fusion is deliberate: a root-cause memory is
+semantically far from the crisis, so its episodic score is near zero; the earlier
+multiplicative form `episodic * (1 + lambda*boost)` could never lift it, because a
+near-zero base stays near-zero however large the boost. Additive fusion lets the
+causal signal surface such memories. See research/tcmf_paper/FINDINGS.md (F3-F7).
 
 This rewards memories that are semantically near the causal ancestors of the
-current crisis — a witness who was at the scene of a cause outranks one who
-only heard about it later.
+current crisis: a witness who was at the scene of the root cause outranks one who
+only heard a similar-sounding symptom later.
 """
 from __future__ import annotations
 
@@ -48,12 +57,24 @@ class TCMFRetriever:
     def __init__(
         self,
         causal_graph: CausalGraph,
-        causal_boost: float = 0.6,
+        causal_boost: float = 2.0,
         causal_sim_threshold: float = 0.45,
+        *,
+        max_depth: int = 4,
+        weak_ancestor_depth: int = 3,
+        candidate_k: int = 10_000,
     ) -> None:
         self.graph = causal_graph
+        # causal_boost is the additive weight (lambda) on the [0,1] causal term. It is applied
+        # ADDITIVELY to a normalized episodic score, so useful values are O(1-4), not <1 as in
+        # the old multiplicative form. See research/tcmf_paper/FINDINGS.md.
         self.causal_boost = causal_boost
         self.causal_sim_threshold = causal_sim_threshold
+        self.max_depth = max_depth
+        self.weak_ancestor_depth = weak_ancestor_depth
+        # Per-citizen candidate pool. Must be large: episodic pre-filtering would drop
+        # low-relevance root-cause memories BEFORE the causal boost can rescue them (fix #4).
+        self.candidate_k = candidate_k
 
     async def retrieve(
         self,
@@ -79,28 +100,39 @@ class TCMFRetriever:
         # 2. Build causal ancestor map {ancestor_id: depth}
         ancestors: dict[str, int] = {}
         if crisis_event_id:
-            ancestors = self.graph.predecessors(crisis_event_id, max_depth=4)
+            ancestors = self.graph.predecessors(crisis_event_id, max_depth=self.max_depth)
 
-        # Also include institution-scoped recent events as weak ancestors
+        # Also include institution-scoped recent events as weak ancestors, but never the
+        # crisis itself, which would leak a boost to semantically-similar distractors (fix #2).
         for ev in self.graph.events_for_institution(institution_id)[-20:]:
             eid = ev["id"]
+            if eid == crisis_event_id:
+                continue
             if eid not in ancestors:
-                ancestors[eid] = 3  # weak depth
+                ancestors[eid] = self.weak_ancestor_depth
+        ancestors.pop(crisis_event_id, None)  # a crisis is never its own ancestor
 
-        # 3. Collect episodic memories from all citizens
+        # 3. Collect episodic memories from all citizens. Pull the full candidate pool, not a
+        #    per-citizen episodic top-k, so causal-relevant but low-relevance memories survive.
         raw: list[tuple[str, ScoredMemory]] = []
         for cid, citizen in citizens.items():
-            scored = citizen.memory.retrieve(tick, query_embedding=q_embedding, k=8, refresh=False)
+            scored = citizen.memory.retrieve(
+                tick, query_embedding=q_embedding, k=self.candidate_k, refresh=False
+            )
             for sm in scored:
                 raw.append((cid, sm))
 
-        # 4. For each memory, compute causal boost
+        # 4. Normalized-additive fusion: minmax(episodic) + lambda * causal_boost (fix #1).
         max_depth_seen = max(ancestors.values(), default=1) or 1
+        epi = [sm.score for _, sm in raw]
+        lo, hi = (min(epi), max(epi)) if epi else (0.0, 0.0)
+        span = hi - lo
         fused: list[tuple[str, Memory, float]] = []
 
         for cid, sm in raw:
+            norm_epi = (sm.score - lo) / span if span > 1e-12 else 0.0
             depth_boost = self._causal_boost_for_memory(sm.memory, ancestors, max_depth_seen)
-            score = sm.score * (1.0 + self.causal_boost * depth_boost)
+            score = norm_epi + self.causal_boost * depth_boost
             fused.append((cid, sm.memory, score))
 
         # 5. Sort and deduplicate
@@ -154,7 +186,9 @@ class TCMFRetriever:
                 continue
             sim = _cosine(memory.embedding, ev["embedding"])
             if sim >= self.causal_sim_threshold:
-                # deeper ancestors = closer to root cause = higher boost
-                normalized = 1.0 - (depth - 1) / max(max_depth, 1)
-                best = max(best, sim * normalized)
+                # deeper ancestors = closer to the root cause = higher weight (fix #3). The old
+                # form `1 - (depth-1)/max_depth` inverted this, giving the root cause the LOWEST
+                # weight and leaving it at rank ~3 even when retrieved. See FINDINGS.md (F5).
+                depth_weight = depth / max(max_depth, 1)
+                best = max(best, sim * depth_weight)
         return best
