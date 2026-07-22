@@ -1154,3 +1154,10 @@ in `api/memory/tcmf.py`. All 61+ tests pass (66 collected).
 | Depth weight `1-(d-1)/D` -> `d/D` (favor root) | The old form gave the deepest (root) ancestor the LOWEST weight, contradicting the docstring; root cause now surfaces at rank 1. |
 | Remove per-citizen episodic top-8 prune (pull full candidate pool) | The prune ran before the causal boost, dropping low-relevance root-cause memories before they could be rescued. |
 | Keep synthetic embeddings as the controlled core, add real-text as a tier | Synthetic gives exact ground truth and full causal-vs-semantic control; real text tests whether the effect survives real geometry. Both matter. |
+
+## Research - TCMF paper draft + decision-quality tier (2026-07-23)
+
+- Wrote the full TCMF paper draft (LaTeX) + an adversarial self-review (REVIEW.md, 9 ranked gaps vs the correct neighbouring literature: Zep/Graphiti, A-MEM, HippoRAG, CombSUM/RRF).
+- Paper draft is PRIVATE: repo syzayd/tcmf-paper, checked out at research/tcmf_paper/paper/ (gitignored here); removed from this repo's public history by force-push to avoid pre-submission disclosure.
+- Built the decision-quality tier (tcmfbench/decision.py, run_decision.py, llm_client.py) answering reviewer gap W1: each method's top-5 retrieved memories go to an LLM advisor (qwen2.5:3b-instruct, cached) that picks the crisis root cause from a 4-way MCQ (true governance cause + 3 external-shock decoys). n=60: decision accuracy tracks causal recall - fixed retriever tcmf_shipped 0.97 ~= oracle 0.95; symptom-only (episodic 0.25, semantic 0.35) at the no-retrieval floor 0.32; old multiplicative fusion 0.50. Retrieval choice changes the decision, not just a ranking metric. See FINDINGS.md F8.
+- Sonnet built it; Opus cross-verified (fixed a parse_letter article-"a" misparse and oracle set-ordering nondeterminism; unit-tested the parser; ran smoke n=8 then full n=60). Benchmark code + results + FINDINGS pushed here; paper section pushed to the private repo. Both in sync.
