@@ -293,6 +293,7 @@ def generate_realtext(scenario_id: str, cfg: RealConfig, seed: int,
         scenario_id=scenario_id, institution_id=inst, events=events, edges=edges,
         crisis_event_id=crisis.id, query_text=crisis_txt,
         query_embedding=query_embedding, memories=mems,
+        domain=dom["name"],
     )
 
 

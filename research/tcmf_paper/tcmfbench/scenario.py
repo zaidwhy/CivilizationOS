@@ -53,6 +53,7 @@ class Scenario:
     # filled once memories are inserted into real streams (spec.id -> real Memory.id)
     gold_memory_ids: set[str] = field(default_factory=set)
     root_cause_memory_id: str | None = None
+    domain: str | None = None
 
     def gold_specs(self) -> list[MemorySpec]:
         return [m for m in self.memories if m.label in GOLD_LABELS]

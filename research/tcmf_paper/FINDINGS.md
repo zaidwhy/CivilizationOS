@@ -173,9 +173,51 @@ below rank 5 (semantic@5 ~ 0.11) and is only recovered by rank 10 - the same lam
 the synthetic mixed regime, more pronounced on noisier real geometry. Tuning lambda per
 deployment (or a two-stage retrieve) is the practical response.
 
+## Decision-quality tier: retrieval choice changes the DECISION, not just the ranking (F8)
+
+Run: `python -m tcmfbench.run_decision --n 60 --out results_decision` (`tcmfbench/decision.py`,
+`run_decision.py`, `llm_client.py`; needs Ollama with a chat model, default `qwen2.5:3b-instruct`;
+LLM answers cached to `results_decision/llm_cache.json`, so reruns are offline and exact).
+
+This closes the biggest gap in the retrieval-only story (REVIEW.md W1): every earlier metric was
+retrieval-side, but the motivation is *agent decisions*. Here each method's top-5 retrieved
+memories are shown to an LLM council advisor, which must pick the crisis's true root cause from a
+fixed 4-way multiple choice (the true self-inflicted governance/budget cause + 3 plausible
+external-shock decoys). The true option is identifiable *only* from the causal-gold witnesses, so
+decision accuracy should track causal recall. Two controls bound it: `no_retrieval` (crisis +
+options, no memories = floor) and `oracle` (causal-gold always shown = ceiling).
+
+Results (n=60, qwen2.5:3b-instruct, k=5):
+
+| method | causal@5 | decision_acc |
+|---|---|---|
+| semantic_rag | 0.12 | 0.35 |
+| episodic | 0.02 | 0.25 |
+| causal_only | 1.00 | 0.85 |
+| graph_ppr | 0.90 | 0.78 |
+| tcmf_mult (OLD operator) | 0.42 | 0.50 |
+| tcmf_add | 0.99 | 0.83 |
+| **tcmf_shipped (fixed code)** | 0.93 | **0.97** |
+| tcmf_rrf | 0.63 | 0.55 |
+| _no_retrieval (floor)_ | - | 0.32 |
+| _oracle (ceiling)_ | - | 0.95 |
+
+**F8 - The retrieval differences convert into decision differences.** Decision accuracy tracks
+causal@5 monotonically. The pure-symptom retrievers sit at the no-retrieval floor (episodic 0.25,
+semantic 0.35 vs floor 0.32): retrieving the loud symptom tells the advisor nothing about the
+cause. The fixed additive retriever `tcmf_shipped` reaches 0.97, essentially the oracle ceiling
+(0.95), while the OLD multiplicative fusion `tcmf_mult` lands at 0.50 - the *same causal signal*,
+but the multiplicative operator surfaces it too rarely to decide correctly. A secondary point:
+`tcmf_shipped` (0.97) beats `tcmf_add` (0.83) despite similar causal@5, because favor-root depth
+weighting (fix #3) reliably places the root-cause memory inside the top-5 the advisor reads - the
+depth-direction fix matters for decisions, not just for the root_rank metric. This is the paper's
+answer to "so what if a ranking metric moved": the fusion operator changes what the agent decides.
+
 ## Still open before submission
 
-- **Write-up** (Phase 5); the skeleton and all numbers (synthetic + mixed + real-text) now exist.
+- **Write-up** (Phase 5) drafted (kept in a private repo); fold in the F8 decision tier + table.
 - **Scale the real-text tier** (more domains / larger n) and add a second encoder to show the
   threshold-tuning point generalizes.
+- **Statistical rigor / robustness** (REVIEW.md B4-B5, W7): multi-seed + paired significance,
+  a held-out lambda/tau split, and a spurious-edge (not just missing-edge) robustness study.
 </content>
