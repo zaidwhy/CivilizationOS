@@ -120,9 +120,26 @@ the effect survives real embedding geometry once the anisotropic threshold is re
 The four `TCMFRetriever` defects are fixed (all 66 tests pass). Remaining: latency of BFS vs
 plain retrieval; a second encoder; scaling the real-text tier.
 
-## Phase 5 - Write-up
+## Phase 5 - Write-up - DRAFT DONE (kept LOCAL-ONLY, not in the public repo)
 
-Standard empirical-ML skeleton, ~8 pages, open code + benchmark generator.
+The draft lives in `research/tcmf_paper/paper/` (`main.tex`, `references.bib`, `REVIEW.md`) but
+that directory is **gitignored on purpose** to avoid prior public disclosure before submission -
+it is not tracked and was removed from the public history. Back it up separately (private repo or
+external copy); it is not versioned here.
+
+Full LaTeX draft: ~8 pages, standard empirical-ML skeleton: abstract, intro, related work
+(correct neighbourhood + concurrent agent-memory systems), method (episodic + causal streams +
+the multiplicative-vs-additive fusion distinction), benchmark, results (pure/mixed/real-text tiers
+with every number from `results_*/`), the four deployed-retriever defects, limitations, conclusion.
+All tables cite the real run outputs. No em dashes. Structurally validated (balanced envs/braces,
+all cites resolve, table columns consistent); not yet compiled (no local TeX - build via Overleaf
+or MiKTeX: `pdflatex; bibtex; pdflatex x2`). `REVIEW.md` is an adversarial self-review with a
+ranked gap list and a prioritized refinement plan (top item: a downstream decision-quality task).
+
+Before submission: (1) re-verify every arXiv ID in `references.bib` against the canonical source
+(flagged in the file - do NOT ship from memory); (2) cross-check the draft with a field expert
+per the solo-author plan; (3) fold in the still-open items below (second encoder, larger real-text
+tier, BFS latency) if time permits, or scope them as future work in the paper.
 
 ## Phase 6 - Venue
 
