@@ -213,11 +213,86 @@ weighting (fix #3) reliably places the root-cause memory inside the top-5 the ad
 depth-direction fix matters for decisions, not just for the root_rank metric. This is the paper's
 answer to "so what if a ranking metric moved": the fusion operator changes what the agent decides.
 
+## N01 - Realistic candidate pool (5 seeds, pool 78-80 vs the old ~17-19) - MIXED RESULT
+
+All results F1-F8 above were measured at a small candidate pool (17 pure / 19 mixed), close to
+the size where random guessing already gets recall@10 = 0.58-0.51. N01 reruns both regimes at
+a realistic pool (~78 pure, 80 mixed: 20 distractors + 55 noise, same gold counts), pooled
+across 5 disjoint seeds (`--seeds 0,1,2,3,4`, offset by a 100k stride so scenarios cannot
+collide - see `tcmfbench/test_n01_scale.py`), n=300 scenarios per seed (1500 total). Full
+tables: `results_main_scale/RESULTS.md`, `results_mixed_scale/RESULTS_MIXED.md`.
+
+**Sanity check passed.** The `random` baseline's empirical recall@10 is 0.134 at pool~78,
+matching the closed-form analytic expectation k/pool = 0.128 almost exactly (and matching
+neither the old pool's 0.58 nor any artifact of a silently re-capped candidate pool - confirmed
+directly: `materialize()` produces the full 78/80-item pool, not a truncated one). Every
+recall@k figure below is a genuine effect of ranking, not a pool-size artifact.
+
+**Pure regime: the additive-fusion margin fully survives, and widens against the strongest
+baseline.** `tcmf_add` (clean ancestors, lam=4) is unchanged: recall@1/3/5/10 = 0.33/1.00/
+1.00/1.00 on both the old 17-pool and the new 78-pool, identical across all 5 seeds
+(no seed shows recall@10 < 1.00). `causal_only` is likewise unchanged at 1.00. The honest
+surprise is `graph_ppr` (HippoRAG-style, previously the strongest baseline at recall@10 =
+1.00±0.03): it **collapses to 0.33±0.02** at the realistic pool - root_rank goes from 9.1 to
+24.0. Mechanistically, PPR seeds most of its personalization mass on the crisis node (which is
+embedding-aligned with the query by construction), so its per-memory score is dominated by
+similarity to the crisis event; as the distractor count triples (6 to 20), more distractors
+that share the crisis's surface topic out-rank the true (semantically distant) witnesses. This
+widens TCMF's margin over its strongest prior competitor rather than narrowing it.
+
+**Pure regime: `tcmf_shipped`'s margin shrinks, and this is the honest cost of favor-root.**
+The real, shipped retriever's recall@10 drops from 1.00 (old pool) to 0.82±0.17 (new pool,
+stable within +/-0.02 across all 5 seeds) - it now trails the `causal_only` oracle by ~0.18 at
+k=10, whereas before the two were tied. `tcmf_add` (favor-proximate weighting) does not show
+this drop, so the cause is the favor-root depth weighting itself: rewarding the deepest
+ancestor's rank (root_mrr 1.00, unchanged) costs some recall on the intermediate-depth
+witnesses once more distractors compete for the same top-10 slots. This is the same
+favor-root/recall interaction the paper already documents (F5/F8): it is real, it is now
+quantified at a realistic pool, and it belongs in the limitations section, not hidden.
+
+**Mixed regime: the "additive TCMF strictly beats every single-signal baseline" claim (F6)
+does NOT survive at a realistic pool - this is the queue's most important negative result.**
+At the old pool (19), `tcmf_add` beat `graph_ppr` on recall@10 (0.98 vs 0.80) and `tcmf_shipped`
+beat it too (0.95 vs 0.80). At the realistic pool (80, pooled over 5 seeds, stable to +/-0.01):
+
+| method | recall@10 (pool 19, old) | recall@10 (pool 80, N01) | causal@5 (pool 80) | semantic@5 (pool 80) |
+|---|---|---|---|---|
+| graph_ppr | 0.80 | **0.80** (unchanged) | 0.67 | 1.00 |
+| tcmf_add | 0.98 | **0.80** (tied with graph_ppr) | 1.00 | 0.20 |
+| tcmf_shipped | 0.95 | **0.74** (now BELOW graph_ppr) | 0.86 | 0.23 |
+
+`tcmf_add`'s overall recall@10 margin over `graph_ppr` shrinks from +0.18 to an exact tie, and
+`tcmf_shipped` falls behind it. This is not noise: recall@10 per seed for `tcmf_add` is
+0.79-0.81 and for `graph_ppr` is 0.80 +/-0.00-0.01 across all 5 seeds - a stable tie, not a
+fluke. The reason is legible in the subset columns and was not retuned to fix: TCMF's edge is
+still complete and undiminished on `causal@5` (1.00 vs graph_ppr's 0.67 - the causal-ancestor
+claim this paper is actually about is untouched), but its `semantic@5` (0.20, down from 0.38 at
+the old pool) is now much worse than graph_ppr's (1.00, unchanged), because `graph_ppr`'s
+crisis-seeded PPR mass is naturally good at surfacing near-crisis semantic-gold regardless of
+pool size, while `lambda=4`'s causal weighting increasingly crowds out semantic-gold as more
+distractors compete for the same slots. **Paper implication:** the pooled "beats every
+baseline on overall recall@10" framing from F6 must be narrowed - report `causal@5` as the
+paper's real claim (still dominant, untouched by pool scale) and be explicit that the
+*pooled* recall@10 advantage over a PPR-style baseline is pool-size-dependent and vanishes at
+a realistic pool. Do not claim an overall recall@10 win against `graph_ppr` in the mixed regime
+without this caveat.
+
+Verified vs assumed: every number above is read directly from the committed
+`results_main_scale/results.json` / `results_mixed_scale/results_mixed.json` (produced by
+`tcmfbench.run_eval` / `tcmfbench.run_mixed` with `--seeds 0,1,2,3,4 --n-distractors 20
+--n-noise 55 --n 300`), not hand-typed. The analytic-vs-empirical random check and the
+disjoint-seed and no-recap-pool assertions are unit-tested in
+`tcmfbench/test_n01_scale.py` (4/4 pass). Not assumed: whether this pattern replicates on the
+real-text tier (N06, LOCAL-ONLY) or under N04's spurious-edge stress - those are separate,
+still-open questions.
+
 ## Still open before submission
 
-- **Write-up** (Phase 5) drafted (kept in a private repo); fold in the F8 decision tier + table.
+- **Write-up** (Phase 5) drafted (kept in a private repo); fold in the F8 decision tier + table,
+  and now the N01 scale finding above (both the graph_ppr collapse and the mixed-regime tie).
 - **Scale the real-text tier** (more domains / larger n) and add a second encoder to show the
   threshold-tuning point generalizes.
-- **Statistical rigor / robustness** (REVIEW.md B4-B5, W7): multi-seed + paired significance,
-  a held-out lambda/tau split, and a spurious-edge (not just missing-edge) robustness study.
+- **Statistical rigor / robustness** (REVIEW.md B4-B5, W7): N01 lands the multi-seed harness;
+  still open: paired significance tests (N02), a held-out lambda/tau split (N03), and a
+  spurious-edge (not just missing-edge) robustness study (N04).
 </content>

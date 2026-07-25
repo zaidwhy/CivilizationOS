@@ -49,7 +49,7 @@ forward, it is the wrong night's work.
 ## Phase 1 - Kill the scale objection (N01-N03)
 
 ### N01 - Larger candidate pool + multi-seed harness
-**Status:** OPEN | **Env:** CLOUD-OK | **Answers:** W4, W8 | **Risk:** HIGHEST - do first
+**Status:** DONE (2026-07-24) | **Env:** CLOUD-OK | **Answers:** W4, W8 | **Risk:** HIGHEST - do first
 
 The whole result set currently sits on a ~17-candidate pool where random scores recall@10 =
 0.58. This is the load-bearing weakness, and it is the one that could invalidate later

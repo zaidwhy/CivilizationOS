@@ -18,6 +18,9 @@ from . import metrics as MT
 
 KS = (3, 5, 10)
 
+# N01: same disjoint-seed contract as run_eval.py (see test_n01_scale.py).
+SEED_STRIDE = 100_000
+
 
 def _score(ranked, mat) -> dict[str, float]:
     out = {f"recall@{k}": MT.recall_at_k(ranked, mat.gold_ids, k) for k in KS}
@@ -39,12 +42,35 @@ async def _order(fn, mat):
     return await r if hasattr(r, "__await__") else r
 
 
-async def _eval(mats, method_fns):
+async def _eval_raw(mats, method_fns) -> dict[str, list[dict]]:
     per = {n: [] for n in method_fns}
     for mat in mats:
         for name, fn in method_fns.items():
             per[name].append(_score(await _order(fn, mat), mat))
+    return per
+
+
+def _eval_agg(per: dict) -> dict:
     return {n: _agg(rows) for n, rows in per.items()}
+
+
+async def _eval(mats, method_fns):
+    return _eval_agg(await _eval_raw(mats, method_fns))
+
+
+def _parse_seeds(args) -> list[int]:
+    if args.seeds:
+        return [int(s.strip()) for s in args.seeds.split(",") if s.strip()]
+    return [args.seed]
+
+
+def _cfg_overrides(args) -> dict:
+    kw = {}
+    if args.n_distractors is not None:
+        kw["n_distractors"] = args.n_distractors
+    if args.n_noise is not None:
+        kw["n_noise"] = args.n_noise
+    return kw
 
 
 _COLS = [f"recall@{k}" for k in KS] + ["causal@5", "semantic@5", "root_mrr", "root_rank"]
@@ -87,11 +113,35 @@ def _mats(cfg, n, seed):
 async def run(args):
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
-    n, seed = args.n, args.seed
+    n = args.n
+    seeds = _parse_seeds(args)
+    multiseed = bool(args.seeds)
+    overrides = _cfg_overrides(args)
 
-    base = MixedConfig()
-    mats = _mats(base, n, seed)
-    main = await _eval(mats, _methods())
+    base = MixedConfig(**overrides)
+
+    per_seed_raw: dict[int, dict[str, list[dict]]] = {}
+    mats_by_seed: dict[int, list] = {}
+    for s in seeds:
+        base_seed = s * SEED_STRIDE if multiseed else s
+        ms = _mats(base, n, base_seed)
+        mats_by_seed[s] = ms
+        per_seed_raw[s] = await _eval_raw(ms, _methods())
+
+    pooled_raw = {name: sum((per_seed_raw[s][name] for s in seeds), [])
+                  for name in _methods()}
+    main = _eval_agg(pooled_raw)
+    mats = sum(mats_by_seed.values(), [])
+    n_total = len(mats)
+    pool_size = len(mats[0].all_ids) if mats else 0
+
+    seed_stability = None
+    if len(seeds) > 1:
+        headline = ["semantic_rag", "causal_only", "tcmf_add", "tcmf_shipped"]
+        seed_stability = {
+            s: {m: _agg(per_seed_raw[s][m])["recall@10"][0] for m in headline}
+            for s in seeds
+        }
 
     # lambda tradeoff: causal weight vs which gold type is recovered
     lam_ab = await _eval(mats, {
@@ -108,7 +158,9 @@ async def run(args):
     dropouts = [0.0, 0.25, 0.5, 0.75, 1.0]
     curve = {}
     for p in dropouts:
-        res = await _eval(_mats(MixedConfig(edge_dropout=p), n, seed), drop_methods)
+        dm = sum((_mats(MixedConfig(edge_dropout=p, **overrides),
+                         n, (s * SEED_STRIDE if multiseed else s)) for s in seeds), [])
+        res = await _eval(dm, drop_methods)
         curve[p] = {m: res[m]["recall@10"][0] for m in drop_methods}
 
     ctbl = ["### Edge-dropout robustness (overall recall@10 vs fraction of causal edges missing)",
@@ -117,20 +169,33 @@ async def run(args):
     for m in drop_methods:
         ctbl.append(f"| {m} | " + " | ".join(f"{curve[p][m]:.2f}" for p in dropouts) + " |")
 
+    seed_tbl_lines = []
+    if seed_stability is not None:
+        seed_tbl_lines = ["### Seed stability: recall@10 per individual seed (not pooled)", "",
+                           "| seed | " + " | ".join(headline) + " |",
+                           "|" + "---|" * (len(headline) + 1)]
+        for s in seeds:
+            row = seed_stability[s]
+            seed_tbl_lines.append(f"| {s} | " + " | ".join(f"{row[m]:.2f}" for m in headline) + " |")
+
     md = [
         "# TCMF Benchmark: Mixed Regime",
         "",
-        f"Scenarios: {n} | seed: {seed} | chain_len: {base.chain_len} | "
+        f"Scenarios: {n} per seed x {len(seeds)} seed(s) = {n_total} total | "
+        f"seeds: {seeds} ({'multi-seed, stride ' + str(SEED_STRIDE) if multiseed else 'single-seed legacy mode'}) | "
+        f"chain_len: {base.chain_len} | "
         f"semantic_gold: {base.n_semantic_gold} | distractors: {base.n_distractors} | "
-        f"noise: {base.n_noise} | total gold: {base.total_gold()} "
+        f"noise: {base.n_noise} | pool/scenario: {pool_size} | total gold: {base.total_gold()} "
         f"({base.chain_len - 1} causal + {base.n_semantic_gold} semantic)",
         "",
         "Neither signal alone recovers both gold types: `causal@5` = recall over causal-gold "
         "(graph-findable), `semantic@5` = recall over semantic-gold (similarity-findable). "
-        "Additive TCMF should dominate both single-signal baselines on overall recall.",
+        "Additive TCMF should dominate both single-signal baselines on overall recall. Means "
+        "pooled across all seeds.",
         "",
         _table("Main comparison (mixed regime)", main, ORDER),
         "",
+        *([("\n".join(seed_tbl_lines)), ""] if seed_tbl_lines else []),
         _table("Additive lambda tradeoff (causal@5 vs semantic@5)", lam_ab),
         "",
         "\n".join(ctbl),
@@ -138,7 +203,10 @@ async def run(args):
     ]
     (out / "RESULTS_MIXED.md").write_text("\n".join(md), encoding="utf-8")
     (out / "results_mixed.json").write_text(json.dumps({
-        "config": vars(base), "n": n, "seed": seed,
+        "config": vars(base), "n": n, "seeds": seeds, "multiseed": multiseed,
+        "seed_stride": SEED_STRIDE if multiseed else None,
+        "n_total_scenarios": n_total, "pool_size": pool_size,
+        "seed_stability_recall_at_10": seed_stability,
         "main": {nm: {k: {"mean": v[0], "std": v[1]} for k, v in a.items()}
                  for nm, a in main.items()},
         "lambda_tradeoff": {nm: {k: {"mean": v[0], "std": v[1]} for k, v in a.items()}
@@ -147,6 +215,8 @@ async def run(args):
     }, indent=2), encoding="utf-8")
 
     print(_table("Main comparison (mixed regime)", main, ORDER).replace("### ", "== "))
+    if seed_tbl_lines:
+        print("\n" + "\n".join(seed_tbl_lines).replace("### ", "== "))
     print("\n" + "\n".join(ctbl).replace("### ", "== "))
     print(f"\nWrote {out/'RESULTS_MIXED.md'} and {out/'results_mixed.json'}")
 
@@ -156,6 +226,13 @@ def parse_args():
     p.add_argument("--n", type=int, default=300)
     p.add_argument("--seed", type=int, default=0)
     p.add_argument("--out", type=str, default="results_mixed")
+    p.add_argument("--n-distractors", type=int, default=None,
+                    help="override MixedConfig.n_distractors")
+    p.add_argument("--n-noise", type=int, default=None,
+                    help="override MixedConfig.n_noise")
+    p.add_argument("--seeds", type=str, default=None,
+                    help="comma-separated base seeds for a multi-seed harness (N01), e.g. "
+                         "'0,1,2,3,4'. Overrides --seed when set.")
     return p.parse_args()
 
 

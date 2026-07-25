@@ -48,6 +48,22 @@ seconds and are deterministic given `--seed`. The real-text tier needs Ollama ru
 `nomic-embed-text`; it embeds each unique sentence once and caches to
 `results_realtext/emb_cache.json`, so only the first run is slow.
 
+### Realistic pool size + multi-seed harness (N01)
+
+`run_eval.py` and `run_mixed.py` also accept `--n-distractors`, `--n-noise`, and `--seeds`
+(comma-separated base seeds, e.g. `0,1,2,3,4`) to rerun any of the above at a larger candidate
+pool, pooled across multiple disjoint seeds:
+
+```powershell
+& "..\..\.venv\Scripts\python" -m tcmfbench.run_eval  --n 300 --seeds 0,1,2,3,4 --n-distractors 20 --n-noise 55 --out results_main_scale
+& "..\..\.venv\Scripts\python" -m tcmfbench.run_mixed --n 300 --seeds 0,1,2,3,4 --n-distractors 20 --n-noise 55 --out results_mixed_scale
+```
+
+Omitting all three flags reproduces the original small-pool, single-seed numbers bit-for-bit
+(verified). See `FINDINGS.md` (N01) for what changes at the larger, more realistic pool - it is
+a mixed result, not a clean win. `tcmfbench/test_n01_scale.py` unit-tests the analytic random
+baseline and the seed-disjointness / no-pool-recap invariants this harness relies on.
+
 ## What the benchmark holds fixed vs varies
 
 Fixed and honest by design: baselines and all fusion variants consume the **same** episodic

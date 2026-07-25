@@ -36,3 +36,18 @@ def ndcg_at_k(ranked: list[str], gold: set[str], root: str | None, k: int) -> fl
     ideal = sorted((rel(i) for i in ranked), reverse=True)[:k]
     idcg = sum(r / math.log2(idx + 2) for idx, r in enumerate(ideal))
     return dcg / idcg if idcg > 0 else 0.0
+
+
+def analytic_random_recall_at_k(pool_size: int, k: int) -> float:
+    """Closed-form expected recall@k of a uniform-random ranking, independent of gold count.
+
+    A uniform random permutation of ``pool_size`` items puts each item in the top-k with
+    probability k/pool_size (for k <= pool_size). Gold hits in the top-k follow a
+    Hypergeometric(pool_size, gold_size, k) distribution, whose mean is k*gold_size/pool_size,
+    so E[recall@k] = E[hits]/gold_size = k/pool_size regardless of gold_size. This is the
+    sanity check N01 uses to confirm the harness's `random` baseline is not silently capped
+    to a smaller effective pool (e.g. by a per-citizen prune).
+    """
+    if pool_size <= 0:
+        return float("nan")
+    return min(1.0, k / pool_size)
