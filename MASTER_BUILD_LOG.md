@@ -1161,3 +1161,47 @@ in `api/memory/tcmf.py`. All 61+ tests pass (66 collected).
 - Paper draft is PRIVATE: repo syzayd/tcmf-paper, checked out at research/tcmf_paper/paper/ (gitignored here); removed from this repo's public history by force-push to avoid pre-submission disclosure.
 - Built the decision-quality tier (tcmfbench/decision.py, run_decision.py, llm_client.py) answering reviewer gap W1: each method's top-5 retrieved memories go to an LLM advisor (qwen2.5:3b-instruct, cached) that picks the crisis root cause from a 4-way MCQ (true governance cause + 3 external-shock decoys). n=60: decision accuracy tracks causal recall - fixed retriever tcmf_shipped 0.97 ~= oracle 0.95; symptom-only (episodic 0.25, semantic 0.35) at the no-retrieval floor 0.32; old multiplicative fusion 0.50. Retrieval choice changes the decision, not just a ranking metric. See FINDINGS.md F8.
 - Sonnet built it; Opus cross-verified (fixed a parse_letter article-"a" misparse and oracle set-ordering nondeterminism; unit-tested the parser; ran smoke n=8 then full n=60). Benchmark code + results + FINDINGS pushed here; paper section pushed to the private repo. Both in sync.
+
+## Render + Vercel deploy with a unified OpenRouter option (2026-07-29)
+
+Making the project actually live (public URL, not just localhost) surfaced a real architecture
+problem: the always-on `_sim_loop()` ticks every ~1 second and drives citizen dialogue at
+`Tier.LOCAL` (Ollama), which doesn't exist in the cloud - and isn't gated on/off, it just runs
+forever from server boot. Wiring `Tier.LOCAL` straight to a paid API would have meant a real
+dollar cost accruing every second regardless of whether anyone was looking at the site. Zaid's
+call: demo mode instead.
+
+- **Demo mode** (`DEMO_MODE=true` -> `Engine(use_llm=False)`): turns off the ambient loop
+  (citizen small talk, reflection, emergent auto-crises) entirely. Crisis injection / council
+  debates are unaffected - `_run_debate()` calls `get_router()` regardless of `use_llm`, so the
+  actual showcase feature (5-role council debate) stays fully live and on-demand.
+- **Unified OpenRouter option** (`api/llm/router.py`): added an OpenRouter backend for
+  Tier.FREE/Tier.PREMIUM, taking over from Gemini/Claude when `OPENROUTER_API_KEY` is set - one
+  key instead of three separate provider keys. Extended `SpendTracker` to accept a per-router
+  pricing table (was hardcoded to `CLAUDE_PRICING`) so OpenRouter spend is capped by the
+  existing `TIER2_BUDGET_USD` guardrail too, not just Claude's.
+- **Rate limit on `POST /crisis`** (`CRISIS_COOLDOWN_S`, default 30s, global): the one endpoint
+  that spends real money on a public deploy: one visitor spamming it would otherwise burn the
+  shared spend cap for everyone else.
+- **Fixed a real deploy-breaking bug before it shipped:** the frontend's 15 fetch calls +
+  WebSocket all used bare `/api/*` and same-origin URLs, relying entirely on Vite's dev-only
+  proxy to reach `localhost:8000`. On Vercel (frontend) + Render (backend) as separate hosts,
+  none of that would have worked. Added `web/src/config.ts` reading `VITE_API_BASE`/`VITE_WS_URL`,
+  falling back to the old relative/same-origin behavior when unset - zero change to local dev.
+  Also fixed CORS to read from `Settings.cors_origins` instead of a hardcoded localhost allowlist.
+- Chose `Tier.FREE` instead of hardcoded `Tier.LOCAL` for the `/chronicle` endpoint's LLM call -
+  it was silently guaranteed to fail every ~75s in the cloud otherwise (caught by an existing
+  try/except, so not a crash, just always-fallback-text).
+- Model picks (verified live against OpenRouter's API, not guessed): `OPENROUTER_FREE_MODEL =
+  nvidia/nemotron-3-ultra-550b-a55b:free` (free-tier catalog is thin right now - no free
+  Llama/Qwen/DeepSeek/Gemini variants were available), `OPENROUTER_PREMIUM_MODEL =
+  anthropic/claude-sonnet-5` (mirrors the original `claude-sonnet-4-6` pick for the Synthesizer
+  role, at $2/$10 per 1M tokens).
+- Added 4 new router tests (openrouter tier resolution + custom pricing); all 74 backend tests
+  pass. Frontend typechecks and builds clean (`tsc -b && vite build`).
+- Docker build tested locally before pushing: container boots with `use_llm=False` confirmed in
+  logs, `/health` reflects `demo_mode`/OpenRouter model names correctly, a live crisis POST
+  round-tripped to OpenRouter's real API (401 on a dummy key, proving the wiring), and a second
+  immediate POST correctly got 429'd by the cooldown.
+- Deployed live by Zaid: backend on Render (`civilizationos-api.onrender.com`), frontend on
+  Vercel (`civilization-os-murex.vercel.app`). Confirmed working end-to-end.
