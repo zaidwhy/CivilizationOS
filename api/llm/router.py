@@ -8,10 +8,16 @@ at $0 during development and only spend on Claude for the showcase council debat
     Tier.FREE   (1) -> Gemini Flash free tier     free quota
     Tier.PREMIUM(2) -> Claude (Haiku / Sonnet)    paid, budget-capped
 
+When OPENROUTER_API_KEY + OPENROUTER_FREE_MODEL / OPENROUTER_PREMIUM_MODEL are
+set, OpenRouter's unified API takes over the FREE and PREMIUM tiers instead of
+Gemini/Claude directly (used for cloud deploys where a single key is simpler
+than three separate provider keys). LOCAL always stays Ollama.
+
 Downgrade rules:
-  * A PREMIUM request downgrades to FREE unless PREMIUM_MODE is on, a Claude key
-    exists, and the spend cap has room.
-  * A FREE request downgrades to LOCAL when no Gemini key is configured.
+  * A PREMIUM request downgrades to FREE unless PREMIUM_MODE is on, a Claude or
+    OpenRouter-premium key exists, and the spend cap has room.
+  * A FREE request downgrades to LOCAL when neither a Gemini key nor an
+    OpenRouter key (with spend-cap room) is configured.
   * LOCAL is always available (assuming Ollama is running).
 """
 from __future__ import annotations
@@ -56,18 +62,19 @@ class LLMResult:
 
 
 class SpendTracker:
-    """Tracks estimated Claude spend this process and enforces the hard cap."""
+    """Tracks estimated Claude/OpenRouter spend this process and enforces the hard cap."""
 
-    def __init__(self, cap_usd: float) -> None:
+    def __init__(self, cap_usd: float, pricing: dict[str, tuple[float, float]] | None = None) -> None:
         self.cap_usd = cap_usd
         self.spent_usd = 0.0
         self.tier2_calls = 0
+        self.pricing = pricing if pricing is not None else CLAUDE_PRICING
 
     def can_spend(self) -> bool:
         return self.spent_usd < self.cap_usd
 
     def record(self, model: str, input_tokens: int, output_tokens: int) -> float:
-        p_in, p_out = CLAUDE_PRICING.get(model, (0.0, 0.0))
+        p_in, p_out = self.pricing.get(model, (0.0, 0.0))
         cost = input_tokens / 1e6 * p_in + output_tokens / 1e6 * p_out
         self.spent_usd += cost
         self.tier2_calls += 1
@@ -84,10 +91,16 @@ class LLMRouter:
 
     def __init__(self, settings: Settings | None = None) -> None:
         self.s = settings or get_settings()
-        self.spend = SpendTracker(self.s.tier2_budget_usd)
+        pricing = dict(CLAUDE_PRICING)
+        if self.s.openrouter_free_model:
+            pricing[self.s.openrouter_free_model] = (self.s.openrouter_free_price_in, self.s.openrouter_free_price_out)
+        if self.s.openrouter_premium_model:
+            pricing[self.s.openrouter_premium_model] = (self.s.openrouter_premium_price_in, self.s.openrouter_premium_price_out)
+        self.spend = SpendTracker(self.s.tier2_budget_usd, pricing=pricing)
         self._ollama = None
         self._gemini = None
         self._anthropic = None
+        self._openrouter = None
 
     # ---- lazy clients (so importing the module never requires keys) ----
     def _ollama_client(self):
@@ -109,15 +122,24 @@ class LLMRouter:
             self._anthropic = AsyncAnthropic(api_key=self.s.anthropic_api_key)
         return self._anthropic
 
+    def _openrouter_client(self):
+        if self._openrouter is None:
+            from openai import AsyncOpenAI
+            self._openrouter = AsyncOpenAI(base_url="https://openrouter.ai/api/v1", api_key=self.s.openrouter_api_key)
+        return self._openrouter
+
     # ---- routing ----
     def resolve_tier(self, requested: Tier) -> Tier:
         """Decide which tier actually serves a request, applying downgrade rules."""
         tier = requested
         if tier == Tier.PREMIUM:
-            if not (self.s.premium_mode and self.s.has_claude and self.spend.can_spend()):
+            premium_available = self.s.has_claude or self.s.has_openrouter_premium
+            if not (self.s.premium_mode and premium_available and self.spend.can_spend()):
                 tier = Tier.FREE
-        if tier == Tier.FREE and not self.s.has_gemini:
-            tier = Tier.LOCAL
+        if tier == Tier.FREE:
+            free_available = self.s.has_gemini or (self.s.has_openrouter and self.spend.can_spend())
+            if not free_available:
+                tier = Tier.LOCAL
         return tier
 
     async def complete(
@@ -133,12 +155,22 @@ class LLMRouter:
     ) -> LLMResult:
         used = self.resolve_tier(tier)
         if used == Tier.PREMIUM:
-            result = await self._complete_claude(
-                prompt, system, max_tokens, temperature,
-                claude_model or self.s.claude_member_model,
-            )
+            if self.s.has_openrouter_premium:
+                result = await self._complete_openrouter(
+                    prompt, system, max_tokens, temperature, self.s.openrouter_premium_model, Tier.PREMIUM,
+                )
+            else:
+                result = await self._complete_claude(
+                    prompt, system, max_tokens, temperature,
+                    claude_model or self.s.claude_member_model,
+                )
         elif used == Tier.FREE:
-            result = await self._complete_gemini(prompt, system, max_tokens, temperature)
+            if self.s.has_openrouter:
+                result = await self._complete_openrouter(
+                    prompt, system, max_tokens, temperature, self.s.openrouter_free_model, Tier.FREE,
+                )
+            else:
+                result = await self._complete_gemini(prompt, system, max_tokens, temperature)
         else:
             result = await self._complete_ollama(
                 prompt, system, max_tokens, temperature,
@@ -203,6 +235,25 @@ class LLMRouter:
         return LLMResult(
             text=text,
             tier_requested=Tier.PREMIUM, tier_used=Tier.PREMIUM,
+            model=model, input_tokens=in_tok, output_tokens=out_tok, cost_usd=cost,
+        )
+
+    async def _complete_openrouter(self, prompt, system, max_tokens, temperature, model, tier) -> LLMResult:
+        client = self._openrouter_client()
+        messages = []
+        if system:
+            messages.append({"role": "system", "content": system})
+        messages.append({"role": "user", "content": prompt})
+        resp = await client.chat.completions.create(
+            model=model, messages=messages, max_tokens=max_tokens, temperature=temperature,
+        )
+        text = resp.choices[0].message.content or ""
+        in_tok = resp.usage.prompt_tokens if resp.usage else 0
+        out_tok = resp.usage.completion_tokens if resp.usage else 0
+        cost = self.spend.record(model, in_tok, out_tok)
+        return LLMResult(
+            text=text.strip(),
+            tier_requested=tier, tier_used=tier,
             model=model, input_tokens=in_tok, output_tokens=out_tok, cost_usd=cost,
         )
 

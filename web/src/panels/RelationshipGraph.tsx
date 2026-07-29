@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useWorld, Faction } from "../ws/store";
+import { API_BASE } from "../config";
 
 const W = 260;
 const H = 210;
@@ -60,7 +61,7 @@ export default function RelationshipGraph() {
   useEffect(() => {
     const fetchGraph = async () => {
       try {
-        const res = await fetch("/api/graph");
+        const res = await fetch(`${API_BASE}/api/graph`);
         if (res.ok) setGraph(await res.json());
       } catch { /* transient */ }
     };

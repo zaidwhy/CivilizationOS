@@ -38,6 +38,42 @@ class Settings(BaseSettings):
     claude_member_model: str = "claude-haiku-4-5"
     claude_synth_model: str = "claude-sonnet-4-6"
 
+    # --- Unified OpenRouter option: one key covering both Tier.FREE (debate
+    # roles) and Tier.PREMIUM (Synthesizer verdict), for deploys where Ollama
+    # and separate Gemini/Claude keys aren't set up. Takes priority over
+    # Gemini/Claude when configured; leave unset to keep today's behavior.
+    openrouter_api_key: str = ""
+    openrouter_free_model: str = ""       # serves Historian/Strategist/Skeptic/Predictor
+    openrouter_premium_model: str = ""    # serves the Synthesizer verdict
+    # Approximate $/1M-token cost of the two models above, for the existing
+    # spend-cap guardrail (tier2_budget_usd) - OpenRouter's catalog and pricing
+    # change, so this isn't looked up automatically; leave at 0.0 to track
+    # tokens without enforcing a real cost cap.
+    openrouter_free_price_in: float = 0.0
+    openrouter_free_price_out: float = 0.0
+    openrouter_premium_price_in: float = 0.0
+    openrouter_premium_price_out: float = 0.0
+
+    # --- Demo mode (public deploy) ---
+    # Disables the always-on ambient loop (citizen small talk, reflection,
+    # emergent auto-crises) so a public deploy doesn't call a paid API on a
+    # ~1-second timer forever. Crisis injection / council debates stay fully
+    # live and on-demand either way - this only gates ambient chatter.
+    demo_mode: bool = False
+    # Minimum seconds between POST /crisis requests, globally - stops one
+    # visitor from spamming the (real-money, when OpenRouter is configured)
+    # crisis-injection endpoint and burning the shared spend cap for everyone.
+    crisis_cooldown_s: float = 30.0
+
+    # --- CORS ---
+    # Comma-separated list of allowed frontend origins. Defaults cover local dev;
+    # add the deployed Vercel URL(s) here for the live site (see CLAUDE.md Deploy).
+    cors_origins: str = "http://localhost:5173,http://127.0.0.1:5173"
+
+    @property
+    def cors_origin_list(self) -> list[str]:
+        return [o.strip() for o in self.cors_origins.split(",") if o.strip()]
+
     # --- Simulation ---
     sim_seed: int = 42
     num_citizens: int = 10
@@ -50,6 +86,14 @@ class Settings(BaseSettings):
     @property
     def has_claude(self) -> bool:
         return bool(self.anthropic_api_key)
+
+    @property
+    def has_openrouter(self) -> bool:
+        return bool(self.openrouter_api_key and self.openrouter_free_model)
+
+    @property
+    def has_openrouter_premium(self) -> bool:
+        return bool(self.openrouter_api_key and self.openrouter_premium_model)
 
     @property
     def has_finetuned_council(self) -> bool:

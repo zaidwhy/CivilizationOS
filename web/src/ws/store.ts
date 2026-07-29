@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { API_BASE, WS_URL } from "../config";
 
 export type Citizen = {
   id: string;
@@ -130,7 +131,7 @@ export const useWorld = create<WorldStore>((set, get) => ({
     const id = get().selectedId;
     if (!id) return;
     try {
-      const res = await fetch(`/api/agent/${id}`);
+      const res = await fetch(`${API_BASE}/api/agent/${id}`);
       const d = await res.json();
       if (!d.error && get().selectedId === id) set({ detail: d });
     } catch {
@@ -155,7 +156,7 @@ if (import.meta.env.DEV && typeof window !== "undefined") {
 
 /** Opens the world WebSocket, wires snapshots into the store, auto-reconnects. */
 export function connectWorldSocket() {
-  const url = `${location.protocol === "https:" ? "wss" : "ws"}://${location.host}/ws`;
+  const url = WS_URL;
   let ws: WebSocket;
   let retry: ReturnType<typeof setTimeout> | undefined;
   let keepalive: ReturnType<typeof setInterval> | undefined;
@@ -164,7 +165,7 @@ export function connectWorldSocket() {
 
   const pollHealth = async () => {
     try {
-      const res = await fetch("/api/health");
+      const res = await fetch(`${API_BASE}/api/health`);
       if (res.ok) {
         const d = await res.json();
         useWorld.getState().setHealth({

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from "react";
+import { API_BASE } from "../config";
 
 type StatsData = {
   tick: number;
@@ -144,7 +145,7 @@ export default function StatsPanel() {
   const handleExport = useCallback(async () => {
     setExporting(true);
     try {
-      const res = await fetch("/api/export");
+      const res = await fetch(`${API_BASE}/api/export`);
       const blob = await res.blob();
       const disp = res.headers.get("Content-Disposition") ?? "";
       const match = disp.match(/filename=([^\s;]+)/);
@@ -162,13 +163,13 @@ export default function StatsPanel() {
   useEffect(() => {
     const fetchStats = async () => {
       try {
-        const res = await fetch("/api/stats");
+        const res = await fetch(`${API_BASE}/api/stats`);
         if (res.ok) setStats(await res.json());
       } catch { /* transient */ }
     };
     const fetchTrack = async () => {
       try {
-        const res = await fetch("/api/track_record");
+        const res = await fetch(`${API_BASE}/api/track_record`);
         if (res.ok) {
           const d = await res.json();
           setCouncils(d.councils ?? []);

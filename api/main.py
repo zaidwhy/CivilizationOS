@@ -32,7 +32,11 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("civos.api")
 
 settings = get_settings()
-engine = Engine(seed=settings.sim_seed, use_llm=True)
+# demo_mode turns off the always-on ambient loop (citizen small talk, reflection,
+# emergent auto-crises) so a public deploy doesn't call a paid API on a ~1-second
+# timer forever. Crisis injection / council debates go through get_router()
+# regardless of use_llm, so they stay fully live either way.
+engine = Engine(seed=settings.sim_seed, use_llm=not settings.demo_mode)
 
 
 class ConnectionManager:
@@ -98,7 +102,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(title="CivilizationOS", version="0.13.0", lifespan=lifespan)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
+    allow_origins=settings.cors_origin_list,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -122,9 +126,10 @@ async def health() -> dict:
         "brains": {
             "local": s.ollama_chat_model,
             "council": s.ollama_council_model if s.has_finetuned_council else None,
-            "free": s.gemini_model if s.has_gemini else None,
-            "premium": s.claude_member_model if s.has_claude else None,
+            "free": s.openrouter_free_model if s.has_openrouter else (s.gemini_model if s.has_gemini else None),
+            "premium": s.openrouter_premium_model if s.has_openrouter_premium else (s.claude_member_model if s.has_claude else None),
         },
+        "demo_mode": s.demo_mode,
         "tier2_spent_usd": round(router.spend.spent_usd, 4),
         "tier2_budget_usd": s.tier2_budget_usd,
     }
@@ -225,10 +230,19 @@ class CrisisRequest(BaseModel):
     template_key: str | None = None
 
 
+_last_crisis_injected_at: float = 0.0
+
+
 @app.post("/crisis")
 async def post_crisis(req: CrisisRequest) -> dict:
+    global _last_crisis_injected_at
     from .agents.council import COUNCILS
     from .sim.events import CRISIS_TEMPLATES
+    now = _time.time()
+    elapsed = now - _last_crisis_injected_at
+    if elapsed < settings.crisis_cooldown_s:
+        wait = round(settings.crisis_cooldown_s - elapsed, 1)
+        raise HTTPException(status_code=429, detail=f"Crisis injection is rate-limited - wait {wait}s")
     if req.institution_id not in COUNCILS:
         raise HTTPException(
             status_code=400,
@@ -238,6 +252,7 @@ async def post_crisis(req: CrisisRequest) -> dict:
     text = req.text or (tmpl.description if tmpl else "")
     if not text:
         raise HTTPException(status_code=422, detail="crisis text is required")
+    _last_crisis_injected_at = now
     crisis = await engine.inject_crisis(
         text=text,
         institution_id=req.institution_id,
@@ -376,7 +391,10 @@ async def get_chronicle() -> dict:
 
     try:
         router = get_router()
-        result = await router.complete(prompt=prompt, tier=Tier(0), max_tokens=110, temperature=0.88)
+        # Tier.FREE (not LOCAL): downgrades to Ollama locally, but in a cloud
+        # deploy with no Ollama this is the tier that actually resolves to
+        # Gemini/OpenRouter instead of failing every ~75s.
+        result = await router.complete(prompt=prompt, tier=Tier.FREE, max_tokens=110, temperature=0.88)
         text = result.text.strip()
     except Exception:
         logger.exception("chronicle generation failed")

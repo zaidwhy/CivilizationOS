@@ -68,3 +68,35 @@ def test_spend_tracker_blocks_over_cap():
     t = SpendTracker(cap_usd=1.0)
     t.record("claude-sonnet-4-6", input_tokens=1_000_000, output_tokens=0)  # $3
     assert t.can_spend() is False
+
+
+def test_spend_tracker_uses_custom_pricing():
+    t = SpendTracker(cap_usd=10.0, pricing={"some/openrouter-model": (2.0, 4.0)})
+    cost = t.record("some/openrouter-model", input_tokens=1_000_000, output_tokens=1_000_000)
+    assert round(cost, 2) == 6.00
+
+
+def test_free_stays_free_with_openrouter_key_and_no_gemini():
+    r = make_router(gemini_api_key="", openrouter_api_key="or-key", openrouter_free_model="some/free-model")
+    assert r.resolve_tier(Tier.FREE) == Tier.FREE
+
+
+def test_premium_served_with_openrouter_premium_and_no_claude():
+    r = make_router(
+        premium_mode=True,
+        anthropic_api_key="",
+        openrouter_api_key="or-key",
+        openrouter_premium_model="some/premium-model",
+    )
+    assert r.resolve_tier(Tier.PREMIUM) == Tier.PREMIUM
+
+
+def test_free_downgrades_to_local_when_openrouter_budget_exhausted():
+    r = make_router(
+        gemini_api_key="",
+        openrouter_api_key="or-key",
+        openrouter_free_model="some/free-model",
+        tier2_budget_usd=1.0,
+    )
+    r.spend.spent_usd = 1.0  # at cap
+    assert r.resolve_tier(Tier.FREE) == Tier.LOCAL

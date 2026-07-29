@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useWorld } from "../ws/store";
+import { API_BASE } from "../config";
 
 type ChronicleData = {
   text: string;
@@ -17,7 +18,7 @@ export default function Chronicle() {
     if (loading) return;
     setLoading(true);
     try {
-      const res = await fetch("/api/chronicle");
+      const res = await fetch(`${API_BASE}/api/chronicle`);
       if (res.ok) setData(await res.json());
     } catch { /* transient */ }
     finally { setLoading(false); }

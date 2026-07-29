@@ -51,6 +51,32 @@ Expected: 61 passed.
 - Handoffs: `handoffs/HANDOFF-YYYY-MM-DD-HHMM.md`.
 - Before ending a session: update the master log AND write a handoff.
 
+## Deploy (Render backend + Vercel frontend)
+
+- Backend: `Dockerfile` + `render.yaml` at repo root. Render dashboard > New > Blueprint > this repo.
+  Sets `DEMO_MODE=true` and `PREMIUM_MODE=true` - the always-on ambient loop (citizen small
+  talk, reflection, emergent auto-crises) is off in this mode (`Engine(use_llm=False)`), but
+  crisis injection / council debates stay fully live and on-demand (`get_router()` is called
+  regardless of `use_llm`). Ollama is not reachable in the cloud, so Tier.LOCAL ambient calls
+  being off is required, not optional, here.
+- LLM backend for the live deploy: OpenRouter's unified API (`OPENROUTER_API_KEY` +
+  `OPENROUTER_FREE_MODEL` + `OPENROUTER_PREMIUM_MODEL`, set manually in Render's dashboard,
+  `sync: false` in render.yaml) replaces Gemini/Claude for Tier.FREE/Tier.PREMIUM when
+  configured - see `api/llm/router.py`. Pick model slugs from openrouter.ai/models and fill in
+  `OPENROUTER_*_PRICE_IN/OUT` (also in the dashboard) so `TIER2_BUDGET_USD`'s spend cap actually
+  means something; it defaults to 0.0 (tracked but uncapped) otherwise.
+- `POST /crisis` is rate-limited (`CRISIS_COOLDOWN_S`, default 30s, global not per-IP) so one
+  visitor can't spam the only real-money endpoint and burn the shared spend cap. `TIER2_BUDGET_USD`
+  resets on every process restart (Render free tier sleeps after ~15 min idle) - it's a
+  per-process-lifetime cap, not a true daily/monthly ceiling.
+- Frontend: `web/` deploys separately to Vercel (it's a static Vite build, unrelated to the
+  Render backend's lifecycle). Vite's dev proxy (`vite.config.ts`) only exists locally, so
+  `web/src/config.ts` reads `VITE_API_BASE` / `VITE_WS_URL` for production - set both to the
+  deployed Render URL in Vercel's project env vars (e.g. `VITE_API_BASE=https://civilizationos-api.onrender.com`,
+  `VITE_WS_URL=wss://civilizationos-api.onrender.com/ws`). Leave unset locally.
+- After the Vercel URL exists, add it to `CORS_ORIGINS` in Render's dashboard (comma-separated,
+  defaults to localhost only) or the deployed frontend's requests get CORS-blocked.
+
 ## Gotchas
 
 - Three.js r152+: the EffectComposer chain MUST end with `OutputPass` or the screen renders black.

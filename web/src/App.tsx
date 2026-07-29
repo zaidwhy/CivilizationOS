@@ -9,6 +9,7 @@ import Timeline from "./panels/Timeline";
 import StatsPanel from "./panels/StatsPanel";
 import Onboarding from "./components/Onboarding";
 import Chronicle from "./panels/Chronicle";
+import { API_BASE } from "./config";
 
 // ---- Stability sparkline (topbar) ----
 function StabilitySparkline() {
@@ -139,7 +140,7 @@ function ScenarioLauncher() {
   async function fire(key: string, inst: string) {
     setFiring(key);
     try {
-      await fetch("/api/crisis", {
+      await fetch(`${API_BASE}/api/crisis`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ text: "", institution_id: inst, template_key: key }),
@@ -212,7 +213,7 @@ function SpeedControl() {
   async function changeSpeed(v: number) {
     setLocal(v);
     try {
-      await fetch("/api/speed", {
+      await fetch(`${API_BASE}/api/speed`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ seconds_per_tick: v }),

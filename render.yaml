@@ -1,0 +1,34 @@
+services:
+  - type: web
+    name: civilizationos-api
+    runtime: docker
+    plan: free
+    dockerfilePath: ./Dockerfile
+    envVars:
+      - key: DEMO_MODE
+        value: "true"
+      - key: PREMIUM_MODE
+        value: "true"
+      - key: CRISIS_COOLDOWN_S
+        value: "30.0"
+      - key: TIER2_BUDGET_USD
+        value: "15.0"
+      - key: OPENROUTER_API_KEY
+        sync: false
+      - key: OPENROUTER_FREE_MODEL
+        sync: false
+      - key: OPENROUTER_PREMIUM_MODEL
+        sync: false
+      # Not secrets, just numbers - given real defaults (rather than sync:false)
+      # so an unfilled field can't reach Settings as an empty string and crash
+      # float parsing on startup. Update after picking real model slugs.
+      - key: OPENROUTER_FREE_PRICE_IN
+        value: "0.0"
+      - key: OPENROUTER_FREE_PRICE_OUT
+        value: "0.0"
+      - key: OPENROUTER_PREMIUM_PRICE_IN
+        value: "0.0"
+      - key: OPENROUTER_PREMIUM_PRICE_OUT
+        value: "0.0"
+      - key: PYTHONIOENCODING
+        value: utf-8
