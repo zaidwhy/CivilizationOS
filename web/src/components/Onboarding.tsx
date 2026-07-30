@@ -65,7 +65,7 @@ export default function Onboarding() {
         <h2 style={{ margin: "0 0 10px", fontSize: 18, color: "#e6edf3", textAlign: "center" }}>
           {current.title}
         </h2>
-        <p style={{ margin: "0 0 24px", fontSize: 13, color: "#8b97a7", lineHeight: 1.65, textAlign: "center" }}>
+        <p style={{ margin: "0 0 24px", fontSize: 13, color: "var(--muted)", lineHeight: 1.65, textAlign: "center" }}>
           {current.body}
         </p>
 
@@ -77,7 +77,7 @@ export default function Onboarding() {
               onClick={() => setStep(i)}
               style={{
                 width: i === step ? 20 : 6, height: 6, borderRadius: 999,
-                background: i === step ? "#6ea8fe" : "#232c3b",
+                background: i === step ? "var(--accent)" : "#232c3b",
                 cursor: "pointer", transition: "all 0.2s",
               }}
             />
@@ -91,7 +91,7 @@ export default function Onboarding() {
               style={{
                 flex: 1, padding: "8px 0", borderRadius: 6,
                 background: "transparent", border: "1px solid #232c3b",
-                color: "#8b97a7", cursor: "pointer", fontSize: 13,
+                color: "var(--muted)", cursor: "pointer", fontSize: 13,
               }}
             >
               ← Back
@@ -101,7 +101,7 @@ export default function Onboarding() {
             onClick={isLast ? dismiss : () => setStep(step + 1)}
             style={{
               flex: 2, padding: "8px 0", borderRadius: 6,
-              background: "#6ea8fe", border: "none",
+              background: "var(--accent)", border: "none",
               color: "#0b0e14", cursor: "pointer", fontSize: 13, fontWeight: 700,
             }}
           >
