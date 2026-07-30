@@ -286,13 +286,82 @@ disjoint-seed and no-recap-pool assertions are unit-tested in
 real-text tier (N06, LOCAL-ONLY) or under N04's spurious-edge stress - those are separate,
 still-open questions.
 
+## N02 - Bootstrap CIs + paired significance tests - the N01 "tie" is real but tiny, and a
+## significant loss was hiding in plain sight at recall@5 all along
+
+`tcmfbench/stats.py` (pure numpy, no scipy) adds `bootstrap_ci` (seeded percentile bootstrap,
+10000 resamples), `wilcoxon_signed_rank` (exact enumeration for tie-free n<=25, normal
+approximation with continuity + tie correction otherwise), and `holm_bonferroni`. 13 unit
+tests in `test_stats.py` check hand-computed known answers, including the two cases the queue
+flagged as where implementations break: a tied-ranks case (`d=[-2,2]`, W+ sits exactly at its
+null expectation, p=1.0 exactly) and an all-zero-difference case (p=1.0 by definition, nothing
+to rank). `run_eval.py`/`run_mixed.py` now report every headline table cell as
+`mean [95% CI]` instead of `mean +/- std`, and add a paired-significance table: `tcmf_add` vs
+every other method on **recall@5 and root_rank** (as specced), with **recall@10 also added for
+the mixed regime** since that is the metric N01's "tie" claim was actually about. All p-values
+are Holm-Bonferroni corrected across the full contrast family. The "obviously null" check the
+queue itself specifies (a method against itself must return p~=1.0 and a CI containing zero)
+is asserted at runtime against real pooled data, not just unit-tested in isolation.
+
+**The headline result: N01's mixed-regime "exact tie" (recall@10, tcmf_add vs graph_ppr, both
+0.80) is now precisely quantified, and it is real but practically negligible - not the kind of
+gap the old-pool numbers showed.** At the N01 realistic pool (80, 1500 pooled scenarios):
+
+| contrast (tcmf_add vs graph_ppr) | pool 19 (old) | pool 80 (N01 realistic) |
+|---|---|---|
+| recall@5 mean diff | -0.050, p_holm=0.0000 (significant) | -0.121, p_holm=0.0000 (significant) |
+| recall@10 mean diff | +0.179, p_holm=0.0000 (significant, tcmf_add ahead) | -0.002, p_holm=0.0000 (significant, graph_ppr ahead) |
+| root_rank mean diff | -8.14, p_holm=0.0000 (tcmf_add much better) | -22.87, p_holm=0.0000 (tcmf_add much better) |
+
+Two things this table makes precise that averages alone did not:
+
+1. **The paper's F6 claim ("additive TCMF strictly beats every single-signal baseline on
+   overall recall") was never actually true at recall@5, at either pool size.** `graph_ppr`
+   significantly beats `tcmf_add` on recall@5 in the mixed regime even at the *old*, small
+   pool (-0.050, p_holm=0.0000) - this was sitting directly in the existing RESULTS_MIXED.md
+   table (0.75 vs 0.80) and F6's prose simply didn't flag it because it reported recall@10
+   as the headline number. **N02 turns a number nobody had tested into a number that is
+   provably, significantly against TCMF.** The paper must not claim an unqualified recall@5
+   win in the mixed regime; `causal@5` (still 1.00 vs 0.67, dominant) is the defensible
+   headline metric, exactly as N01 already recommended.
+2. **At recall@10, the N01 "tie" is statistically significant despite being a 0.2-point
+   difference (0.002), because n=1500 paired scenarios gives the test enormous power to
+   detect a systematic, real but minuscule per-scenario edge for `graph_ppr`.** This is the
+   textbook case for reporting effect size alongside p-value: `p_holm=0.0000` here does NOT
+   mean "graph_ppr meaningfully beats TCMF at recall@10" - it means the difference is
+   reliably nonzero and reliably tiny. The honest framing for the paper is: *"at a realistic
+   candidate pool, additive TCMF's recall@10 in the mixed regime is statistically
+   indistinguishable in practice from graph_ppr (a Wilcoxon signed-rank test detects a
+   significant but negligible -0.002 gap at n=1500, versus a significant +0.179 gap in
+   TCMF's favor at the old, unrealistically small pool)."* Do not report the N01-scale
+   recall@10 contrast as "TCMF wins" or "TCMF loses" without this qualifier - both would
+   misrepresent what the test found.
+3. **`root_rank` (F8's "root cause at rank 1" claim) survives significance testing cleanly at
+   both pool sizes** - `tcmf_add`'s root_rank margin over every baseline is large, stable,
+   and significant after Holm correction (the only null result anywhere in either
+   significance table is `tcmf_add` vs `causal_only`'s root_rank, p_holm=0.59-1.00, which is
+   expected and correct: both use the identical causal-boost/depth-weighting root-cause
+   logic in this ablation, so they should tie on root_rank and do not tie on recall@5/10
+   because `causal_only` ignores episodic score entirely).
+
+**Verified vs assumed:** verified - all numbers above read from committed
+`results_main/results.json`, `results_mixed/results_mixed.json`,
+`results_main_scale/results.json`, `results_mixed_scale/results_mixed.json` (regenerated by
+this night's updated `run_eval.py`/`run_mixed.py`, not hand-typed); the 13 `test_stats.py`
+unit tests pass; the runtime self-contrast assertion passes on every regenerated result set
+(would raise `AssertionError` otherwise - checked by construction, since the scripts ran to
+completion and wrote output). Not assumed: whether this significance pattern replicates on
+the real-text tier (N06, LOCAL-ONLY) or under N04's spurious-edge stress - both still open.
+
 ## Still open before submission
 
 - **Write-up** (Phase 5) drafted (kept in a private repo); fold in the F8 decision tier + table,
-  and now the N01 scale finding above (both the graph_ppr collapse and the mixed-regime tie).
+  the N01 scale finding (both the graph_ppr collapse and the mixed-regime tie), and now N02's
+  precise quantification of that tie (significant-but-negligible at recall@10, and a
+  previously-unflagged significant recall@5 loss to graph_ppr at both pool sizes).
 - **Scale the real-text tier** (more domains / larger n) and add a second encoder to show the
   threshold-tuning point generalizes.
-- **Statistical rigor / robustness** (REVIEW.md B4-B5, W7): N01 lands the multi-seed harness;
-  still open: paired significance tests (N02), a held-out lambda/tau split (N03), and a
-  spurious-edge (not just missing-edge) robustness study (N04).
+- **Statistical rigor / robustness** (REVIEW.md B4-B5, W7): N01 lands the multi-seed harness,
+  N02 lands bootstrap CIs + paired significance tests; still open: a held-out lambda/tau split
+  (N03), and a spurious-edge (not just missing-edge) robustness study (N04).
 </content>

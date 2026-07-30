@@ -8,13 +8,15 @@ from __future__ import annotations
 import argparse
 import asyncio
 import json
-import statistics as st
 from pathlib import Path
+
+import numpy as np
 
 from . import _bootstrap  # noqa: F401
 from .mixed import MixedConfig, generate_many_mixed
 from . import methods as M
 from . import metrics as MT
+from .stats import bootstrap_ci, holm_bonferroni, wilcoxon_signed_rank
 
 KS = (3, 5, 10)
 
@@ -31,10 +33,14 @@ def _score(ranked, mat) -> dict[str, float]:
     return out
 
 
-def _agg(rows):
-    return {k: (st.mean(r[k] for r in rows),
-                st.pstdev([r[k] for r in rows]) if len(rows) > 1 else 0.0)
-            for k in rows[0]}
+def _agg(rows, seed: int = 0):
+    """{metric: (mean, ci_lo, ci_hi)} via seeded percentile bootstrap over scenarios (N02)."""
+    out = {}
+    for k in rows[0]:
+        vals = np.array([r[k] for r in rows], dtype=float)
+        vals = vals[~np.isnan(vals)]
+        out[k] = bootstrap_ci(vals, seed=seed) if len(vals) else (float("nan"),) * 3
+    return out
 
 
 async def _order(fn, mat):
@@ -82,10 +88,53 @@ def _table(title, results, order=None):
              "|" + "---|" * (len(_COLS) + 1)]
     for n in names:
         a = results[n]
-        cells = [f"{a[c][0]:.2f}±{a[c][1]:.2f}" if c != "root_rank" else f"{a[c][0]:.1f}"
-                 for c in _COLS]
+        cells = [
+            (f"{a[c][0]:.2f} [{a[c][1]:.2f}, {a[c][2]:.2f}]" if c != "root_rank"
+             else f"{a[c][0]:.1f} [{a[c][1]:.1f}, {a[c][2]:.1f}]")
+            for c in _COLS
+        ]
         lines.append(f"| {n} | " + " | ".join(cells) + " |")
     return "\n".join(lines)
+
+
+def _significance_table(pooled_raw: dict, order: list, ref: str,
+                         metrics: tuple = ("recall@5", "root_rank")) -> str:
+    """Paired Wilcoxon signed-rank test, `ref` vs every other method in `order`, on each of
+    `metrics`, per-scenario-paired. Holm-Bonferroni corrected across the family (N02)."""
+    others = [m for m in order if m != ref and m in pooled_raw]
+    ref_vals = {metric: np.array([r[metric] for r in pooled_raw[ref]]) for metric in metrics}
+    rows, raw_p = [], []
+    for m in others:
+        for metric in metrics:
+            other_vals = np.array([r[metric] for r in pooled_raw[m]])
+            p = wilcoxon_signed_rank(ref_vals[metric], other_vals)
+            diff = float(ref_vals[metric].mean() - other_vals.mean())
+            rows.append((m, metric, diff))
+            raw_p.append(p)
+    adj_p = holm_bonferroni(raw_p) if raw_p else []
+    lines = [
+        f"### Significance: {ref} vs every baseline (paired Wilcoxon signed-rank, "
+        f"Holm-Bonferroni corrected across all {len(raw_p)} contrasts)",
+        "",
+        f"Positive diff = {ref} higher (better for recall, worse for root_rank - lower "
+        "root_rank is better). p_holm <= 0.05 is significant after correction.",
+        "",
+        "| baseline | metric | mean diff | p (raw) | p (holm) |",
+        "|---|---|---|---|---|",
+    ]
+    for (m, metric, diff), p_raw, p_h in zip(rows, raw_p, adj_p):
+        lines.append(f"| {m} | {metric} | {diff:+.3f} | {p_raw:.4f} | {p_h:.4f} |")
+    return "\n".join(lines)
+
+
+def _verify_null_contrast_is_null(pooled_raw: dict, ref: str) -> None:
+    """Verified against real run data: a method against itself must return p ~= 1.0 and a
+    bootstrap CI of the paired difference containing zero (N02's own verify criterion)."""
+    vals = np.array([r["recall@5"] for r in pooled_raw[ref]], dtype=float)
+    p_self = wilcoxon_signed_rank(vals, vals)
+    assert abs(p_self - 1.0) < 1e-9, f"self-contrast p should be 1.0, got {p_self}"
+    _, lo, hi = bootstrap_ci(vals - vals, seed=0)
+    assert lo <= 0.0 <= hi, f"self-contrast CI should contain 0, got [{lo}, {hi}]"
 
 
 def _methods():
@@ -134,6 +183,16 @@ async def run(args):
     mats = sum(mats_by_seed.values(), [])
     n_total = len(mats)
     pool_size = len(mats[0].all_ids) if mats else 0
+
+    # N02: paired significance, tcmf_add vs every other method, Holm-corrected. Verified
+    # against real run data: a method-against-itself contrast must return p ~= 1.0 and a CI
+    # containing zero.
+    _verify_null_contrast_is_null(pooled_raw, ref="tcmf_add")
+    # recall@10 is added alongside the spec's recall@5/root_rank because it is the mixed
+    # regime's own headline metric (F6 / N01's "exact tie" claim is about recall@10, not
+    # recall@5) - the paired test on it is the direct answer to whether N01's tie is real.
+    significance = _significance_table(pooled_raw, ORDER, ref="tcmf_add",
+                                        metrics=("recall@5", "recall@10", "root_rank"))
 
     seed_stability = None
     if len(seeds) > 1:
@@ -195,6 +254,8 @@ async def run(args):
         "",
         _table("Main comparison (mixed regime)", main, ORDER),
         "",
+        significance,
+        "",
         *([("\n".join(seed_tbl_lines)), ""] if seed_tbl_lines else []),
         _table("Additive lambda tradeoff (causal@5 vs semantic@5)", lam_ab),
         "",
@@ -207,14 +268,16 @@ async def run(args):
         "seed_stride": SEED_STRIDE if multiseed else None,
         "n_total_scenarios": n_total, "pool_size": pool_size,
         "seed_stability_recall_at_10": seed_stability,
-        "main": {nm: {k: {"mean": v[0], "std": v[1]} for k, v in a.items()}
+        "main": {nm: {k: {"mean": v[0], "ci_lo": v[1], "ci_hi": v[2]} for k, v in a.items()}
                  for nm, a in main.items()},
-        "lambda_tradeoff": {nm: {k: {"mean": v[0], "std": v[1]} for k, v in a.items()}
+        "lambda_tradeoff": {nm: {k: {"mean": v[0], "ci_lo": v[1], "ci_hi": v[2]} for k, v in a.items()}
                             for nm, a in lam_ab.items()},
         "dropout_curve": {str(p): curve[p] for p in dropouts},
+        "significance_tcmf_add_vs_all": significance,
     }, indent=2), encoding="utf-8")
 
     print(_table("Main comparison (mixed regime)", main, ORDER).replace("### ", "== "))
+    print("\n" + significance.replace("### ", "== "))
     if seed_tbl_lines:
         print("\n" + "\n".join(seed_tbl_lines).replace("### ", "== "))
     print("\n" + "\n".join(ctbl).replace("### ", "== "))

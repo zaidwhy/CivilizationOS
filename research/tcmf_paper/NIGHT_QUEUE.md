@@ -68,7 +68,7 @@ at which k it survives. If the margin collapses, stop and write that up - it ref
 paper and every later night.
 
 ### N02 - Bootstrap confidence intervals + paired significance tests
-**Status:** OPEN | **Env:** CLOUD-OK | **Answers:** W8
+**Status:** DONE (2026-07-28) | **Env:** CLOUD-OK | **Answers:** W8
 
 Averages alone will draw a reviewer complaint. Replace them everywhere.
 

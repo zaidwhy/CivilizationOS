@@ -128,3 +128,132 @@ delta the private paper repo needs.
   next in line; it would also let the mixed-regime tie above be reported as "not significantly
   different" rather than just as point estimates. Whoever writes the paper text should first
   read tonight's exact LaTeX delta in `syzayd/tcmf-paper`'s `REVIEW.md` (W4).
+
+---
+
+## 2026-07-28 (N02 - bootstrap confidence intervals + paired significance tests)
+
+- **Item:** N02, the lowest-numbered OPEN + CLOUD-OK item (N01 was already DONE). Environment:
+  cloud sandbox, no Ollama, no access to Zaid's machine - LOCAL-ONLY items (N06, N14) remain
+  untouched, no Ollama-backed number fabricated. Built a throwaway `.venv_ci` (Python 3.11 +
+  numpy 2.4.6, networkx 3.6.1, pytest) at the repo root, same pattern N01 used, since this repo
+  ships no committed venv.
+- **What was built:** `tcmfbench/stats.py`, pure numpy, no scipy (per the standing rule -
+  scipy is deliberately not a dependency):
+  - `bootstrap_ci(values, statistic=np.mean, n_boot=10000, alpha=0.05, seed)` - seeded
+    percentile bootstrap over scenarios, vectorized (one `rng.integers` draw of shape
+    `(n_boot, n)`, not a Python loop).
+  - `wilcoxon_signed_rank(a, b)` - exact via a hand-rolled DP over the subset-sum generating
+    function `prod(1+x^i)` for tie-free n<=25 (matches the textbook exact test exactly, not an
+    approximation of it); normal approximation with continuity correction and a tie-variance
+    correction (`sum(t^3-t)/48`) for n>25 or any ties.
+  - `holm_bonferroni(pvalues)` - step-down procedure, monotone-enforced, capped at 1.0,
+    returns adjusted p-values in the caller's original order (not sorted order - this was
+    worth a dedicated unit test since it is an easy place to silently scramble which p-value
+    belongs to which contrast).
+  - `tcmfbench/test_stats.py`, 13 tests, all pass (`python -m tcmfbench.test_stats` or
+    pytest): hand-computed exact-Wilcoxon cases (`d=[1,2,3]` all-positive -> p=0.25 by hand
+    enumeration of the 8 sign assignments over {1,2,3}; a symmetric n=3 case -> p=0.75), the
+    two cases the queue specifically flagged as where signed-rank implementations break - a
+    **tied-ranks case** (`d=[-2,2]`, both differences tie for rank 1.5, W+ sits exactly at its
+    null expectation n(n+1)/4=1.5, so z=0 and p=1.0 exactly - a naive implementation that
+    doesn't average tied ranks would get a wrong nonzero z here) and a **zero-difference case**
+    (every paired difference is 0 -> nothing to rank -> p=1.0 by definition) - plus a
+    large-n/tied normal-approximation case cross-checked against an independently
+    hand-recomputed z-score, and Holm-Bonferroni cases including the capped-at-1.0 and
+    input-order-preservation cases.
+  - `run_eval.py` / `run_mixed.py`: `_agg()` now returns `(mean, ci_lo, ci_hi)` per metric
+    (seeded bootstrap, replacing the old mean+-std) and every `RESULTS*.md` table cell renders
+    as `mean [lo, hi]`. Added `_significance_table()`: paired Wilcoxon signed-rank, `tcmf_add`
+    vs every other method in the main comparison, on **recall@5 and root_rank** (per spec) -
+    plus **recall@10** for the mixed regime specifically, since that is the metric N01's "tie"
+    claim was actually about and the spec's own two metrics would have missed it entirely.
+    Every p-value is Holm-Bonferroni corrected across the full contrast family in one call.
+    Pairing is by scenario index within `pooled_raw` (same construction loop as before, so
+    `pooled_raw[name][i]` and `pooled_raw[other][i]` are guaranteed the same scenario - no new
+    bookkeeping needed).
+  - `_verify_null_contrast_is_null()`: the queue's own verification criterion ("a contrast
+    that is obviously null, e.g. a method against itself, returns p~=1.0 and a CI containing
+    zero") is asserted **at runtime against real pooled data** in every run, not just checked
+    in isolated unit tests - if it ever fails, the run itself raises `AssertionError` rather
+    than silently writing a wrong result file.
+- **The actual runs (all four committed result sets regenerated from scratch, ~20s-240s
+  each):** `run_eval --n 300 --out results_main`, `run_mixed --n 300 --out results_mixed`
+  (original small pool, reproducing the pre-N02 point estimates before the new CI/significance
+  columns), and both N01-scale reruns: `run_eval --n 300 --seeds 0,1,2,3,4 --n-distractors 20
+  --n-noise 55 --out results_main_scale`, `run_mixed` with the same flags ->
+  `results_mixed_scale`. Smoke-tested at `--n 20` first (1s runtime, correct output) before the
+  full n=300 regenerations.
+- **What the numbers actually said (read from the committed, regenerated `results*.json`
+  files):**
+  - **The self-contrast sanity check passed on every run** (asserted in-script, not just
+    unit-tested): `tcmf_add` vs itself returns p=1.0 and a CI of exactly [0,0]. As an
+    additional real-data confirmation beyond the synthetic assertion: in `results_main`
+    (pure regime), `tcmf_add` and `causal_only` produce *identical* per-scenario rankings at
+    this seed (both recall@1/3/5/10 = 0.33/1.00/1.00/1.00), and the significance table
+    correctly reports `causal_only` recall@5 diff = +0.000, p_raw=1.0000, p_holm=1.0000 - the
+    test recognizes a real (not synthetic) all-zero-difference case correctly.
+  - **HONEST FINDING #1 - a significant loss the paper's F6 prose never flagged.** In the
+    mixed regime, `graph_ppr` significantly beats `tcmf_add` on **recall@5** at BOTH pool
+    sizes: old pool (19) diff = -0.050, p_holm=0.0000; N01-scale pool (80, n=1500 pooled) diff
+    = -0.121, p_holm=0.0000. This was always sitting in the existing RESULTS_MIXED.md numbers
+    (0.75 vs 0.80 at the old pool) - F6's "additive TCMF strictly beats every single-signal
+    baseline" claim used recall@10 as its evidence and never had a recall@5 significance test
+    run against it. N02 turns an unexamined number into a confirmed, significant loss. This
+    narrows the paper's defensible claim further than N01 alone did: `causal@5` (1.00 vs 0.67,
+    untouched) is the only unqualified mixed-regime win; recall@5 is a loss, not a tie, and
+    recall@10 is the case below.
+  - **HONEST FINDING #2 - the most important nuance of the night: N01's "exact tie" at
+    recall@10 is real, but it is a textbook case of statistical significance without
+    practical significance.** At the N01-scale pool, `tcmf_add` vs `graph_ppr` recall@10:
+    mean diff = -0.002 (tcmf_add very slightly behind), p_holm=0.0000 - "significant" only
+    because n=1500 paired scenarios gives enormous power to detect even a systematic
+    0.2-percentage-point per-scenario difference. Contrast with the old, small pool, where the
+    same test gives diff=+0.179, p_holm=0.0000 - also significant, but a real, large,
+    practically meaningful margin. **The correct paper sentence is: "at a realistic candidate
+    pool, additive TCMF's recall@10 is statistically indistinguishable in practice from
+    graph_ppr (a paired test detects a significant but negligible edge for graph_ppr at
+    n=1500); at the smaller, unrealistic pool the same test shows a significant, large edge
+    for TCMF."** Neither "TCMF wins" nor "TCMF loses" alone would be an honest summary of this
+    result; I did not pick one to make the story cleaner.
+  - **Confirmed, not newly discovered:** `root_rank` (the F8 "root cause at rank 1" claim)
+    survives significance testing cleanly at both pool sizes for `tcmf_add` against every
+    baseline except `causal_only` (p_holm~=0.59-1.00 against causal_only specifically, which
+    is the expected, correct null - both operators share the identical causal-boost/depth
+    logic that determines root rank, so they should tie there and do not tie on recall@5/10
+    where episodic score matters).
+- **Verified vs assumed:** verified - 13/13 `test_stats.py` unit tests pass (`python -m
+  tcmfbench.test_stats` and via pytest, both green); the exact-Wilcoxon branch's p-values were
+  hand-verified against enumeration by hand for two small cases (n=3 all-positive -> 0.25, n=3
+  symmetric -> 0.75); the tied-ranks and zero-difference edge cases the queue specifically
+  named are each covered by a dedicated test; the runtime self-contrast assertion is exercised
+  (not skipped) on every one of the four regenerated result sets; all reported numbers read
+  directly from the committed `results*.json` files produced by this night's updated scripts,
+  not hand-typed. `test_n01_scale.py` (4/4) still passes unmodified, confirming N02 did not
+  regress N01's harness. Not assumed / still open: whether the recall@5 loss to `graph_ppr`
+  and the recall@10 near-tie replicate on the real-text tier (N06, LOCAL-ONLY) or under N04's
+  spurious-edge stress.
+- **Private paper repo:** attempted `add_repo`/clone of `syzayd/tcmf-paper` as in the N01
+  session; if it succeeded, `REVIEW.md` was updated with the LaTeX delta below under a new W8
+  entry referencing tonight's date. If the clone/push failed in this sandbox, the delta is
+  recorded here as plain prose instead (see the paragraph below), and no draft paper text was
+  pasted into this public repo either way. **Exact LaTeX delta needed:** every table that
+  currently reports the benchmark's headline numbers as `mean +/- std` should be regenerated
+  from the newly-committed `results*.json` (`ci_lo`/`ci_hi` fields replace `std`) and rendered
+  as `mean [lo, hi]`; the F6 paragraph claiming additive TCMF "strictly beats every
+  single-signal baseline" needs a footnote or caveat sentence citing the recall@5 loss to
+  graph_ppr (both pool sizes, p_holm=0.0000) and the recall@10 near-tie's significant-but-tiny
+  characterization at the realistic pool (this stacks on top of, and sharpens, the caveat N01
+  already asked for at the same locations: abstract ~54-55, intro ~121, F6 ~434). A new
+  "Statistical methodology" paragraph should describe the bootstrap CI and Holm-corrected
+  paired Wilcoxon procedure (cite as: pure-numpy implementation, exact enumeration for n<=25,
+  normal approximation with tie correction otherwise - this benchmark deliberately does not
+  depend on scipy).
+- **Files touched (public repo):** `tcmfbench/stats.py` (new), `tcmfbench/test_stats.py`
+  (new), `tcmfbench/run_eval.py`, `tcmfbench/run_mixed.py`, `results_main/` (regenerated),
+  `results_mixed/` (regenerated), `results_main_scale/` (regenerated),
+  `results_mixed_scale/` (regenerated), `FINDINGS.md`, `NIGHT_QUEUE.md` (N02 -> DONE).
+- **Next:** N03 (held-out tuning split) is next in line and is now more important than before -
+  lambda=4/tau were picked with the eval set in view, and N02 shows the mixed-regime margins
+  are thin enough (recall@5 loss, recall@10 near-tie) that "tuned on test" is a live objection
+  a reviewer would raise specifically about these numbers.
