@@ -286,6 +286,18 @@ disjoint-seed and no-recap-pool assertions are unit-tested in
 real-text tier (N06, LOCAL-ONLY) or under N04's spurious-edge stress - those are separate,
 still-open questions.
 
+**Addendum - independent N01 replication.** A second, independent cloud run of this same item
+(branch `night-tcmf/2026-07-23`, full write-up in `NIGHT_LOG.md`'s addendum) reran the same
+experiment at an equivalent pool (~78-80, 5 seeds) using its own separately-written harness
+changes (superseded here by the version above) and its own result dirs
+(`results_main_pool80/`, `results_mixed_pool80/`). It found the same directional result - the
+mixed-regime margin over `graph_ppr` does not survive at a realistic pool - but landed on
+slightly different point estimates: `tcmf_add` recall@10 = 0.79 (vs this run's exact 0.80 tie)
+and `tcmf_shipped` = 0.73 (vs 0.74). Both runs agree the effect is real and stable across their
+respective 5 seeds; the ~0.01 discrepancy between runs is itself informative about how much
+noise to expect from independent (dis)agreement of pool composition. Not reconciled into a
+single number - flagged for N03's held-out lambda retune to settle definitively.
+
 ## N02 - Bootstrap CIs + paired significance tests - the N01 "tie" is real but tiny, and a
 ## significant loss was hiding in plain sight at recall@5 all along
 

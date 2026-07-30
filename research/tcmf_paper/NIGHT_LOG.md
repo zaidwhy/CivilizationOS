@@ -131,6 +131,79 @@ delta the private paper repo needs.
 
 ---
 
+### Addendum (2026-07-23) - independent N01 replication, branch `night-tcmf/2026-07-23`
+
+A second cloud sandbox worked the same N01 item independently the night before, on a separate
+branch, without visibility into the run above. Superseded by the run above as the primary N01
+implementation (that one is what `run_eval.py`/`run_mixed.py`/N02 build on); kept here as an
+independent replication with a different pool composition and its own committed result dirs
+(`results_main_pool80/`, `results_mixed_pool80/`), not folded into the shipped harness.
+
+- **Item chosen:** N01, the lowest-numbered OPEN item and CLOUD-OK (this is a cloud sandbox:
+  no Ollama, no access to Zaid's machine, so any LOCAL-ONLY item - none were reached tonight
+  since N01 is first - would have been skipped for the next CLOUD-OK one).
+- **What was built:** Added `--n-distractors`, `--n-noise`, `--seeds` (comma list) to both
+  `tcmfbench/run_eval.py` and `tcmfbench/run_mixed.py`, threaded into `GenConfig`/`MixedConfig`
+  (both dataclasses already had the fields, confirming the setup night's inventory - this was a
+  threading job, not a rewrite). Multi-seed support pools per-scenario rows across all seeds
+  before computing mean/std (not an average of per-seed averages), and reports a per-seed
+  recall@10 stability table so a one-off seed can't hide behind an aggregate. Also added an
+  `_analytic_random_recall()` closed-form check (`E[recall@k] = k/pool`, hypergeometric mean)
+  to both runners, and a `random` baseline to `run_mixed.py`'s method set (it was missing
+  there, which meant the mixed regime had no sanity check on the harness at all).
+  Backward compatibility checked: default single-seed, no-override invocation reproduces the
+  original small-pool numbers in `FINDINGS.md` bit for bit.
+- **Verified, not assumed:** Traced `materialize(sc, max_mem_per_citizen=8)` and confirmed by
+  direct measurement (not just code-reading) that the per-citizen split does NOT silently
+  re-cap the enlarged pool: `n_citizens` scales with pool size
+  (`ceil(len(memories)/max_mem_per_citizen)`), and every downstream `retrieve()` call passes
+  `k=10_000`, far above any realistic pool. At pool=78, `_episodic_scores()` returned scores
+  for all 78 memories, zero truncation, for 5 independently-generated scenarios. Added this as
+  a permanent regression test, plus a test that the analytic random-baseline formula matches a
+  hand-computed known case (gold=3, pool=10) and the empirical measured baseline within 0.03
+  over 200 scenarios: `tcmfbench/tests/test_pool_scaling.py`, 4/4 passing.
+- **Experiment:** reran both regimes at pool~80 (20 distractors, 55 noise, chain_len=4
+  unchanged) across 5 seeds, n=300 each (1500 scenarios pooled per regime):
+  `python -m tcmfbench.run_eval  --n 300 --seeds 0,1,2,3,4 --n-distractors 20 --n-noise 55 --out results_main_pool80`
+  `python -m tcmfbench.run_mixed --n 300 --seeds 0,1,2,3,4 --n-distractors 20 --n-noise 55 --out results_mixed_pool80`
+  All 5 seeds agreed to 2 decimal places on every method's recall@10 in both regimes - not a
+  one-off. The random baseline's measured recall@10 (0.139 pure / 0.134 mixed) matched the
+  analytic k/pool prediction (0.128 / 0.125) closely, confirming the harness measures what it
+  claims to.
+- **What the numbers actually said:**
+  - **Pure regime: the margin survives.** `tcmf_add` still ties the causal oracle exactly at
+    recall@10 = 1.00 and both crush every non-causal baseline (semantic_rag/episodic = 0.00,
+    tcmf_mult = 0.01, graph_ppr = 0.33, tcmf_rrf = 0.97). One real degradation: the REAL
+    shipped retriever `tcmf_shipped`'s recall@10 falls from 1.00 (old ~17-candidate pool) to
+    **0.80** at pool~78. Root-cause placement is untouched (root_mrr = 1.00, root_rank = 1.0,
+    unchanged) - it still nails which memory is the root cause, it just doesn't pull every
+    other causal-gold witness into the top 10 as reliably at this scale.
+  - **Mixed regime: the margin against `graph_ppr` does NOT survive - this replication's honest
+    negative result.** At the old pool, `tcmf_add` (0.98) and `tcmf_shipped` clearly beat
+    `graph_ppr` (0.80) on overall recall@10. At pool~80, `graph_ppr`'s recall@10 is
+    **unchanged at 0.80**, while `tcmf_add` falls to **0.79** and `tcmf_shipped` falls to
+    **0.73** - `graph_ppr` now edges out both. Stable across all 5 seeds, not sampling noise.
+    Cause, from the `causal@5`/`semantic@5` breakdown: `tcmf_add` still perfectly recovers
+    causal-gold (causal@5 = 1.00, unchanged) but its semantic-gold recovery collapses from
+    0.38 (old pool) to 0.18 at the larger pool - `lambda=4` (picked by eye at the old, small
+    pool, never revisited) now overweights the causal term against a much bigger competing
+    episodic pool and crowds out the semantic-gold memories it used to also retrieve.
+    `graph_ppr` doesn't have this problem: it scores by proximity to graph *events*, not by
+    competing in a normalized episodic pool against 55 extra noise memories, so its number
+    doesn't move with pool size. **Note this replication's mixed-regime tcmf_add (0.79) is
+    close to but not identical to the primary run's exact tie with graph_ppr (0.80) above -
+    within the same directional finding (the old-pool margin does not survive), but the two
+    independent implementations land at slightly different numbers. Not reconciled; flagged
+    for N03's held-out lambda retune to settle.**
+  - I did not retune, reseed, or reframe to make this look better. It is written down plainly
+    here.
+- **Files touched (this branch, not merged into the shipped harness):** `tcmfbench/run_eval.py`,
+  `tcmfbench/run_mixed.py` (superseded by the primary run's version above),
+  `tcmfbench/tests/test_pool_scaling.py`, committed result dirs `results_main_pool80/`,
+  `results_mixed_pool80/`.
+
+---
+
 ## 2026-07-28 (N02 - bootstrap confidence intervals + paired significance tests)
 
 - **Item:** N02, the lowest-numbered OPEN + CLOUD-OK item (N01 was already DONE). Environment:
