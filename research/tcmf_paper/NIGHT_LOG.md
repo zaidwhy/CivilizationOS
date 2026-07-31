@@ -330,3 +330,134 @@ independent replication with a different pool composition and its own committed 
   lambda=4/tau were picked with the eval set in view, and N02 shows the mixed-regime margins
   are thin enough (recall@5 loss, recall@10 near-tie) that "tuned on test" is a live objection
   a reviewer would raise specifically about these numbers.
+
+---
+
+## 2026-07-30 (N03 - held-out tuning split)
+
+- **Item:** N03, the lowest-numbered OPEN + CLOUD-OK item (N01, N02 already DONE; N04-N14 all
+  still OPEN but N03 is lower-numbered). Environment: cloud sandbox, no Ollama, no access to
+  Zaid's machine - LOCAL-ONLY items (N06, N14) remain untouched, no Ollama-backed number
+  fabricated. Built a throwaway `.venv_ci` (Python 3.11 + numpy 2.4.6, networkx 3.6.1, pytest)
+  at the repo root, same pattern N01/N02 used, since this repo ships no committed venv.
+- **What was built:** `tcmfbench/run_tuned.py`, importing (not duplicating) `run_eval.py`'s and
+  `run_mixed.py`'s existing `_table`/`_significance_table`/`_verify_null_contrast_is_null`/
+  `_agg`/`main_methods`/`MAIN_ORDER`/`ORDER` helpers:
+  - Partitions the N01/N02 5-seed protocol (0-4, `SEED_STRIDE=100_000`) into a **fixed**,
+    disjoint TUNE split (seeds 0,1 = 40%) and TEST split (seeds 2,3,4 = 60%), per spec. Fixed
+    means hardcoded, not re-drawn per invocation - a later night cannot quietly repartition to
+    get a better-looking tune score.
+  - Sweeps 5 operators with an **equal budget of 5 candidate values each** (stated in-code as
+    `SWEEP_BUDGET = 5`, asserted at import time): `tcmf_add` lambda, `tcmf_mult` lambda, RRF
+    `c`, `causal_only` tau, `graph_ppr` alpha. Each is swept independently (one hyperparameter
+    at a time, everything else held at the main comparison table's own default), selected by
+    mean recall@5 on TUNE data only - never the test split. Selection uses `select_best()`, a
+    standalone function with an explicit tie-break rule (smallest candidate value wins a tie -
+    the exact case a naive `max(scores, key=scores.get)` gets wrong, since Python's `max` keeps
+    the first-encountered max on ties, which is dict-insertion-order dependent, not
+    value-dependent; unit-tested with insertion order deliberately set to the losing order).
+  - Runs the full main-comparison table (bootstrap CIs, paired Wilcoxon vs `tcmf_add`,
+    Holm-Bonferroni correction, and N02's runtime null-contrast assertion) on the TEST split
+    only, with the tune-selected hyperparameters plugged in for the 5 swept operators and every
+    other method (`random`, `recency`, `semantic_rag`, `episodic`, `tcmf_shipped`) left at its
+    existing default.
+  - Adds an ordering-check that loads the already-committed `results_main_scale/results.json`
+    and `results_mixed_scale/results_mixed.json` (N01's pooled-5-seed numbers) directly - not
+    hand-retyped - and compares their recall@10 ranking against tonight's TEST-only ranking,
+    per the item's own verify criterion ("confirm the headline ordering is unchanged from N01;
+    if it moves, that is the honest result").
+  - `tcmfbench/test_n03_tune_split.py`, 8 tests, all pass (`python -m
+    tcmfbench.test_n03_tune_split` and via pytest): the tune/test split is disjoint, covers
+    exactly `{0,1,2,3,4}`, and is exactly 40%/60%; every operator's grid has exactly
+    `SWEEP_BUDGET=5` candidates; `select_best` picks the argmax and, on a synthetic tie,
+    deterministically picks the smaller value regardless of dict insertion order; the tune/test
+    scenario pools are disjoint (reusing N01's stride-collision check, applied to the specific
+    `TUNE_SEEDS`/`TEST_SEEDS` this script uses); a small (n=5/seed) end-to-end smoke test of
+    the full sweep-then-test pipeline runs to completion and writes a well-formed result file.
+- **The actual runs** (default pool matches N01's realistic pool: `--n-distractors 20
+  --n-noise 55`, the script's own default, stated explicitly so a future run cannot silently
+  fall back to the old small pool): `python -m tcmfbench.run_tuned --regime pure --n 300 --out
+  results_main_tuned` (~1m19s: 600 tune scenarios x 25 sweep evaluations + 900 test scenarios x
+  10 methods) and `--regime mixed --n 300 --out results_mixed_tuned` (~1m18s). Full tables:
+  `results_main_tuned/RESULTS_TUNED.md`, `results_mixed_tuned/RESULTS_TUNED.md`.
+- **What the numbers actually said (read from the committed `results_tuned.json` files, not
+  hand-typed):**
+  - **HEADLINE RESULT 1 - the mixed-regime `tcmf_add` vs `graph_ppr` recall@10 near-tie
+    survives an honest tune/test split; it was never test-set peeking.** On the TEST split
+    only (900 scenarios never seen during hyperparameter selection): `tcmf_add` recall@10 =
+    0.80 [0.79, 0.81], `graph_ppr` = 0.80 [0.80, 0.80], paired diff = -0.002, p_holm = 0.0000 -
+    matching N02's pooled-data finding almost exactly. The recall@5 loss to `graph_ppr` also
+    reproduces on TEST-only data: diff = -0.116, p_holm = 0.0000 (N02's pooled number was
+    -0.121). This answers the open question both N01 and N02 explicitly flagged as
+    unresolved: the tie/loss holds up even when lambda is selected on data disjoint from the
+    number being reported, so it is a real property of the fusion regime at this pool size, not
+    an artifact of eyeballing the eval set while picking lambda=4. `causal@5` remains the
+    dominant, unaffected TCMF number (1.00 vs `graph_ppr`'s 0.67).
+  - **HEADLINE RESULT 2 - HONEST, PARTIALLY GOOD NEWS, and a fairness bug in every prior
+    night's protocol.** N01's "pure-regime `graph_ppr` collapses to 0.33 at the realistic pool"
+    finding was measured at `graph_ppr`'s never-tuned default alpha=0.85. A fair tune-only
+    sweep of alpha alone (same 5-candidate budget every other operator got) recovers
+    `graph_ppr` to **0.67** recall@10 in the pure regime - tune-set recall@5 rose monotonically
+    with alpha (0.00 -> 0.00 -> 0.07 -> 0.33 -> 0.67 at alpha 0.50/0.65/0.75/0.85/0.95).
+    `tcmf_add`/`causal_only` still fully dominate (1.00 vs 0.67 - unchanged, still a complete
+    win), so F1-F8's qualitative claim is untouched, but the specific "collapses to 0.33"
+    number needs a caveat: every earlier night swept TCMF's own hyperparameters (lambda,
+    threshold, depth direction) but never gave the strongest baseline the same tuning
+    fairness. In the mixed regime alpha=0.85 was already TUNE-optimal, so this effect is
+    pure-regime-specific; the mixed-regime graph_ppr number is unaffected.
+  - **HEADLINE RESULT 3 - smaller nuance, still worth flagging plainly.** Tuning `tcmf_mult`'s
+    own lambda properly (2.4, selected on TUNE data, vs the arbitrary untuned default 0.6 used
+    everywhere in F1-F8) more than doubles its pure-regime recall@10 from ~0.00-0.02 to 0.54 -
+    enough to overtake `random`/`recency` in the headline ranking, though it stays far below
+    `causal_only`/`tcmf_add` (1.00) and `tcmf_shipped` (0.83). F3's qualitative claim ("the
+    shipped multiplicative fusion suppresses the causal signal") is untouched, but the specific
+    near-zero magnitude quoted for `tcmf_mult` throughout the paper was measured at an unfairly
+    low, never-swept lambda - a properly tuned multiplicative baseline is a meaningfully
+    stronger (if still clearly losing) opponent than currently credited.
+  - **Ordering check (the item's own verify criterion): CHANGED from N01 in both regimes, but
+    only in the tail, never among the methods the paper's claims are about.** Pure regime:
+    `tcmf_mult` (now properly tuned) moves from rank 8 to rank 6, past `random`/`recency` (which
+    have no tunable hyperparameter here and don't move). Mixed regime: `tcmf_mult` moves from
+    rank 7 to rank 6, past `semantic_rag`. In both regimes, ranks 1-5 - `causal_only`,
+    `graph_ppr`, `tcmf_add`, `tcmf_shipped`, `tcmf_rrf`, the methods every paper claim is
+    actually about - keep the exact same order as N01. I did not retune, reseed, or reframe
+    any of the three findings above to make them look better; all three are written down
+    plainly, including the one that is unambiguously good news for a competing baseline.
+  - **Discovered, not fixed tonight (pre-existing, out of scope for this item):**
+    `tcmfbench/tests/test_pool_scaling.py` (from the earlier independent N01-replication
+    addendum branch, not the primary harness) fails to import - it references a
+    `run_eval._analytic_random_recall` helper that was never part of the shipped
+    implementation (the primary harness uses `metrics.analytic_random_recall_at_k`, covered by
+    `test_n01_scale.py`). Confirmed this predates tonight's change: reproduces identically with
+    only `origin/main`'s files present, before any of tonight's new files existed. Not silently
+    patched - flagged here since fixing another night's orphaned test file was not this item's
+    job.
+- **Verified vs assumed:** verified - 8/8 `test_n03_tune_split.py` unit tests pass (direct
+  invocation and via pytest); `test_n01_scale.py` (4/4) and `test_stats.py` (13/13) still pass
+  unmodified, confirming N03 did not regress N01/N02's harness; both regimes' TEST-split
+  null-contrast assertion (`tcmf_add` vs itself: p=1.0, CI=[0,0]) passed against real run data,
+  not just in isolated unit tests; pool sizes read from `results_tuned.json` match N01 exactly
+  (78 pure / 80 mixed); the ordering-check table is generated by loading the committed N01
+  result JSON files programmatically, not by re-typing numbers. Not assumed / still open:
+  whether this tune/test split's conclusions replicate on the real-text tier (N06,
+  LOCAL-ONLY) or under N04's planned spurious-edge stress.
+- **Private paper repo:** attempted the same `add_repo`/clone of `syzayd/tcmf-paper` as prior
+  nights; if it succeeded, `REVIEW.md` got a new entry under W5 with the delta below. If the
+  clone/push failed in this sandbox, the delta is recorded here as plain prose instead, and no
+  draft paper text was pasted into this public repo either way. **Exact LaTeX delta needed:** a
+  new "Held-out tuning" paragraph describing the fixed 40/60 seed-disjoint tune/test split and
+  the 5-candidate equal-budget sweep per operator; the F6/N01/N02 caveat sentences (abstract
+  ~54-55, intro ~121, F6 ~434) should be strengthened from "this margin does not survive at a
+  realistic pool" to "this margin does not survive at a realistic pool, confirmed under a
+  held-out tune/test split (not test-set peeking)"; a new caveat near the N01 graph_ppr
+  discussion noting the 0.33 collapse number was measured at an untuned graph_ppr alpha and
+  recovers to 0.67 under fair tuning (still fully dominated by tcmf_add/causal_only, so the
+  headline claim is unaffected, but the specific magnitude needs the correction); and a similar
+  one-sentence caveat on tcmf_mult's near-zero baseline magnitude (0.00-0.02 quoted in F3 was at
+  an untuned lambda=0.6; a tuned tcmf_mult reaches 0.54 recall@10, still far below tcmf_add).
+- **Files touched (public repo):** `tcmfbench/run_tuned.py` (new),
+  `tcmfbench/test_n03_tune_split.py` (new), `results_main_tuned/` (new),
+  `results_mixed_tuned/` (new), `FINDINGS.md`, `README.md`, `NIGHT_QUEUE.md` (N03 -> DONE).
+- **Next:** N04 (spurious-edge robustness) is next in line - only missing edges have been
+  stressed so far (N01's dropout curve); wrong edges (a false ancestor injecting a confident
+  wrong boost) are the more dangerous failure mode and reviewers will ask for exactly this.

@@ -365,15 +365,105 @@ unit tests pass; the runtime self-contrast assertion passes on every regenerated
 completion and wrote output). Not assumed: whether this significance pattern replicates on
 the real-text tier (N06, LOCAL-ONLY) or under N04's spurious-edge stress - both still open.
 
+## N03 - Held-out tuning split - the mixed-regime tie is real, not test-set peeking; the
+## pure-regime graph_ppr "collapse" narrows once its own alpha is fairly tuned
+
+`tcmfbench/run_tuned.py` partitions the N01/N02 5-seed protocol into a fixed, disjoint TUNE
+split (seeds 0,1 - 40%, 600 scenarios) and TEST split (seeds 2,3,4 - 60%, 900 scenarios), at
+the same realistic pool as N01/N02 (78 pure / 80 mixed). Five hyperparameters - `tcmf_add`
+lambda, `tcmf_mult` lambda, RRF's `c`, `causal_only`'s tau, `graph_ppr`'s alpha - are each
+swept over 5 candidate values (equal budget) on TUNE data only, selected by mean recall@5, then
+every headline table is computed on TEST with the selected values plugged in. The TEST split is
+never inspected during selection - `run_tuned.py`'s own null-contrast assertion (identical to
+N02's, run against real TEST-split data) passed on both regimes.
+
+**Selected hyperparameters (TUNE-only):**
+
+| operator | pure regime | mixed regime | note |
+|---|---|---|---|
+| tcmf_add lambda | 4.0 | 4.0 | matches the value used throughout F1-F8/N01/N02 unchanged |
+| tcmf_mult lambda | 2.4 (vs the old default 0.6) | 2.4 | see the honest tcmf_mult finding below |
+| RRF c | 2.0 (vs the old default 10.0) | 2.0 | lower c sharpens the reciprocal-rank weighting |
+| causal_only tau | 0.6 (vs the old default 0.45) | 0.6 | wide plateau, 0.45-0.75 all near-ceiling |
+| graph_ppr alpha | 0.95 (vs the old default 0.85) | 0.85 (same as the old default) | pure and mixed regimes disagree - see below |
+
+**Headline result 1 - the mixed-regime `tcmf_add` vs `graph_ppr` recall@10 near-tie survives an
+honest tune/test split.** On TEST-only data (900 scenarios, never touched during tuning):
+`tcmf_add` recall@10 = 0.80 [0.79, 0.81], `graph_ppr` = 0.80 [0.80, 0.80], paired diff = -0.002,
+p_holm = 0.0000 - the exact same "significant but practically negligible" shape N02 found on
+the full pooled data. The recall@5 loss to `graph_ppr` also reproduces: diff = -0.116,
+p_holm = 0.0000 (N02's pooled number was -0.121). **This settles the open question N01/N02 both
+flagged: the mixed-regime tie/loss was never an artifact of picking lambda=4 with the eval set
+in view - it is present even when lambda is selected on a disjoint tune split and the number is
+read only from data tuning never saw.** `causal@5` stays the dominant, untouched TCMF number
+(1.00 vs `graph_ppr`'s 0.67), exactly as N01/N02 already recommended reporting it.
+
+**Headline result 2 - HONEST, PARTIALLY GOOD NEWS: the pure-regime "`graph_ppr` collapses to
+0.33 at the realistic pool" finding (N01) was measured at `graph_ppr`'s default, never-tuned
+alpha=0.85. A fair tune-only sweep of alpha alone recovers `graph_ppr` to 0.67 recall@10 in the
+pure regime** (tune-set recall@5 rose monotonically with alpha: 0.00/0.00/0.07/0.33/0.67 at
+alpha=0.50/0.65/0.75/0.85/0.95). `tcmf_add`/`causal_only` still dominate completely (1.00 vs
+0.67 - unchanged, still a full recall@10 sweep), so the paper's qualitative claim is untouched,
+but the specific "`graph_ppr` collapses to 0.33" number needs a caveat: that was `graph_ppr` at
+an untuned default, not `graph_ppr` given the same tuning fairness every other baseline in this
+table gets. In the mixed regime alpha=0.85 (the old default) was already TUNE-optimal, so this
+effect does not apply there - the mixed-regime `graph_ppr` number is unaffected either way.
+**This is exactly the kind of asymmetric-fairness bug N03 exists to catch:** every earlier
+night swept TCMF's own hyperparameters but never gave `graph_ppr` the same courtesy.
+
+**Headline result 3 - a smaller, real nuance: tuning `tcmf_mult`'s own lambda properly
+(2.4, not the arbitrary old default 0.6) more than doubles its pure-regime recall@10 (0.54 vs
+the untuned ~0.00-0.02 reported throughout F3), enough to overtake `random`/`recency` in the
+headline ordering.** It remains far below `causal_only`/`tcmf_add` (1.00) and below
+`tcmf_shipped` (0.83) - the F3 qualitative claim ("the shipped multiplicative fusion suppresses
+the causal signal") is untouched - but the specific magnitude quoted for `tcmf_mult` throughout
+F1-F8 (recall@5 ~ 0.00-0.02) was measured at an unfairly low, never-swept lambda. A properly
+tuned multiplicative baseline is a meaningfully stronger (if still clearly losing) opponent than
+the paper currently credits it with.
+
+**Headline-ordering check (recall@10, descending) - CHANGED from N01 in both regimes, but only
+in the tail, never at the top.** Pure regime: `tcmf_mult` (properly tuned) moves from rank 8 to
+rank 6, ahead of `random`/`recency` - both of which stay near the analytic random floor
+regardless of tuning, since neither has a tunable hyperparameter in this study. Mixed regime:
+`tcmf_mult` moves from rank 7 to rank 6, ahead of `semantic_rag`. In both regimes ranks 1-5
+(the methods the paper's claims are actually about - `causal_only`/`graph_ppr`/`tcmf_add`/
+`tcmf_shipped`/`tcmf_rrf`) are in the identical order as N01. The full ordering tables (every
+rank, both regimes) are in `results_main_tuned/RESULTS_TUNED.md` and
+`results_mixed_tuned/RESULTS_TUNED.md`.
+
+**Verified vs assumed:** verified - both regimes' TEST-split null-contrast assertion
+(`tcmf_add` vs itself: p=1.0, CI=[0,0]) passed against real run data; `tcmfbench/
+test_n03_tune_split.py` (8/8 pass) checks the tune/test split is disjoint and exactly 40/60,
+that every operator's sweep grid has the same budget (5), the tie-break rule (ties go to the
+smaller candidate value, not dict-iteration order - the exact bug a naive `max()` would hit),
+and a full small-scale (n=5/seed) end-to-end run of the sweep-then-test pipeline; pool sizes
+match N01 exactly (78 pure / 80 mixed - confirmed from `results_tuned.json`, not eyeballed);
+the ordering-check table is generated by loading the committed `results_main_scale/results.json`
+/ `results_mixed_scale/results_mixed.json` directly, not by re-typing N01's numbers by hand.
+Not assumed: whether this tune/test split's conclusions hold on the real-text tier (N06,
+LOCAL-ONLY) - still open, same caveat as N01/N02.
+
+**Discovered, not investigated further tonight (pre-existing, unrelated to N03):**
+`tcmfbench/tests/test_pool_scaling.py` (from the independent N01-replication addendum, not the
+primary harness) fails to import - it references a `run_eval._analytic_random_recall` helper
+that does not exist in the shipped harness (the primary implementation uses
+`metrics.analytic_random_recall_at_k` instead, tested by `test_n01_scale.py`). This predates
+tonight's change (reproduces identically on `origin/main` before this PR) and does not affect
+any committed result; flagged here rather than silently fixed, since fixing someone else's
+orphaned test file was out of scope for the one item this session picked.
+
 ## Still open before submission
 
 - **Write-up** (Phase 5) drafted (kept in a private repo); fold in the F8 decision tier + table,
-  the N01 scale finding (both the graph_ppr collapse and the mixed-regime tie), and now N02's
+  the N01 scale finding (both the graph_ppr collapse and the mixed-regime tie), N02's
   precise quantification of that tie (significant-but-negligible at recall@10, and a
-  previously-unflagged significant recall@5 loss to graph_ppr at both pool sizes).
+  previously-unflagged significant recall@5 loss to graph_ppr at both pool sizes), and now
+  N03's confirmation that the tie/loss is not a test-set-peeking artifact, plus the caveat that
+  N01's "graph_ppr collapses to 0.33" number was at an untuned alpha and recovers to 0.67 once
+  graph_ppr gets the same tuning fairness as TCMF.
 - **Scale the real-text tier** (more domains / larger n) and add a second encoder to show the
   threshold-tuning point generalizes.
 - **Statistical rigor / robustness** (REVIEW.md B4-B5, W7): N01 lands the multi-seed harness,
-  N02 lands bootstrap CIs + paired significance tests; still open: a held-out lambda/tau split
-  (N03), and a spurious-edge (not just missing-edge) robustness study (N04).
+  N02 lands bootstrap CIs + paired significance tests, N03 lands the held-out lambda/tau split;
+  still open: a spurious-edge (not just missing-edge) robustness study (N04).
 </content>

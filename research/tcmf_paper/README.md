@@ -25,6 +25,7 @@ tcmfbench/
   run_eval.py     pure regime: main comparison + ablations -> results_main/
   run_mixed.py    mixed regime: fusion beats single signals + dropout -> results_mixed/
   run_realtext.py real-text tier (needs Ollama) -> results_realtext/
+  run_tuned.py    held-out tune/test split (N03) -> results_main_tuned/, results_mixed_tuned/
 PAPER_PLAN.md     the correct framing, related work, and phase plan
 FINDINGS.md       what the runs show (read this first): F1-F7 + code fixes + real-text tier
 ```
@@ -75,6 +76,27 @@ unflagged significant recall@5 loss to `graph_ppr` in the mixed regime, and why 
 recall@10 "tie" at the realistic pool is statistically significant but practically negligible.
 `tcmfbench/test_stats.py` unit-tests the bootstrap CI, Wilcoxon, and Holm-Bonferroni functions
 against hand-computed known answers.
+
+### Held-out tuning split (N03)
+
+`tcmfbench/run_tuned.py` partitions the same 5-seed protocol into a fixed, disjoint TUNE split
+(seeds 0,1 - 40%) and TEST split (seeds 2,3,4 - 60%). `tcmf_add`/`tcmf_mult` lambda, RRF's `c`,
+`causal_only`'s tau, and `graph_ppr`'s alpha are each swept (5 candidate values, an equal
+budget per operator) on TUNE-only data, selected by mean recall@5, then every headline number
+is reported on the disjoint TEST split with the selected values:
+
+```powershell
+& "..\..\.venv\Scripts\python" -m tcmfbench.run_tuned --regime pure  --n 300 --out results_main_tuned
+& "..\..\.venv\Scripts\python" -m tcmfbench.run_tuned --regime mixed --n 300 --out results_mixed_tuned
+```
+
+See `FINDINGS.md` (N03) for the result: N01/N02's mixed-regime `tcmf_add` vs `graph_ppr`
+recall@10 near-tie survives an honest tune/test split (it was not an artifact of eyeballing the
+eval set), and the pure-regime "`graph_ppr` collapses at the realistic pool" finding narrows -
+`graph_ppr`'s own alpha was never tuned before N01/N02; tuned on TUNE-only data it recovers
+from 0.33 to 0.67 recall@10 (still well below `tcmf_add`'s 1.00, but a smaller gap than
+previously reported). `tcmfbench/test_n03_tune_split.py` unit-tests the split contract, the
+tie-break rule, and runs a small end-to-end smoke test of the sweep-then-test pipeline.
 
 ## What the benchmark holds fixed vs varies
 

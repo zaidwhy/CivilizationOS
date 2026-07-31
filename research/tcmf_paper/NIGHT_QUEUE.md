@@ -88,7 +88,7 @@ Averages alone will draw a reviewer complaint. Replace them everywhere.
 itself) returns p ~= 1.0 and a CI containing zero.
 
 ### N03 - Held-out tuning split
-**Status:** OPEN | **Env:** CLOUD-OK | **Answers:** W5
+**Status:** DONE (2026-07-30) | **Env:** CLOUD-OK | **Answers:** W5
 
 Right now lambda = 4 and tau are picked with the eval set in view. That is a straight
 "tuned on test" objection and it is cheap to remove.
