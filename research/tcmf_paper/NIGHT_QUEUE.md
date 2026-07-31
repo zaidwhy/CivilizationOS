@@ -107,7 +107,7 @@ moves, that is the honest result.
 ## Phase 2 - Kill the "one setting" objection (N04-N06)
 
 ### N04 - Spurious-edge robustness
-**Status:** OPEN | **Env:** CLOUD-OK | **Answers:** W7
+**Status:** DONE (2026-07-31) | **Env:** CLOUD-OK | **Answers:** W7
 
 Only *missing* edges are stressed today (dropout). Wrong edges are the more dangerous
 failure: a false ancestor injects a confident wrong boost. Reviewers will ask for exactly

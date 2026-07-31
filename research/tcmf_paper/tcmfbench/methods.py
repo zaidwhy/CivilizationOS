@@ -101,6 +101,13 @@ def materialize(sc: Scenario, max_mem_per_citizen: int = 8) -> Materialized:
     return mat
 
 
+def distractor_ids(mat: Materialized) -> set[str]:
+    """Ids of memories labeled `distractor` - causally irrelevant, semantically loud. A false
+    ancestor edge (N04) should never earn these a causal boost, so any of them surfacing in a
+    top-k is precision-side damage, not a ranking nuance."""
+    return {i for i in mat.all_ids if mat.mem[i]["label"] == "distractor"}
+
+
 # --------------------------------------------------------------------------- baselines
 
 def rank_random(mat: Materialized, seed: int) -> list[str]:

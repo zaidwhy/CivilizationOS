@@ -12,6 +12,15 @@ Distractors sit on the surface region with LOWER alignment than semantic-gold, s
 can rank true semantic-gold above them. Optional ``edge_dropout`` removes causal-chain edges,
 disconnecting some ancestors from the crisis (graph incompleteness) - the robustness knob.
 
+Optional ``spurious_edge_rate`` (N04) is the opposite failure mode: a WRONG causal edge, not a
+missing one. With probability ``spurious_edge_rate`` a fabricated "ancestor" event is added,
+aligned to the crisis surface topic (the same topic distractors share) and linked directly to
+the crisis. Because its embedding sits close to the distractor/semantic-gold topic region, the
+causal boost fires on it too, handing distractors a boost they should never earn. This is
+gated behind ``spurious_edge_rate > 0.0`` so it consumes no extra RNG draws (and changes
+nothing else about the scenario) when left at its default - a ``spurious_edge_rate=0.0`` run is
+byte-for-byte identical to a run built before this knob existed.
+
 Expected behaviour:
   semantic_rag  -> recovers semantic-gold, misses causal-gold
   causal_only   -> recovers causal-gold, misses semantic-gold
@@ -36,6 +45,7 @@ class MixedConfig:
     n_distractors: int = 6
     n_noise: int = 8
     edge_dropout: float = 0.0          # prob each causal-chain edge is missing from the graph
+    spurious_edge_rate: float = 0.0    # prob a fabricated false-ancestor edge is injected (N04)
     alpha_event: float = 0.95
     alpha_causal_gold: float = 0.90    # alignment to its distinct topic
     alpha_query: float = 0.90
@@ -129,8 +139,29 @@ def generate_mixed(scenario_id: str, cfg: MixedConfig, seed: int) -> Scenario:
 
     mems = [mems[i] for i in rng.permutation(len(mems))]
 
+    # N04: false-ancestor injection, independent of edge_dropout. Gated behind rate > 0 so a
+    # default (0.0) run draws no extra randomness and reproduces prior scenarios exactly - the
+    # draw below is the ONLY thing spurious_edge_rate changes; every memory/event/query
+    # embedding above is generated identically regardless of this knob's value.
+    spurious_events: list[EventSpec] = []
+    spurious_edges: list[tuple[str, str]] = []
+    if cfg.spurious_edge_rate > 0.0 and rng.random() < cfg.spurious_edge_rate:
+        spur = EventSpec(
+            id=f"{scenario_id}_spurious0",
+            text="fabricated ancestor (false-positive causal edge)",
+            tick=max(1, crisis.tick - 1),
+            topic=surface,  # aligned to the SAME topic as distractors/semantic-gold, not
+                             # to any real ancestor topic - a true ancestor never shares it.
+            embedding=_realize(rng, topics[surface], cfg.alpha_event),
+            institution_id=inst,
+            kind="decision",
+        )
+        spurious_events.append(spur)
+        spurious_edges.append((spur.id, crisis.id))  # false direct-cause edge into the crisis
+
     return Scenario(
-        scenario_id=scenario_id, institution_id=inst, events=events, edges=edges,
+        scenario_id=scenario_id, institution_id=inst,
+        events=events + spurious_events, edges=edges + spurious_edges,
         crisis_event_id=crisis.id, query_text=crisis.text,
         query_embedding=query_embedding, memories=mems,
     )

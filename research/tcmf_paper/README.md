@@ -26,6 +26,7 @@ tcmfbench/
   run_mixed.py    mixed regime: fusion beats single signals + dropout -> results_mixed/
   run_realtext.py real-text tier (needs Ollama) -> results_realtext/
   run_tuned.py    held-out tune/test split (N03) -> results_main_tuned/, results_mixed_tuned/
+  run_spurious.py spurious false-ancestor edge robustness (N04) -> results_spurious/
 PAPER_PLAN.md     the correct framing, related work, and phase plan
 FINDINGS.md       what the runs show (read this first): F1-F7 + code fixes + real-text tier
 ```
@@ -97,6 +98,26 @@ eval set), and the pure-regime "`graph_ppr` collapses at the realistic pool" fin
 from 0.33 to 0.67 recall@10 (still well below `tcmf_add`'s 1.00, but a smaller gap than
 previously reported). `tcmfbench/test_n03_tune_split.py` unit-tests the split contract, the
 tie-break rule, and runs a small end-to-end smoke test of the sweep-then-test pipeline.
+
+### Spurious-edge robustness (N04)
+
+`tcmfbench/mixed.py`'s `spurious_edge_rate` injects, with probability p per scenario, one
+fabricated false-ancestor edge straight into the crisis - independent of `edge_dropout`. It is
+gated so a default (0.0) run draws no extra randomness and reproduces a pre-N04 scenario
+byte-for-byte.
+
+```powershell
+& "..\..\.venv\Scripts\python" -m tcmfbench.run_spurious --out results_spurious
+```
+
+See `FINDINGS.md` (N04) for the result: recall degrades gracefully and never crosses below the
+semantic_rag floor up to p=0.4, the real shipped retriever's favor-root weighting is
+incidentally more robust to this specific (direct-edge) attack than the favor-proximate
+operator-study variants - traced to a depth-1/depth-weight mechanism, not asserted - and the
+precision metric this experiment introduces is already near-ceiling for every method except
+`causal_only`, an honest methodological gap flagged for a future night rather than hidden.
+`tcmfbench/test_n04_spurious.py` unit-tests the RNG-gating invariant, the injected edge's BFS
+depth, and the precision metric against hand-computed cases.
 
 ## What the benchmark holds fixed vs varies
 

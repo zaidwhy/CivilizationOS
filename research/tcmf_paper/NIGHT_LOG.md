@@ -461,3 +461,134 @@ independent replication with a different pool composition and its own committed 
 - **Next:** N04 (spurious-edge robustness) is next in line - only missing edges have been
   stressed so far (N01's dropout curve); wrong edges (a false ancestor injecting a confident
   wrong boost) are the more dangerous failure mode and reviewers will ask for exactly this.
+
+---
+
+## 2026-07-31 (N04 - spurious-edge robustness)
+
+- **Item:** N04, the lowest-numbered OPEN + CLOUD-OK item (N01-N03 already DONE). Environment:
+  cloud sandbox, no Ollama, no access to Zaid's machine - LOCAL-ONLY items (N06, N14) remain
+  untouched, no Ollama-backed number fabricated. Built a throwaway `.venv_ci` (Python 3.11 +
+  numpy 2.4.6, networkx 3.6.1, pytest) at the repo root, same pattern every prior night used,
+  since this repo ships no committed venv.
+- **What was built:**
+  - `tcmfbench/mixed.py`: `MixedConfig.spurious_edge_rate` (default 0.0). With probability p per
+    scenario, injects ONE fabricated ancestor event aligned to the crisis SURFACE topic (the
+    same topic distractors and semantic-gold already share), linked directly into the crisis
+    (`edge = (spurious_event.id, crisis.id)`) - a genuine BFS-predecessor edge in the causal
+    graph, not the institution-scoped weak-ancestor fallback, so even the "clean" true-ancestor
+    set is fooled by it. The injection is placed AFTER every other random draw in
+    `generate_mixed` (query embedding, all memories, the shuffle) and gated behind
+    `spurious_edge_rate > 0.0`, so a default (0.0) run consumes zero extra randomness and is
+    byte-for-byte identical to a scenario generated before this field existed - this is the
+    mechanism that lets the p=0 point of tonight's curve reproduce N01 exactly, not a
+    coincidence of the numbers looking similar.
+  - `tcmfbench/metrics.py`: `any_in_top_k(ranked, targets, k)` - 1.0 if any id in `targets`
+    appears in the top-k, 0.0 otherwise, NaN if `targets` is empty (matching `recall_at_k`'s
+    existing NaN convention so it drops out of any mean the same way).
+  - `tcmfbench/methods.py`: `distractor_ids(mat)` - the set of memory ids labeled `distractor`,
+    for scoring precision-side damage.
+  - `tcmfbench/run_spurious.py` (new script, mirrors N03's `run_tuned.py` precedent of a
+    dedicated file importing existing infra rather than editing `run_mixed.py` in place):
+    sweeps `spurious_edge_rate` in {0, 0.05, 0.1, 0.2, 0.4} at `edge_dropout=0` (full N01-scale
+    pool: `--n-distractors 20 --n-noise 55`, 5 seeds, n=300/seed = 1500 scenarios/rate) across 5
+    methods (semantic_rag, causal_only, graph_ppr, tcmf_add, tcmf_shipped), reporting
+    recall@10 and the new `distractor_top5` precision metric with bootstrap CIs (reusing
+    `stats.bootstrap_ci` and `run_mixed`'s seed-stride contract). Also runs a coarser 2-D grid
+    (`edge_dropout` in {0, 0.2, 0.4} x the same 5 spurious rates, n=100/seed) for the 3 methods
+    F7's existing dropout curve already reports, per the item's own "coarse resolution"
+    instruction. **The script asserts its own p=0 recall@10 against the committed
+    `results_mixed_scale/results_mixed.json` to machine precision before writing any output** -
+    this is the item's own verify criterion ("at p=0 the numbers reproduce N01 exactly"), checked
+    at runtime, not eyeballed after the fact.
+  - `tcmfbench/test_n04_spurious.py` (8 tests, all pass via `python -m
+    tcmfbench.test_n04_spurious` or pytest): rate=0.0 injects nothing and is deterministic
+    (byte-identical scenario across two calls, and identical whether `spurious_edge_rate=0.0` is
+    passed explicitly or omitted - the exact invariant every pre-N04 script relies on); rate=1.0
+    always injects exactly one spurious event + edge, deterministically given the seed; the
+    injected event, after `materialize()`, is confirmed a genuine BFS predecessor at depth 1 (not
+    just asserted - computed via `mat.graph.predecessors`); the spurious event's topic matches
+    the crisis surface topic and never a real ancestor's topic; `any_in_top_k` against 5
+    hand-computed cases (hit, miss, empty-targets NaN); `distractor_ids` count matches
+    `cfg.n_distractors` exactly and is disjoint from gold. Full suite (`test_n01_scale.py`
+    4/4, `test_stats.py` 13/13, `test_n03_tune_split.py` 8/8, `test_n04_spurious.py` 8/8 = 33/33)
+    reruns clean, confirming N04 did not regress anything.
+- **The actual run:** `python -m tcmfbench.run_spurious --n 300 --grid-n 100 --out
+  results_spurious` - ~3m54s on this sandbox (smoke-tested at `--n 10 --grid-n 5` first, ~8s,
+  correct shape, before the full run).
+- **What the numbers actually said (read from the committed `results_spurious/
+  results_spurious.json`, not hand-typed):**
+  - **p=0 reproducibility: VERIFIED bit-for-bit, asserted in-script (max diff 0.00e+00 against
+    `results_mixed_scale/results_mixed.json`'s semantic_rag/causal_only/tcmf_add recall@10).**
+    The spurious-edge knob changes nothing when left at its default, exactly as designed.
+  - **Headline 1 - recall degrades monotonically but no crossover in the tested range.** At
+    dropout=0, `tcmf_add` recall@10 falls from 0.80 [0.79, 0.81] (p=0) to 0.71 [0.71, 0.72]
+    (p=0.4) - a real, monotone ~11-point loss - but never drops below `semantic_rag`'s flat 0.40
+    floor. The item's own verify criterion asks to "report the p at which tcmf_add drops below
+    semantic_rag" - the honest answer is **it did not, anywhere in {0, 0.05, 0.1, 0.2, 0.4}**; I
+    did not extend the range to force a crossover to appear, and the paper must say "no
+    crossover observed up to p=0.4," not "TCMF is immune to this attack."
+  - **Headline 2 - an unplanned, mechanistically-verified finding: the favor-root fix (shipped
+    for the unrelated F5 root-rank reason) is incidentally more robust to THIS specific attack
+    than the favor-proximate operator-study defaults, and I traced why rather than asserting it
+    from the curve shape.** `graph_ppr` degrades most (0.80 -> 0.63 recall@10, p=0 -> p=0.4);
+    `tcmf_add`/`causal_only` (favor-proximate) degrade next (0.80 -> 0.71, 0.64 -> 0.63);
+    `tcmf_shipped` (favor-root, the REAL retriever) is flat-to-slightly-up (0.74 -> 0.76).
+    Directly inspected a materialized scenario with a forced injection (seed 0,
+    `spurious_edge_rate=1.0`): the ancestor-depth map is
+    `{"e2": 1, "spurious0": 1, "e1": 2, "e0": 3}`, `max_depth=3` - the false edge, fabricated
+    straight into the crisis, is ALWAYS the shallowest possible BFS depth (1), tied with the
+    true direct cause. Favor-proximate weighting gives depth-1 its maximum weight (1.0 - exactly
+    what a direct false edge needs to do maximum damage); favor-root weighting gives that same
+    depth-1 edge its minimum weight (0.33, vs the true root cause's 1.0). **Scope caveat, stated
+    plainly rather than overclaimed: this only tests a false DIRECT-cause edge. A fabricated
+    edge disguised as pointing deep in the chain (a fake root cause) would land at HIGH depth and
+    could hit favor-root's highest-weight band instead - untested this session, and needed
+    before claiming favor-root robustness to false ancestors in general rather than to this one
+    edge shape.**
+  - **Headline 3 - HONEST, PARTIALLY NEGATIVE METHODOLOGICAL FINDING: the precision metric
+    mostly sits at ceiling before the experiment even starts, so it cannot show what it was built
+    to show for most methods.** At p=0 (zero spurious edges), P(a distractor is in the top-5) is
+    already 1.00 for `semantic_rag`, 1.00 for `graph_ppr`, 0.98 [0.97, 0.99] for `tcmf_add`, 0.99
+    [0.98, 0.99] for `tcmf_shipped` - a pre-existing property of an 81-item pool with 20
+    distractors competing for whatever top-5 slots recall@5 doesn't perfectly fill, unrelated to
+    N04's manipulation. Only `causal_only` starts low enough (0.46 [0.43, 0.48]) to show a clear
+    signal, rising to 0.68 [0.66, 0.71] at p=0.4 - a real, monotone, well-verified effect, but
+    only for the one method where the metric wasn't already saturated. For `tcmf_add`/
+    `tcmf_shipped`/`graph_ppr`, tonight's binary any-in-top-5 metric cannot separate "the
+    spurious edge promoted a distractor" from "a distractor was already going to be there
+    regardless." I did not swap in a different metric to make this look better - it is recorded
+    here as an honest gap: a count-of-distractors-in-top-5 metric would very likely show
+    gradation where the any-based one is saturated, and is the natural next step, not built
+    tonight.
+  - **2-D grid (dropout x spurious):** the two knobs' effects look roughly additive at this
+    coarse resolution (n=100/seed) - e.g. `tcmf_add` recall@10 at dropout=0.2 barely moves across
+    spurious rates (0.60 -> 0.58), while dropout alone (F7) already explains most of the drop
+    from the dropout=0 row; no strong interaction term is visible at this resolution, but n=100
+    (vs the curve's n=300) is noisier and a finer grid was out of scope tonight.
+- **Verified vs assumed:** verified - `test_n04_spurious.py` (8/8) and the full existing suite
+  (33/33 total) pass; the p=0 bit-for-bit match is asserted at runtime by the script itself
+  (would raise `AssertionError`, not silently diverge - checked by construction, since the run
+  completed and wrote output); the depth-1/max_depth=3 mechanism behind Headline 2 was computed
+  directly against a real materialized scenario (shown above), not inferred from the curve shape
+  alone; all reported numbers read from the committed `results_spurious/results_spurious.json`,
+  not hand-typed. Not assumed / still open: whether any of this replicates on the real-text tier
+  (N06, LOCAL-ONLY, still unreached); whether a deep-targeted false edge reverses the Headline 2
+  finding; whether a count-based precision metric shows gradation the any-based one cannot -
+  all three flagged as open questions, not answered by tonight's run.
+- **Private paper repo:** attempted `add_repo`/clone of `syzayd/tcmf-paper` as prior nights did;
+  see the tool-call outcome recorded right after this entry for whether it succeeded. **Exact
+  LaTeX delta needed regardless:** a new "Spurious-edge robustness" paragraph (pairs with the
+  existing F7 missing-edge paragraph) reporting the graceful recall degradation and the absence
+  of an observed crossover up to p=0.4; a caveat sentence on the favor-root robustness finding
+  narrowing it to false DIRECT-cause edges specifically (not false ancestors in general); and an
+  explicit methods-limitations sentence noting the precision (distractor-in-top-5) metric is
+  near-ceiling for every method except the causal-only oracle, so it could only cleanly evidence
+  the effect for that one method - do not claim the precision experiment shows damage for
+  tcmf_add/tcmf_shipped/graph_ppr specifically, only for causal_only.
+- **Files touched (public repo):** `tcmfbench/mixed.py`, `tcmfbench/metrics.py`,
+  `tcmfbench/methods.py`, `tcmfbench/run_spurious.py` (new), `tcmfbench/test_n04_spurious.py`
+  (new), `results_spurious/` (new), `FINDINGS.md`, `README.md`, `NIGHT_QUEUE.md` (N04 -> DONE).
+- **Next:** N05 (second-domain corpus, authoring only, no embedding) is next in line and is
+  CLOUD-OK; N06 (the embedding/run of that corpus) stays LOCAL-ONLY until it can run against
+  Zaid's Ollama.

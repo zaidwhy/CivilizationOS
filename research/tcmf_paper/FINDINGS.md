@@ -452,18 +452,100 @@ tonight's change (reproduces identically on `origin/main` before this PR) and do
 any committed result; flagged here rather than silently fixed, since fixing someone else's
 orphaned test file was out of scope for the one item this session picked.
 
+## N04 - Spurious-edge robustness - a false direct-ancestor edge degrades recall gracefully but
+## exposes a precision blind spot, and reveals an unplanned side benefit of the favor-root fix
+
+`tcmfbench/mixed.py`'s `spurious_edge_rate` (default 0.0, gated so a default run draws no extra
+randomness and is byte-identical to a pre-N04 run) injects, with probability p per scenario, ONE
+fabricated "ancestor" event aligned to the crisis SURFACE topic - the same topic distractors and
+semantic-gold already share - linked directly into the crisis (a false direct-cause edge, not
+the institution-scoped weak-ancestor fallback: it is a genuine BFS-predecessor edge in the graph,
+so even the "clean" ancestor set is fooled by it). `tcmfbench/run_spurious.py` sweeps
+p in {0, 0.05, 0.1, 0.2, 0.4} at dropout=0 (full N01-scale pool, 5 seeds, n=300/seed, 1500
+scenarios/rate) for recall@10 AND a new precision metric (`metrics.any_in_top_k`): does a
+causally-irrelevant distractor get promoted into the top-5? A coarser 2-D grid (dropout in
+{0, 0.2, 0.4} x the same 5 spurious rates, n=100/seed) checks the interaction with missing-edge
+robustness (F7). `tcmfbench/test_n04_spurious.py` (8 tests) checks the RNG-gating invariant, that
+the injected edge is a genuine depth-1 BFS predecessor after materialization, and the precision
+metric against hand-computed cases.
+
+**p=0 reproduces N01 exactly, verified in-script, not eyeballed.** `run_spurious.py` loads the
+committed `results_mixed_scale/results_mixed.json` directly and asserts its own p=0 recall@10 for
+semantic_rag/causal_only/tcmf_add matches to machine precision (max diff 0.00e+00) before writing
+any output - the spurious-edge knob changes nothing when left off.
+
+**Headline 1 - recall degrades monotonically but tcmf_add never crosses below semantic_rag in
+the tested range.** At dropout=0: tcmf_add recall@10 falls from 0.80 [0.79, 0.81] at p=0 to 0.71
+[0.71, 0.72] at p=0.4 - a real, monotone ~11-point loss, but semantic_rag's floor (flat at 0.40,
+it never touches the causal graph) stays far below it throughout. The crossover the item asks
+for did not occur anywhere in {0, 0.05, 0.1, 0.2, 0.4}; the honest paper statement is "no
+crossover observed up to p=0.4 false-ancestor rate," not "TCMF is immune" - larger p was not
+tested this session.
+
+**Headline 2 - unplanned finding: the favor-root depth-weighting fix (already shipped for the
+unrelated F5/root-rank reason) has an emergent side benefit against THIS specific attack, and it
+is mechanistic, not incidental - verified directly, not inferred.** `graph_ppr` degrades the
+most (0.80 -> 0.63 recall@10, p=0 -> p=0.4) and `tcmf_add`/`causal_only` (favor-*proximate*
+weighting) degrade next (0.80 -> 0.71 and 0.64 -> 0.63 respectively), but `tcmf_shipped` (the
+REAL retriever, favor-*root*) is flat-to-slightly-up (0.74 -> 0.76). Traced directly (not
+assumed): a false edge fabricated straight into the crisis is, by construction, always the
+SHALLOWEST possible ancestor (BFS depth 1 - confirmed by direct inspection: `ancestors =
+{"...e2": 1, "...spurious0": 1, "...e1": 2, "...e0": 3}`, `max_depth=3`). Favor-*proximate*
+weighting (`tcmf_add`/`causal_only`'s default, `favor_root=False`) gives depth-1 its MAXIMUM
+weight (1.0) - exactly what a direct false edge needs to do maximum damage. Favor-*root*
+weighting (the real shipped fix, `favor_root=True`) gives that same depth-1 edge its MINIMUM
+weight (0.33, vs the true root cause's 1.0) - the fix that was shipped to put the root cause at
+rank 1 (F5) incidentally discounts this specific attack the most. **Important scope caveat, not
+papered over: this only tests a false DIRECT-cause edge. A fabricated edge disguised as pointing
+deeper in the chain (a fake root cause) would land at high depth and could hit favor-root's
+highest-weight band instead - that variant was not tested this session and would need its own
+night before claiming favor-root is robust to false ancestors in general, only to false
+direct-cause edges specifically.**
+
+**Headline 3 - HONEST, PARTIALLY NEGATIVE METHODOLOGICAL FINDING: the chosen precision metric
+mostly can't see the effect it was built to measure, because it is already near-ceiling before
+any spurious edge is injected.** At p=0 (no spurious edges at all), P(a distractor is in the
+top-5) is already 1.00 for `semantic_rag`, 1.00 for `graph_ppr`, 0.98 for `tcmf_add`, and 0.99
+for `tcmf_shipped` - a pre-existing property of this pool (20 distractors in an 81-item pool,
+competing for the slots recall@5 doesn't perfectly fill), unrelated to N04's manipulation. Only
+`causal_only` (which recovers no semantic-gold and therefore has the most open top-5 slots)
+starts low enough (0.46) to show a clear, monotone signal: 0.46 [0.43, 0.48] at p=0 rising to
+0.68 [0.66, 0.71] at p=0.4. For every other method the intended "does a spurious edge specifically
+promote a distractor" question is NOT answerable from this binary any-in-top-5 metric - it was
+already answered "yes" before the experiment started. A finer metric (count of distractors in
+the top-5, not just any) would very likely separate the effect from the ceiling; that metric was
+not built tonight and is recorded here as the natural next step, not silently substituted for a
+metric that looks better.
+
+**Verified vs assumed:** verified - all curve/grid numbers read from the committed
+`results_spurious/results_spurious.json` (not hand-typed); the p=0 bit-for-bit match against
+`results_mixed_scale/results_mixed.json` is asserted in-script (the run would raise
+`AssertionError`, not silently diverge); the depth-1/max_depth=3 mechanistic explanation for
+Headline 2 was directly computed against a real materialized scenario (shown above), not
+inferred from the curve shape alone; `test_n04_spurious.py` (8/8) passes, including the RNG-
+gating determinism checks and a hand-computed `any_in_top_k` table. Not assumed / still open:
+whether this replicates on the real-text tier (N06, LOCAL-ONLY, still unreached); whether a
+deeper-targeted false edge (the Headline 2 caveat) reverses the favor-root robustness finding;
+whether a count-based precision metric (Headline 3) shows gradation the any-based one cannot.
+
 ## Still open before submission
 
 - **Write-up** (Phase 5) drafted (kept in a private repo); fold in the F8 decision tier + table,
   the N01 scale finding (both the graph_ppr collapse and the mixed-regime tie), N02's
   precise quantification of that tie (significant-but-negligible at recall@10, and a
-  previously-unflagged significant recall@5 loss to graph_ppr at both pool sizes), and now
-  N03's confirmation that the tie/loss is not a test-set-peeking artifact, plus the caveat that
-  N01's "graph_ppr collapses to 0.33" number was at an untuned alpha and recovers to 0.67 once
-  graph_ppr gets the same tuning fairness as TCMF.
+  previously-unflagged significant recall@5 loss to graph_ppr at both pool sizes), N03's
+  confirmation that the tie/loss is not a test-set-peeking artifact (plus the caveat that N01's
+  "graph_ppr collapses to 0.33" number was at an untuned alpha and recovers to 0.67 once
+  graph_ppr gets the same tuning fairness as TCMF), and now N04's spurious-edge robustness
+  curve (graceful recall degradation, no crossover below semantic_rag up to p=0.4, the emergent
+  favor-root robustness finding with its direct-vs-deep-edge scope caveat, and the honest
+  precision-metric ceiling-effect limitation).
 - **Scale the real-text tier** (more domains / larger n) and add a second encoder to show the
   threshold-tuning point generalizes.
 - **Statistical rigor / robustness** (REVIEW.md B4-B5, W7): N01 lands the multi-seed harness,
-  N02 lands bootstrap CIs + paired significance tests, N03 lands the held-out lambda/tau split;
-  still open: a spurious-edge (not just missing-edge) robustness study (N04).
+  N02 lands bootstrap CIs + paired significance tests, N03 lands the held-out lambda/tau split,
+  N04 lands spurious (wrong-edge) robustness alongside F7's existing missing-edge robustness.
+- **Follow-up precision metric** (N04's own honest gap): a count-of-distractors-in-top-5 metric,
+  and a deeper-targeted (not just direct-into-crisis) false-edge variant, to settle the two
+  caveats N04 raised rather than answered.
 </content>

@@ -38,6 +38,16 @@ def ndcg_at_k(ranked: list[str], gold: set[str], root: str | None, k: int) -> fl
     return dcg / idcg if idcg > 0 else 0.0
 
 
+def any_in_top_k(ranked: list[str], targets: set[str], k: int) -> float:
+    """1.0 if ANY id in `targets` appears in the top-k of `ranked`, else 0.0; NaN if `targets`
+    is empty (undefined, not zero - keeps it out of any mean via the same NaN-drop convention
+    `recall_at_k` uses). Used for precision-side damage (N04): how often does a spurious causal
+    edge promote a distractor into the top-k an agent would actually read?"""
+    if not targets:
+        return float("nan")
+    return 1.0 if any(i in targets for i in ranked[:k]) else 0.0
+
+
 def analytic_random_recall_at_k(pool_size: int, k: int) -> float:
     """Closed-form expected recall@k of a uniform-random ranking, independent of gold count.
 
