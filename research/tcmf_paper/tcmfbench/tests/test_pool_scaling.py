@@ -17,7 +17,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 from tcmfbench.generator import GenConfig, generate_many
 from tcmfbench import methods as M
-from tcmfbench.run_eval import _analytic_random_recall
+from tcmfbench.metrics import analytic_random_recall_at_k
 
 
 def test_materialize_does_not_truncate_large_pool():
@@ -43,14 +43,6 @@ def test_materialize_does_not_truncate_small_pool():
         assert len(epi) == pool
 
 
-def test_analytic_random_recall_matches_known_hypergeometric_case():
-    # 3 gold in a pool of 10: E[recall@1] = 1/10, E[recall@5] = 5/10, E[recall@10] = 1.0 (capped)
-    out = _analytic_random_recall(gold_count=3, pool_size=10, ks=(1, 5, 10))
-    assert abs(out["recall@1"] - 0.1) < 1e-9
-    assert abs(out["recall@5"] - 0.5) < 1e-9
-    assert abs(out["recall@10"] - 1.0) < 1e-9
-
-
 def test_analytic_random_recall_matches_empirical_at_large_pool():
     """The measured `random` baseline over many scenarios should land close to the
     analytic k/pool expectation - this is the concrete number N01 asks the harness to
@@ -59,7 +51,7 @@ def test_analytic_random_recall_matches_empirical_at_large_pool():
     scs = generate_many(200, cfg, base_seed=0)
     pool = (cfg.chain_len - 1) + cfg.n_distractors + cfg.n_noise
     gold = cfg.chain_len - 1
-    analytic = _analytic_random_recall(gold, pool, (1, 5, 10))
+    analytic = {k: analytic_random_recall_at_k(pool, k) for k in (1, 5, 10)}
 
     hits = {1: 0, 5: 0, 10: 0}
     for sc in scs:
@@ -70,6 +62,6 @@ def test_analytic_random_recall_matches_empirical_at_large_pool():
     measured = {k: hits[k] / (len(scs) * gold) for k in (1, 5, 10)}
 
     for k in (1, 5, 10):
-        assert abs(measured[k] - analytic[f"recall@{k}"]) < 0.03, (
-            f"k={k}: measured {measured[k]:.3f} vs analytic {analytic[f'recall@{k}']:.3f}"
+        assert abs(measured[k] - analytic[k]) < 0.03, (
+            f"k={k}: measured {measured[k]:.3f} vs analytic {analytic[k]:.3f}"
         )

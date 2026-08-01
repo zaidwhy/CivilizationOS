@@ -187,6 +187,12 @@ is misimplemented, not weak). Run under the N03 protocol with equal tuning budge
   Never ship an arXiv ID from memory. Fix or remove anything that does not resolve.
 - Add verified entries for the systems reviewers will name: Mem0, LightMem, MemGPT, GraphRAG,
   HippoRAG, LongMem, Zep/Graphiti, A-MEM.
+- **Added 2026-08-01 from an external reviewer pass:** also search for and verify, or
+  explicitly record as non-existent, the 2026-vintage systems named in that review: REMem,
+  MAGMA, HINDSIGHT, and the "event-causal RAG" line. These were reported second-hand, so
+  treat every one as unverified until resolved against a canonical source. An LLM-suggested
+  citation that does not resolve is a hallucinated reference, and shipping one is worse than
+  omitting it. Record the outcome per name either way.
 - Produce a differentiation table with one row per system and columns:
   *structure used | retrieval operation | task solved | why it does not address the
   causal-ancestor regime*. The claim to defend is not "nobody did memory" - it is "none of
@@ -290,6 +296,71 @@ major finding and the paper's claim must narrow to "for this encoder family."
   counts).
 
 **Verify:** a clean clone plus the caches reproduces every headline number bit-for-bit.
+
+---
+
+## Phase 6 - Added 2026-08-01 after an external reviewer pass (N15-N17)
+
+An outside review (scorecard: novelty 8, technical quality 9, experimental design 9,
+reproducibility 9, overall 8.5) raised four things this queue did not already cover. One was
+prose framing, which stays out of scope; the other three are below. The review's remaining
+recommendations mapped onto existing items: figures to N09-N11, recent-baseline comparison and
+citation verification to N07-N08, robustness breadth to N01/N04.
+
+### N15 - Formal proposition for the fusion-operator effect
+**Status:** DONE (2026-08-01) | **Env:** CLOUD-OK | **Answers:** W2, and the "is this a new
+algorithm or an empirical study?" positioning question
+
+The single gap the 14-night queue had no item for: every night here is empirical, so a
+reviewer asking "why should this generalise beyond your benchmark?" had only more tables as an
+answer. Shipped: `tcmfbench/theory.py`, `tcmfbench/test_theory.py` (17 tests),
+`tcmfbench/run_theory.py`, `results_theory/`, and `THEORY.md`.
+
+Result: both operators' pairwise margins are affine in lambda, so multiplicative fusion's
+required lambda depends on the episodic scores and admits no bound in terms of the causal
+margin (Prop 1), while additive fusion's is bounded by `1/(b(r) - b(d))` independently of the
+episodic scores (Prop 2), and a lambda sweep on the multiplicative form interpolates toward the
+`e*b` ordering rather than the causal one (Prop 3). Measured: multiplicative's requirement
+swings 3.0x across seeds, additive's 1.10x, and the shipped `lam = 4` is exactly the Prop 2
+bound. **Honest scope limit recorded in `THEORY.md`:** outright impossibility is rare (1 of 200
+pairs) and is a boost-function defect, not a fusion defect, so the claim is "additive admits one
+scenario-independent lambda, multiplicative does not" and NOT "multiplicative can never work."
+
+### N16 - Scale and multi-crisis stress
+**Status:** OPEN | **Env:** CLOUD-OK | **Answers:** the generalization objection (part 3)
+
+The external review asked for larger memory sizes and multiple simultaneous crises; N01 took
+the pool to 80, which is still small next to a real deployed agent's memory.
+
+- Scale the pool to 1000+ memories per scenario and report where, if anywhere, the margin
+  degrades. Watch runtime: the bounded backward BFS should stay cheap, plain ranking is O(pool),
+  so record the measured cost as a function of pool size (this also feeds N13's latency item).
+- Add a **multi-crisis** scenario mode: two or more concurrent crises with interleaved causal
+  chains and a shared distractor pool, where a memory can be an ancestor of one crisis and
+  irrelevant to another. Report whether the causal boost still discriminates when the ancestor
+  set is no longer unambiguous.
+
+**Verify:** at pool 80 the numbers reproduce N01 exactly (same seeds). Report the pool size at
+which `tcmf_add`'s causal@5 margin over `graph_ppr` closes, if it closes. Per-crisis metrics in
+the multi-crisis mode, never pooled.
+
+### N17 - TCMFBench as a standalone contribution
+**Status:** OPEN | **Env:** CLOUD-OK | **Answers:** long-term impact
+
+The external review's strongest strategic point: a benchmark that other researchers actually
+run outlives the paper that introduced it, and TCMFBench already tests a failure mode
+(semantic similarity disagreeing with causal relevance) that mainstream RAG benchmarks do not.
+
+- Give it a small stable public API: register a retriever as a callable
+  `(materialized_scenario) -> ranked_ids`, run it across every tier, get the standard metric
+  table back. Everything else here is currently reachable only by editing the run scripts.
+- Write the README section a stranger needs: what regime it tests, what the tiers are, how to
+  add a method, what the baselines are, expected runtimes.
+- Only after N14 freezes the evidence base. Do NOT publish anything outward-facing before Zaid
+  says so; this item is preparation, not release.
+
+**Verify:** a retriever written against the public API alone, with no edits to `tcmfbench`
+internals, reproduces a known baseline's published numbers exactly.
 
 ---
 

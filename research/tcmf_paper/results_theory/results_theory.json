@@ -1,0 +1,145 @@
+{
+  "config": {
+    "seeds": 10,
+    "n_distractors": 20,
+    "n_noise": 55,
+    "shipped_lambda": 4.0,
+    "out": "results_theory"
+  },
+  "rows": [
+    {
+      "seed": 1,
+      "pool_size": 80,
+      "n_distractors": 20,
+      "mult_required_lambda": 3.640093761712047,
+      "add_required_lambda": 3.4860371226902203,
+      "root_episodic": 1.1770053373607787,
+      "max_distractor_episodic": 2.4060254640088905,
+      "root_boost": 0.28685867786407476,
+      "max_distractor_boost": 0.0,
+      "n_unpromotable": 0
+    },
+    {
+      "seed": 2,
+      "pool_size": 80,
+      "n_distractors": 20,
+      "mult_required_lambda": 3.112167607193506,
+      "add_required_lambda": 3.3154050425442185,
+      "root_episodic": 1.2406896534770344,
+      "max_distractor_episodic": 2.4053238687789085,
+      "root_boost": 0.3016222715377808,
+      "max_distractor_boost": 0.0,
+      "n_unpromotable": 0
+    },
+    {
+      "seed": 3,
+      "pool_size": 80,
+      "n_distractors": 20,
+      "mult_required_lambda": 5.877003354506876,
+      "add_required_lambda": 3.4840791173641423,
+      "root_episodic": 0.9498200350810612,
+      "max_distractor_episodic": 2.5519924727070853,
+      "root_boost": 0.28701988855997723,
+      "max_distractor_boost": 0.0,
+      "n_unpromotable": 0
+    },
+    {
+      "seed": 4,
+      "pool_size": 80,
+      "n_distractors": 20,
+      "mult_required_lambda": 5.5369237492575545,
+      "add_required_lambda": 3.5535427866290625,
+      "root_episodic": 0.9605798525333875,
+      "max_distractor_episodic": 2.4572995258022665,
+      "root_boost": 0.2814093033472697,
+      "max_distractor_boost": 0.0,
+      "n_unpromotable": 0
+    },
+    {
+      "seed": 5,
+      "pool_size": 80,
+      "n_distractors": 20,
+      "mult_required_lambda": 5.631644910891739,
+      "add_required_lambda": 3.411644354669251,
+      "root_episodic": 0.9622111145470595,
+      "max_distractor_episodic": 2.5505452910054247,
+      "root_boost": 0.2931137879689535,
+      "max_distractor_boost": 0.0,
+      "n_unpromotable": 0
+    },
+    {
+      "seed": 6,
+      "pool_size": 80,
+      "n_distractors": 20,
+      "mult_required_lambda": 3.7823367725148556,
+      "add_required_lambda": 3.4521896646211183,
+      "root_episodic": 1.1697239708330782,
+      "max_distractor_episodic": 2.4513134599377033,
+      "root_boost": 0.28967122236887616,
+      "max_distractor_boost": 0.0,
+      "n_unpromotable": 0
+    },
+    {
+      "seed": 7,
+      "pool_size": 80,
+      "n_distractors": 20,
+      "mult_required_lambda": Infinity,
+      "add_required_lambda": Infinity,
+      "root_episodic": 0.9579224436245288,
+      "max_distractor_episodic": 2.477841636608683,
+      "root_boost": 0.2894922494888306,
+      "max_distractor_boost": 0.5202765464782715,
+      "n_unpromotable": 1
+    },
+    {
+      "seed": 8,
+      "pool_size": 80,
+      "n_distractors": 20,
+      "mult_required_lambda": 3.477113935664616,
+      "add_required_lambda": 3.6350904673108593,
+      "root_episodic": 1.2587833918061409,
+      "max_distractor_episodic": 2.462861615716271,
+      "root_boost": 0.2750963171323141,
+      "max_distractor_boost": 0.0,
+      "n_unpromotable": 0
+    },
+    {
+      "seed": 9,
+      "pool_size": 80,
+      "n_distractors": 20,
+      "mult_required_lambda": 4.647175475853482,
+      "add_required_lambda": 3.5480615480052937,
+      "root_episodic": 1.0768513344916992,
+      "max_distractor_episodic": 2.4872882857907337,
+      "root_boost": 0.2818440397580465,
+      "max_distractor_boost": 0.0,
+      "n_unpromotable": 0
+    },
+    {
+      "seed": 10,
+      "pool_size": 80,
+      "n_distractors": 20,
+      "mult_required_lambda": 9.261200123494904,
+      "add_required_lambda": 3.494460284985324,
+      "root_episodic": 0.6807502968584489,
+      "max_distractor_episodic": 2.484910086690239,
+      "root_boost": 0.28616722424825036,
+      "max_distractor_boost": 0.0,
+      "n_unpromotable": 0
+    }
+  ],
+  "summary": {
+    "seeds": 10,
+    "mult_lambda_min": 3.112167607193506,
+    "mult_lambda_max": 9.261200123494904,
+    "mult_lambda_spread": 2.9758037780768753,
+    "add_lambda_min": 3.3154050425442185,
+    "add_lambda_max": 3.6350904673108593,
+    "add_lambda_spread": 1.0964242439956344,
+    "n_scenarios_multiplicative_cannot_solve": 1,
+    "total_distractor_pairs": 200,
+    "total_unpromotable_pairs": 1,
+    "shipped_lambda": 4.0,
+    "shipped_lambda_clears_additive_bound_on_all_seeds": true
+  }
+}
