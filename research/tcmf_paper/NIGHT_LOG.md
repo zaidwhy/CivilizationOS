@@ -666,3 +666,60 @@ independent replication with a different pool composition and its own committed 
   this item sharpens - position the paper as an empirical systems paper that isolates a failure
   mode ("we show the fusion operator, not the graph, is the determining factor") rather than as
   a new retrieval algorithm.
+
+## 2026-08-01 (N08 - citation verification + related-work differentiation)
+
+- **Item:** N08, taken in the same local session as N15 (again avoiding N05, which the routine
+  takes tonight). This is the standing "never ship a citation from memory" gate, and it became
+  urgent because the external review handed Zaid four recent system names second-hand.
+- **Method:** every arXiv ID fetched from its canonical `arxiv.org/abs` page and the title,
+  author list and year read off the page. No ID accepted from recall, including for works I
+  was confident about.
+- **Existing bib: 7 of 8 entries correct, 1 wrong.** Generative Agents (2304.03442), MemGPT
+  (2310.08560), HippoRAG (2405.14831), RAG (2005.11401) and Ethayarajh (1909.00512) all check
+  out exactly. **GraphRAG (2404.16130) had an incomplete author list** - missing Dasha
+  Metropolitansky and Robert Osazuwa Ness. Fixed. (The two pre-2010 IR entries, Cormack RRF and
+  Fox-Shaw CombSUM, are not arXiv works and were left as-is.)
+- **The four second-hand names all exist, but one is a trap.** REMem = arXiv:2602.13530,
+  Feb 2026, and notably it is from the HippoRAG group (Shu, Jimenez Gutierrez, Su). MAGMA =
+  arXiv:2601.03236, ACL 2026 long paper. HINDSIGHT = arXiv:2512.12818 (Vectorize.io).
+  **"Event-Causal RAG" (arXiv:2605.06185) exists but is a long-VIDEO reasoning framework, not
+  agent memory** - citing it would have signalled a related-work section assembled by keyword
+  rather than read. Deliberately excluded, with the reason recorded in the bib header so nobody
+  re-adds it later.
+- **Novelty check, the part N08 exists for. TCMF survives, and MAGMA turns out to help.** MAGMA
+  is the closest neighbour found: it really does carry a causal graph, one of four. But (a) it
+  traverses all four graphs with a uniform beam search plus per-hop decay, so there is no
+  ancestor set and no ancestor depth - it does not do backward reachability from the current
+  event; and (b) its scoring function is `exp(l1*phi + l2*sim)`, which is **additive in the
+  exponent** and therefore order-equivalent to additive fusion. So a strong concurrent ACL 2026
+  system independently landed on the operator Prop 2 says is the safe one, without commenting on
+  the choice. That is corroboration, not a scoop. Worth noting for the rebuttal: `exp(a+b) =
+  exp(a)exp(b)` is multiplicative in its factors, and is precisely NOT the Prop 1 failure mode -
+  what fails is multiplying raw unnormalized scores, not anything writable as a product.
+- **Two neighbours found that neither the paper nor the review had named:** CausalRAG
+  (arXiv:2503.19878, Findings of ACL 2025) and E2RAG "Respecting Temporal-Causal Consistency"
+  (arXiv:2506.05939). Both put causal structure into RAG, both target corpus QA rather than an
+  acting agent's episodic memory, and neither studies the fusion operator. Both now cited.
+- **Second Method-section error found and fixed** (the first was Eq. 1 in the N15 entry above).
+  Related Work described the Generative Agents salience score as
+  `relevance x recency x importance`. Park et al. use a weighted **sum** with all alpha = 1,
+  verified. So the draft had the product form in two places and both were wrong. Silver lining
+  recorded in the draft: that score is very widely reproduced as a product in the wild, which is
+  weak but real evidence for W2's "multiplicative is the form practitioners reach for by
+  default" argument.
+- **Verified vs assumed:** verified - all IDs against arxiv.org on 2026-08-01; MAGMA's scoring
+  formula and traversal read from the paper's HTML, not the abstract; the Generative Agents sum
+  form cross-checked. `validate.py` reports braces, environments, cross-references and citation
+  keys all clean, so every new `\citep` resolves. Assumed/not checked: **the draft has not been
+  compiled** - there is no TeX toolchain on this machine, so the new `amsthm` environments and
+  the 4-column related-work table are structurally validated but not rendered. Someone with
+  LaTeX must build it before submission. Three added entries (Zep, A-MEM, Mem0) still need full
+  author lists off their PDFs.
+- **Files touched (private repo `syzayd/tcmf-paper`):** `references.bib` (header rewritten with
+  verification status, GraphRAG fixed, 8 entries added), `main.tex` (concurrent-systems
+  paragraph rewritten, causality-in-retrieval paragraph added, MAGMA paragraph added,
+  `tab:related` differentiation table added, Generative Agents score corrected).
+- **Files touched (public repo):** `NIGHT_QUEUE.md` (N08 -> DONE with residual), `NIGHT_LOG.md`.
+- **Next:** N05 for the routine tonight. N09-N11 (figures) need matplotlib, not installed
+  locally yet.

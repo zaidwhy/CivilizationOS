@@ -181,7 +181,11 @@ correction already applied to `graph_ppr` / HippoRAG.
 is misimplemented, not weak). Run under the N03 protocol with equal tuning budget.
 
 ### N08 - Related-work differentiation table + citation verification
-**Status:** OPEN | **Env:** CLOUD-OK | **Answers:** W3, and the standing "verify every arXiv ID" gate
+**Status:** DONE (2026-08-01) | **Env:** CLOUD-OK | **Answers:** W3, and the standing "verify every arXiv ID" gate
+
+**Residual before submission:** three added entries (Zep, A-MEM, Mem0) have verified IDs,
+titles and years but incomplete author lists, flagged in `references.bib` notes. Read them off
+the PDFs. Everything else resolved.
 
 - Use web search to **verify every entry in `references.bib` against its canonical source**.
   Never ship an arXiv ID from memory. Fix or remove anything that does not resolve.
