@@ -366,6 +366,40 @@ run outlives the paper that introduced it, and TCMFBench already tests a failure
 **Verify:** a retriever written against the public API alone, with no edits to `tcmfbench`
 internals, reproduces a known baseline's published numbers exactly.
 
+### N18 - Does the regime occur in public data?
+**Status:** DONE (2026-08-01) | **Env:** LOCAL-ONLY (needs Ollama) | **Answers:** the
+generalization objection at its root
+
+The sharpest objection available to a reviewer is not "does additive beat multiplicative on
+TCMFBench" - that is now thoroughly established - but **"is the regime real, or did you build
+a simulator that exhibits it?"** Every other item in this queue is measured on scenarios we
+authored, so none of them can answer that. This one can.
+
+Measured on **LoCoMo** \citep{maharana2024locomo}, a public human-verified long-term
+conversation benchmark: take its multi-hop questions, rank every unit of the conversation by
+similarity to the question, and see where the annotated gold evidence lands. Shipped
+`tcmfbench/locomo_regime.py`, `run_locomo_regime.py`, `test_locomo_regime.py` (10 tests,
+CLOUD-OK because they use hand-built vectors), `results_locomo/`.
+
+**Two hard constraints this item established, both worth respecting later:**
+
+- **Neither LoCoMo nor LongMemEval ships a causal graph.** LoCoMo builds temporal event graphs
+  with causal links during *generation*, but the release does not expose them: `event_summary`
+  is free text per speaker per session with no ids and no edges. LongMemEval is chat history
+  plus `answer_session_ids` pointers. So TCMF itself **cannot be run** on either without
+  inducing a graph, which is out of scope and upstream of TCMF (and whose errors would
+  dominate, per W7). This is a motivating measurement, NOT a TCMF evaluation. Do not let it
+  drift into being described as one.
+- **Granularity is a confound and it bit once.** The first version of this measurement ranked
+  single dialogue turns and reported recall@5 = 0.066. That number is mostly an artifact of
+  the retrieval unit; at session granularity, which is what real systems use, it is ~0.50.
+  **Report the session rows.** The turn rows stay in the results file as the honest record of
+  why the headline is what it is.
+
+**Verify:** `results_locomo/results_locomo.json` regenerates from the committed script given
+the dataset plus Ollama; the 10 unit tests pass without Ollama; the reported figures are the
+session-granularity ones.
+
 ---
 
 ## Deliberately out of scope for these 14 nights

@@ -1,0 +1,7 @@
+# N18: third-party dataset, not vendored. Fetch with the command in run_locomo_regime.py.
+locomo10.json
+
+# N18: embedding caches are ~200 MB at LoCoMo scale. The derived per-question results in
+# results_locomo/results_locomo.json ARE committed; the vectors are not.
+results_locomo/emb_cache_locomo.json
+emb_cache_locomo.json

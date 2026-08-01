@@ -723,3 +723,56 @@ independent replication with a different pool composition and its own committed 
 - **Files touched (public repo):** `NIGHT_QUEUE.md` (N08 -> DONE with residual), `NIGHT_LOG.md`.
 - **Next:** N05 for the routine tonight. N09-N11 (figures) need matplotlib, not installed
   locally yet.
+
+## 2026-08-01 (N18 - does the regime occur in public data?)
+
+- **Item:** N18, a NEW item, added because a strategic question ("is this worth turning into a
+  real paper?") reduced to a technical one the whole queue could not answer: every result in
+  this benchmark sits on scenarios Zaid authored, so "is the regime real, or did you build a
+  simulator that exhibits it?" had no evidence either way. Not a queue night; done locally.
+- **First, the constraint that shapes everything else: neither candidate public benchmark ships
+  a causal graph.** LoCoMo builds temporal event graphs with causal links during *generation*,
+  but the release does not expose them - `event_summary` is free text per speaker per session,
+  no ids, no edges (verified by parsing the actual `locomo10.json`, not from the README).
+  LongMemEval is chat history plus `answer_session_ids` pointers, no event structure at all.
+  **TCMF therefore cannot be run on either** without inducing a graph, which is out of scope and
+  upstream of TCMF, and whose errors would dominate (W7). So this item measures the REGIME, not
+  the method.
+- **Result (n=273 real multi-hop questions, 10 conversations, `nomic-embed-text`):** ranking
+  every unit of a conversation by similarity to the question and asking where the annotated gold
+  evidence lands. At session granularity, assembling the full evidence set needs a median of
+  **12 of 28 sessions (43% of the conversation)**, recall@5 = **0.505 [0.465, 0.545]**, and
+  **77.7%** of questions have a needed session outside the top 5. The second piece of evidence
+  is systematically harder to reach than the first. The regime is real outside the simulator.
+- **I GOT THIS WRONG THE FIRST TIME AND THE WRONG NUMBER IS ON THE RECORD.** The first version
+  ranked single dialogue turns and produced recall@5 = **0.066**, which I nearly reported as the
+  headline. It is mostly an artifact of the retrieval unit: turns are one-line utterances, and
+  no deployed system retrieves at that granularity. Re-running at session granularity moved it
+  to 0.505, roughly 8x. The nomic `search_query`/`search_document` prefixes were the second
+  confound and matter much less (0.066 -> 0.112 at turn level, nothing at session level). All
+  four conditions are committed in `results_locomo/` so the turn rows stay visible as the reason
+  the headline is what it is. **Report the session rows.**
+- **Scope limit, written into the module docstring, the queue item, and the paper so it cannot
+  drift:** this shows semantic similarity is INSUFFICIENT; it does NOT show causal-ancestor
+  reachability is the remedy. LoCoMo's multi-hop links are plausibly entity/co-reference chains,
+  not causal ones. The paper presents it as motivation for the regime, explicitly not as an
+  evaluation of TCMF, and names inducing causal structure over a public corpus as the next
+  paper rather than a missing experiment in this one.
+- **Verified vs assumed:** verified - dataset structure by parsing it (5882 turns, 2815 evidence
+  refs, only 9 unresolvable); the committed runner reproduces the exploratory script's numbers
+  bit-for-bit through a completely different code path (sha1-keyed `EmbedClient` vs a raw-text
+  cache), and a second run from cache reproduces them again; 10 new unit tests pass; full
+  benchmark suite now 63 tests green. Assumed/not checked: only one encoder
+  (`nomic-embed-text`) - N13's second-encoder item should cover this table too; and the
+  category-1 "multi-hop" label is taken from LoCoMo's own annotation, not re-audited by hand.
+- **Repo hygiene:** the LoCoMo dataset (2.7 MB, third-party) and the embedding cache (196 MB)
+  are gitignored, not vendored; the runner documents the one-line fetch. `results_locomo.json`
+  stores a stable per-conversation question INDEX rather than the verbatim question text, so a
+  public repo does not redistribute third-party content while rows stay auditable.
+- **Files touched (public repo):** `tcmfbench/locomo_regime.py`, `run_locomo_regime.py`,
+  `test_locomo_regime.py`, `results_locomo/` (new), `.gitignore` (new), `NIGHT_QUEUE.md`,
+  `NIGHT_LOG.md`. **(private repo):** `main.tex` (new subsection + `tab:locomo`),
+  `references.bib` (LoCoMo entry, verified).
+- **Next:** N05 for the routine. This item makes N16's scale work less urgent and makes N17
+  (TCMFBench as a standalone artifact) more attractive, since the regime it tests is now shown
+  to be one public benchmarks expose but do not isolate.
