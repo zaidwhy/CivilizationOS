@@ -1205,3 +1205,41 @@ call: demo mode instead.
   immediate POST correctly got 429'd by the cooldown.
 - Deployed live by Zaid: backend on Render (`civilizationos-api.onrender.com`), frontend on
   Vercel (`civilization-os-murex.vercel.app`). Confirmed working end-to-end.
+
+## 2026-08-05 (Wednesday) - TCMF paper: pool-size section, positioning, and the first compiled build
+
+Work spans this repo (`research/tcmf_paper/`, public) and the private draft repo `syzayd/tcmf-paper`
+checked out at `research/tcmf_paper/paper/`.
+
+- **The paper compiles now.** There was no LaTeX toolchain on this machine, so the draft had gone
+  months on `validate.py`'s structural checks alone. TinyTeX installed at `%APPDATA%\TinyTeX` and on
+  the persistent user PATH; `paper/build.ps1` runs validate.py then pdflatex/bibtex/pdflatex/pdflatex
+  and fails the build on undefined references or citations, which otherwise compile silently and
+  print as `??`. Current: 19 pages, 0 undefined, 4 overfull hboxes of 4-21pt, no bitmap fonts.
+- **Compiling immediately exposed four defects that validate.py passed clean on.** Three layout: the
+  PDF was shipping METAFONT bitmap fonts (T1 without `lmodern` falls back to EC, which has no Type 1
+  outlines); nine tables overran LaTeX's float budget and Table 8 was landing seven pages after the
+  text discussing it; Limitations rendered as one unbroken block. One content, visible only on the
+  rendered page: a paragraph still argued a mechanism another section of the same paper refutes.
+- **The headline claim was retired on Zaid's approval.** "Strictly beats every single-signal baseline
+  at recall@10" was measured at a 19-candidate pool and dies at 80 (paired -0.002 vs graph_ppr, Holm
+  p<0.001 - significant but negligible, so reported as indistinguishable). Abstract, intro, F6 and
+  conclusion now claim what survives: additive fusion is the only method recovering both gold types
+  and dominates on causal@5 (1.00 vs 0.67) at every pool size tested.
+- **New Section 5.3 "Realistic candidate pool" (F9)** reports both regimes at 17/19 -> 78/80 in both
+  directions: graph_ppr collapses 1.00 -> 0.33 in the pure regime (favorable), tcmf_add's mixed
+  recall@10 falls 0.98 -> 0.80 against graph_ppr's unmoved 0.80 (unfavorable), causal@5 and root_rank
+  invariant. Closes all four W4 deltas in REVIEW.md.
+- **Purged the refuted "near-zero episodic base" mechanism from five places**, the last found only by
+  reading the rendered PDF. Replaced with the Proposition 1c/2 statement: multiplicative fusion's
+  promotion threshold scales with the episodic scores and admits no bound in the causal margin, so
+  no single lambda serves every scenario; the additive threshold is episodic-independent.
+- **Positioning, from an external review pass.** Added the controlled-study framing (abstract sentence,
+  intro paragraph, full Related Work paragraph) answering "why not just plug additive CombSUM into
+  Graphiti?" - neighbouring work proposes architectures that bundle graph, index, scorer and
+  combination rule; this paper holds everything but the operator fixed. Same pass asked for a proof
+  sketch of the refuted mechanism; recorded in REVIEW.md as stale and not to be acted on.
+- **Citations closed:** Zep, A-MEM and Mem0 author lists completed from their arXiv abs pages. No
+  `et al.`, no `and others`, no VERIFY markers remain.
+- **N10's Fig 3 brief rewritten** in NIGHT_QUEUE.md - it still instructed the nightly routine to draw
+  the refuted mechanism. matplotlib 3.11.1 installed into `.venv`, unblocking N09-N11.
