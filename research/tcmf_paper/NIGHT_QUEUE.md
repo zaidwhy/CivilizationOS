@@ -233,15 +233,27 @@ width, and that Fig 1's node labels match the scenario JSON it was generated fro
 ### N10 - Fig 3 (fusion operator) + Fig 4 (recall vs lambda)
 **Status:** OPEN | **Env:** CLOUD-OK
 
-- **Fig 3:** the paper's core claim as a picture. Show the score landscape under
-  multiplicative vs additive fusion for the same inputs, making visible *why* multiplication
-  annihilates a causal signal riding on a near-zero episodic score.
+- **Fig 3:** the paper's core claim as a picture. **The brief here was rewritten 2026-08-04 -
+  the original said to show "why multiplication annihilates a causal signal riding on a
+  near-zero episodic score", and N15 measured that to be FALSE.** The root cause's episodic
+  score is not near zero (0.96 against a distractor's 2.48), and impossibility occurs in only
+  about 1 of 200 root-cause/distractor pairs. Draw the actual mechanism instead: both
+  operators' pairwise margins are affine in lambda (`theory.py`), so plot margin vs lambda for
+  several real root-cause/distractor pairs, two panels. Multiplicative: the zero-crossings
+  scatter across lambda because each depends on that pair's episodic scores, so no single
+  vertical line separates all of them. Additive: every crossing sits left of the
+  `1/(b_root - b_distractor)` bound, which is drawn as one vertical line independent of
+  episodic score. The picture to leave in the reader's head is "one line works for additive,
+  no line works for multiplicative", not "multiplying by zero gives zero."
 - **Fig 4:** recall vs lambda for both operators on one axis, with N02 confidence bands. The
   flat low-lambda region of the multiplicative curve is the evidence for "a practitioner
-  tuning lambda would never stumble onto the fix" - make that region visually obvious.
+  tuning lambda would never stumble onto the fix" - make that region visually obvious. Mark
+  the tuned lambda=2.4 point too (recall@5 0.54), so the figure does not imply the
+  multiplicative operator is flat everywhere.
 
-**Verify:** Fig 3's illustrated mechanism matches what the code does - recompute two example
-scores by hand and confirm the figure's geometry.
+**Verify:** generate Fig 3 from `theory.py`'s `mult_crossover_lambda` /
+`additive_sufficient_lambda` on real scenario pairs, not from hand-drawn geometry, and check
+that every plotted additive crossing really does fall below its drawn bound.
 
 ### N11 - Fig 5 (graph degradation) + Fig 6 (decision accuracy)
 **Status:** OPEN | **Env:** CLOUD-OK

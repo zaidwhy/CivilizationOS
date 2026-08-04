@@ -776,3 +776,49 @@ independent replication with a different pool composition and its own committed 
 - **Next:** N05 for the routine. This item makes N16's scale work less urgent and makes N17
   (TCMFBench as a standalone artifact) more attractive, since the regime it tests is now shown
   to be one public benchmarks expose but do not isolate.
+
+---
+
+## 2026-08-04 (local, not a routine night) - Realistic-pool section + the paper compiles for the first time
+
+**Item:** REVIEW W4 deltas 2 and 3, plus the standing "there is no LaTeX toolchain on this
+machine" caveat. Both closed. Not a queue item; run locally by Zaid's direction.
+
+- **Section 5.3 "Realistic candidate pool" (F9)** now carries the N01 rerun of both regimes at
+  ~80 candidates against the 17/19 the main tables use, in both directions. Favorable: the pure
+  regime finally separates methods that recall@10 had bunched at 1.00, and `graph_ppr` falls
+  1.00 -> 0.33 because its PageRank mass concentrates on the crisis's immediate parents - at 17
+  candidates the remaining ancestors were inside the top ten by virtue of the pool being small,
+  not by being ranked. Unfavorable: `tcmf_add`'s mixed-regime recall@10 falls 0.98 -> 0.80 while
+  `graph_ppr` is unmoved at 0.80 (`tcmf_add`'s semantic@5 drops 0.38 -> 0.20 as more plausible
+  noise competes), so the headline was an artifact of an easy pool. Invariant at both sizes:
+  causal@5 1.00 vs 0.67, and root_rank.
+- **The abstract, intro, F6 and conclusion were rewritten** on Zaid's approval to claim what
+  survives rather than "strictly beats every single-signal baseline at recall@10". Two
+  overstatements went with it: the mechanism was stated in three places as "a near-zero episodic
+  base cannot be multiplied up", which N15 measured to be false (root episodic 0.96 vs distractor
+  2.48; impossibility is ~1 in 200 pairs), and "recall@5 = 0.02" was the shipped default, where a
+  tuned lambda=2.4 gives 0.54. Both now state the Prop 1c/2 result and both numbers.
+- **A LaTeX toolchain exists now.** TinyTeX at `%APPDATA%\TinyTeX`, on the persistent user PATH.
+  `paper/build.ps1` runs validate.py then pdflatex/bibtex/pdflatex/pdflatex and fails the build on
+  undefined references or citations, which otherwise compile silently and print as `??`. First
+  successful build: 18 pages, 0 undefined, 4 overfull hboxes of 4-21pt.
+- **Compiling immediately found four defects that months of source reading had not.** Three were
+  layout: the PDF was shipping METAFONT bitmap fonts (T1 without `lmodern` falls back to EC, which
+  has no Type 1 outlines); nine tables overran LaTeX's float budget and Table 8 was landing seven
+  pages after the text discussing it; and Limitations rendered as one unbroken block because its
+  run-in headings had no paragraph breaks. The fourth was content, and only visible on the
+  rendered page: the "Why this is a finding, not a typo" paragraph still argued the refuted
+  near-zero-base mechanism, contradicting Section 3.1 of the same paper.
+- **Lesson worth keeping:** structural validation (`validate.py`) passed clean on every one of
+  those. It checks braces, environments, and reference resolution; it cannot see a float that
+  travelled, a font that silently degraded, or an argument that contradicts another section.
+  Render the pages and read them.
+- **N10's Fig 3 brief was rewritten** in NIGHT_QUEUE.md - it still instructed the routine to draw
+  the refuted mechanism, which would have produced a wrong figure. It now specifies the affine
+  margin-vs-lambda picture generated from `theory.py`.
+- **matplotlib 3.11.1 installed** into the CivilizationOS venv, which was the stated blocker on
+  N09-N11. Verified importable with the Agg backend.
+- **Files touched (public repo):** `NIGHT_QUEUE.md`, `NIGHT_LOG.md`. **(private repo):**
+  `main.tex`, `REVIEW.md`, `build.ps1` (new).
+- **Next:** N05 for the routine. N09-N11 (figures) are now unblocked locally.
