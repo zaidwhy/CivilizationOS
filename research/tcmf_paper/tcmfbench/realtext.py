@@ -175,6 +175,62 @@ DOMAINS: list[dict] = [
             "Food is spoiling in every icebox in the district.",
         ],
     },
+    # N05 - second domain family: software/security operations, not governance/civilization.
+    # The root cause is an engineering artifact (a diff, a credential, a config) phrased in
+    # diff/forensics vocabulary; the crisis and distractors are phrased in alert/pager vocabulary.
+    # This is a deliberately different register from the six crisis domains above, to test
+    # whether the causal-vs-semantic dissimilarity regime is an artifact of the governance
+    # narrative or holds across an unrelated authoring domain.
+    {
+        "name": "software-debugging",
+        "crisis": [
+            "Checkout is failing for a large share of traffic in the {district} region; the on-call pager will not stop going off.",
+            "Error rates on checkout have spiked past 40 percent in {district}; on-call is being paged every few minutes.",
+        ],
+        "ancestors": [
+            {"event": "A dependency upgrade to the payment SDK was merged into the checkout service three days ago, silently changing its default connection-pool size.",
+             "witness": "I reviewed that dependency-upgrade diff myself - it quietly cut the connection pool from 200 to 20 and nobody caught it in review."},
+            {"event": "The reduced pool size caused connections to queue under peak load, but the mean-latency alert never tripped because averages stayed under threshold.",
+             "witness": "Our dashboards only alert on the mean, so the queueing never paged anyone - I watched the queue depth creep up for days with no alert tied to it."},
+            {"event": "A scheduled pre-holiday load test that would have caught the pool exhaustion was cancelled to save on-call budget.",
+             "witness": "We cancelled that load test to save on-call hours over the holiday; it always used to catch pool-exhaustion issues before they reached production."},
+        ],
+        "semantic_gold": [
+            "Checkout timeouts on the {street} service in {district} have tripled in the last hour, per the on-call dashboard.",
+            "Customer-support tickets mentioning failed checkouts have spiked again this morning.",
+        ],
+        "distractor": [
+            "The status page is a wall of red for checkout.",
+            "The incident channel has hundreds of unread pings about checkout being down.",
+            "Social media is full of complaints that checkout is broken.",
+            "Every on-call engineer's phone has been buzzing nonstop for an hour.",
+        ],
+    },
+    {
+        "name": "cybersecurity",
+        "crisis": [
+            "Data-loss-prevention has flagged a massive outbound transfer from the {district} file server; sensitive records may already be leaving the network.",
+            "The security operations center is overwhelmed with exfiltration alarms out of {district}; terabytes of data are leaving right now.",
+        ],
+        "ancestors": [
+            {"event": "A contractor's VPN credentials were phished via a fake login portal five days ago.",
+             "witness": "I'm the one who clicked that fake VPN login page - it looked identical to ours and even asked for my token code."},
+            {"event": "The phished credentials were used to escalate privileges through an unpatched internal admin tool.",
+             "witness": "Someone used my contractor account to hit the old admin panel we never patched; I never touch that tool myself."},
+            {"event": "The attacker moved laterally to the {street} file server using the escalated access, staying dormant for days to avoid detection.",
+             "witness": "Our access logs show a quiet lateral login to the file server days before anything alarmed - it just sat there until now."},
+        ],
+        "semantic_gold": [
+            "A second, smaller outbound transfer was flagged from the backup server in {district} this morning.",
+            "The DLP console shows another large transfer queued to the same external address.",
+        ],
+        "distractor": [
+            "The SOC dashboard is flooded with exfiltration alerts.",
+            "Every analyst's queue is drowning in exfiltration alarms.",
+            "Management is demanding hourly updates on the data breach.",
+            "The incident bridge has hundreds of unread messages about the leaking data.",
+        ],
+    },
 ]
 
 _DISTRICTS = ["North", "South", "East", "West", "Old Town", "Riverside", "Harbor", "Highgate"]

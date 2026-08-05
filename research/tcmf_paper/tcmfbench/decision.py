@@ -20,6 +20,10 @@ CANONICAL_CAUSE = {
     "crime":   "The precinct's patrol budget was cut and patrol beats were eliminated.",
     "housing": "The district was rezoned for luxury development in a closed-door deal.",
     "power":   "The utility diverted its maintenance fund to shareholder payouts.",
+    "software-debugging": "A dependency upgrade silently shrank the checkout service's connection "
+                          "pool, and a cancelled load test meant nobody caught it before peak traffic hit.",
+    "cybersecurity": "A phished contractor credential let an attacker escalate privileges through an "
+                      "unpatched admin tool and move laterally to the file server undetected.",
 }
 
 # domain -> three plausible-but-false root causes (external shocks NOT in the record)
@@ -53,6 +57,16 @@ DECOY_CAUSES = {
         "A severe winter storm brought down the transmission lines.",
         "A lightning strike destroyed the district's main transformer.",
         "Surging demand from a heat wave overloaded the grid.",
+    ],
+    "software-debugging": [
+        "A sudden outage at the third-party payment processor broke checkout for all users.",
+        "A distributed denial-of-service attack flooded the checkout service with junk traffic.",
+        "A cloud provider outage in the primary region took down the checkout database.",
+    ],
+    "cybersecurity": [
+        "An unknown actor exploited a zero-day vulnerability in the perimeter firewall.",
+        "A disgruntled employee intentionally exfiltrated the data before resigning.",
+        "A misconfigured cloud storage bucket was discovered and scraped by an opportunistic bot.",
     ],
 }
 

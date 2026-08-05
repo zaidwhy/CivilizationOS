@@ -528,6 +528,31 @@ whether this replicates on the real-text tier (N06, LOCAL-ONLY, still unreached)
 deeper-targeted false edge (the Headline 2 caveat) reverses the favor-root robustness finding;
 whether a count-based precision metric (Headline 3) shows gradation the any-based one cannot.
 
+## N05 - Second-domain corpus (authored, not yet run)
+
+`tcmfbench/realtext.py`'s `DOMAINS` grows from 6 to 8. The two new entries -
+**software-debugging** (a dependency upgrade silently shrinks a connection pool; the crisis is
+a checkout outage) and **cybersecurity** (a phished credential escalates and moves laterally;
+the crisis is a DLP exfiltration alarm) - are deliberately *not* civilization/governance crises
+like the first six (no council votes, no city budgets, no utility boards). This is a
+generalization test: does the "causal ancestor is semantically far, distractor is semantically
+near" regime hold in a completely different authoring register, or is it specific to the
+governance narrative the rest of the benchmark is written in?
+
+Each domain follows the exact existing schema (2 crisis phrasings, 3 ancestor event/witness
+pairs root-cause-first, 2 semantic-gold, 4 distractors) and ships matching `CANONICAL_CAUSE` /
+`DECOY_CAUSES` entries in `decision.py` for the decision tier. `tcmfbench/test_n05_domains.py`
+(9 tests) checks the schema, the generated `Scenario`'s structural invariants (label counts,
+graph shape, determinism) using a deterministic non-Ollama fake embedder, a lexical
+word-overlap proxy for the dissimilarity regime (every distractor shares more crisis vocabulary
+than the root-cause text does), and that the new domains' text does not reuse the first six
+domains' governance-specific nouns.
+
+**This is authoring only - no embedding, no evaluation run, no numbers.** Whether the regime
+holds under a *real* encoder's geometry (the only thing that actually matters for the paper)
+is N06's job, which needs Ollama and is therefore LOCAL-ONLY. Do not cite these two domains as
+evidence of anything until N06 reports per-domain numbers.
+
 ## Still open before submission
 
 - **Write-up** (Phase 5) drafted (kept in a private repo); fold in the F8 decision tier + table,

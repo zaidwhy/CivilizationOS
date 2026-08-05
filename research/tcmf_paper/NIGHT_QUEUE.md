@@ -123,7 +123,7 @@ monotone in p. Report the p at which `tcmf_add` drops below `semantic_rag` - tha
 the paper's honest operating-envelope claim.
 
 ### N05 - Second-domain corpus (authoring only, no embedding)
-**Status:** OPEN | **Env:** CLOUD-OK | **Answers:** the generalization objection (part 1)
+**Status:** DONE (2026-08-04) | **Env:** CLOUD-OK | **Answers:** the generalization objection (part 1)
 
 The benchmark is one causal setting (governance/civilization crises). One more domain makes
 the contribution much harder to dismiss.

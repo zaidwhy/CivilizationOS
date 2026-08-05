@@ -115,10 +115,13 @@ per-citizen top-8 pruning stress test. All runs report mean +/- std over seeds.
 ## Phase 4 - Analysis and honest limitations - IN PROGRESS
 
 Done: fusion-operator study, depth-direction, difficulty sweep, mixed-regime complementarity,
-edge-dropout robustness, and a **real-text tier** (Ollama nomic-embed-text, 6 domains) showing
-the effect survives real embedding geometry once the anisotropic threshold is retuned to 0.60.
-The four `TCMFRetriever` defects are fixed (all 66 tests pass). Remaining: latency of BFS vs
-plain retrieval; a second encoder; scaling the real-text tier.
+edge-dropout robustness, and a **real-text tier** (Ollama nomic-embed-text, 6 domains embedded
+and evaluated) showing the effect survives real embedding geometry once the anisotropic
+threshold is retuned to 0.60. Two more domains outside the governance/civilization narrative -
+software-debugging, cybersecurity - were authored by N05 (structure only, no embedding); N06
+still needs to embed and evaluate them against Ollama. The four `TCMFRetriever` defects are
+fixed (all 66 tests pass). Remaining: latency of BFS vs plain retrieval; a second encoder;
+scaling the real-text tier; the N06 run of the two new domains.
 
 ## Phase 5 - Write-up - DRAFT DONE (kept LOCAL-ONLY, not in the public repo)
 

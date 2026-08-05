@@ -15,7 +15,9 @@ fusion-operator variants, and ranking metrics. No LLM or network access is requi
 tcmfbench/
   generator.py    synthetic scenarios; controlled embedding space (angle-mixed topics)
   mixed.py        mixed-regime scenarios: causal-gold + semantic-gold + edge dropout
-  realtext.py     natural-language scenarios across 6 crisis domains (real-text tier)
+  realtext.py     natural-language scenarios across 8 crisis domains (real-text tier);
+                  6 embedded and evaluated (results_realtext/), 2 authored by N05
+                  (software-debugging, cybersecurity) awaiting the N06 Ollama embedding run
   embed_client.py disk-cached Ollama nomic-embed-text client
   scenario.py     scenario / memory / event data model + ground-truth labels (2 gold types)
   methods.py      baselines (random, recency, semantic RAG, episodic, causal-only, graph PPR)

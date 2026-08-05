@@ -822,3 +822,96 @@ machine" caveat. Both closed. Not a queue item; run locally by Zaid's direction.
 - **Files touched (public repo):** `NIGHT_QUEUE.md`, `NIGHT_LOG.md`. **(private repo):**
   `main.tex`, `REVIEW.md`, `build.ps1` (new).
 - **Next:** N05 for the routine. N09-N11 (figures) are now unblocked locally.
+
+---
+
+## 2026-08-04 (N05 - second-domain corpus, authoring only, no embedding)
+
+- **Item:** N05, the lowest-numbered OPEN + CLOUD-OK item (N01-N04, N08, N15, N18 already DONE;
+  N06 is next in queue order but LOCAL-ONLY, so it stays untouched - no Ollama-backed number was
+  fabricated or reused). Environment: cloud sandbox, no Ollama, no access to Zaid's machine.
+  Built a throwaway `.venv_ci_n05` (Python 3.11.15, numpy, networkx, pytest) at the repo root,
+  same pattern every prior night used, since this repo ships no committed venv.
+- **Why this item, in this queue's own terms:** every scenario in the benchmark so far is one
+  causal setting - governance/civilization crises (council votes, city budgets, utility boards).
+  A reviewer's cheapest shot at "why should this generalize" is "you tested one narrative you
+  wrote yourself." N05 exists to remove that narrative dependency by authoring a corpus in a
+  completely different register, before N06 (LOCAL-ONLY) spends Ollama time embedding it.
+- **What was built:**
+  - `tcmfbench/realtext.py`: two new entries appended to `DOMAINS` (6 -> 8), same schema as the
+    existing six (2 crisis phrasings, 3 root-cause-first ancestor event/witness pairs, 2
+    semantic-gold, 4 distractors, `domain` field set via the existing `Scenario.domain`):
+    - **software-debugging** - root cause is a dependency upgrade that silently shrank a
+      connection pool three days before the incident, compounded by a mean-only latency alert
+      that never tripped and a cancelled load test that would have caught it; the crisis is a
+      checkout-service outage; distractors are pager/dashboard/status-page noise.
+    - **cybersecurity** - root cause is a phished contractor VPN credential used to escalate
+      privileges through an unpatched admin tool and move laterally to a file server, staying
+      dormant for days; the crisis is a DLP exfiltration alarm; distractors are SOC/analyst/
+      incident-bridge noise.
+    Neither domain reuses the governance narrative (no council votes, city budgets, utility
+    boards, senates, precincts, or rezoning) - this was an explicit design goal, not incidental,
+    and is asserted by a unit test, not just eyeballed.
+  - `tcmfbench/decision.py`: matching `CANONICAL_CAUSE` / `DECOY_CAUSES` entries for both new
+    domain keys (3 plausible-but-false external-shock decoys each), so the decision tier
+    (`run_decision.py`, LOCAL-ONLY, needs Ollama's chat model) will work on these domains
+    unmodified once N06 embeds them - `build_options()` already dispatches on
+    `scenario.domain` generically, no code change needed there.
+  - `tcmfbench/test_n05_domains.py` (9 tests, all pass via `python -m
+    tcmfbench.test_n05_domains` or pytest): schema conformance (crisis/ancestor/semantic_gold/
+    distractor counts match the existing six domains exactly); `CANONICAL_CAUSE`/`DECOY_CAUSES`
+    entries exist and `build_options()` is well-formed (4 options, valid true index, the other
+    three are exactly the decoys) across several seeds; `generate_realtext()` produces a
+    structurally correct, deterministic `Scenario` for both new domains (label counts, chain
+    length, `domain` field, root/crisis event kinds) using a small hand-written deterministic
+    fake embedder (hash-seeded numpy vectors) so the test needs **no Ollama and no network** -
+    the fake embedder only satisfies the `embed()`/`flush()` interface, it carries no semantic
+    information and no test relies on its vector values; `methods.materialize()` runs cleanly
+    on both new domains without crashing; and a lexical (word-overlap/Jaccard) proxy for the
+    dissimilarity regime - every distractor shares strictly more crisis vocabulary than the
+    root-cause text does, and the root-cause text shares essentially none (<=0.05 Jaccard).
+  - **The lexical proxy test caught two real authoring bugs before they shipped, not just
+    software issues.** First pass: the `cybersecurity` domain's distractors ("wall of red
+    alerts", "hourly updates on the breach") shared *zero* literal vocabulary with the crisis
+    text, tying with the root-cause overlap (both 0.0) - the "distractor is semantically near
+    the crisis surface" half of the regime was not actually established by the text as
+    originally written, only asserted in the docstring. Fixed by rewording the distractors to
+    reuse the crisis's own vocabulary ("exfiltration", "alarms", "data") the same way every
+    other domain's distractors do (e.g. plague's distractors reuse "sickness"/district
+    wording). Second: the `software-debugging` domain's root-cause text used the phrase
+    "on-call budget," which tripped an early, over-broad governance-word check (the word
+    "budget" appears in several of the first six domains' governance framing). Fixed the check
+    instead of the text - "budget" is a generic operational term that legitimately belongs in a
+    software-ops narrative too and is not, by itself, evidence the text was a governance reskin;
+    the assertion was narrowed to institution-specific nouns (council, senate, utility,
+    rezoned, precinct, treasury, quarantine) that would only appear if the new domains had
+    quietly copied the old narrative.
+- **Verified vs assumed:** verified - all 9 new tests pass (`python -m
+  tcmfbench.test_n05_domains`, direct and via pytest); the full benchmark suite (72 tests,
+  63 pre-existing + 9 new) reruns green, confirming N05 did not regress anything; the fake
+  embedder was inspected to confirm it makes zero network calls and only exercises the
+  `embed()`/`flush()` interface `generate_realtext` expects. **Explicitly NOT verified, and
+  the queue item does not ask this session to verify it:** whether the dissimilarity regime
+  holds under a *real* encoder's cosine geometry. The lexical proxy is a necessary-but-not-
+  sufficient stand-in - it can catch an authoring mistake (as it did, twice) but it cannot
+  show what nomic-embed-text's actual embedding space does with this text, which is exactly
+  the anisotropy-and-threshold question the existing six domains needed N06-equivalent work to
+  answer (FINDINGS.md's "real-text tier" section: the synthetic threshold of 0.45 leaked at
+  0.60 for real embeddings). The two new domains could easily need their own threshold tuning
+  once embedded. No embedding was attempted this session, per the item's own instruction to
+  ship text and unit tests only and hand the embedding/run to N06.
+- **Private paper repo:** not touched - there is no LaTeX delta yet, since no numbers exist.
+  Once N06 embeds and evaluates these domains, the delta is: a new "Second domain family"
+  paragraph in the real-text tier section reporting per-domain (never pooled, per the
+  standing rule) recall/causal/semantic numbers for software-debugging and cybersecurity
+  alongside the existing six, explicitly framed as evidence the regime is not specific to a
+  governance narrative - or, if it fails to replicate in one or both, that finding written down
+  exactly as plainly as N01's mixed-regime negative result was.
+- **Files touched (public repo):** `tcmfbench/realtext.py`, `tcmfbench/decision.py`,
+  `tcmfbench/test_n05_domains.py` (new), `FINDINGS.md`, `README.md`, `PAPER_PLAN.md`,
+  `NIGHT_QUEUE.md` (N05 -> DONE).
+- **Next:** N06 (embed and run these two domains, retune tau per domain on the tune split,
+  report per-domain) is the natural follow-up but is LOCAL-ONLY (needs Ollama) - a future
+  cloud night should skip it and take N07 (additional retrieval baselines: MMR, BM25,
+  summary-buffer, community-summary, extract-and-consolidate), which is CLOUD-OK and next in
+  line after N06 in the queue's numbering.
