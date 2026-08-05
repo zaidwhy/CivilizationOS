@@ -273,9 +273,9 @@ def _fill(text: str, rng) -> str:
 
 
 def generate_realtext(scenario_id: str, cfg: RealConfig, seed: int,
-                      embedder: EmbedClient) -> Scenario:
+                      embedder: EmbedClient, domain_idx: int | None = None) -> Scenario:
     rng = np.random.default_rng(seed)
-    dom = DOMAINS[int(rng.integers(len(DOMAINS)))]
+    dom = DOMAINS[domain_idx if domain_idx is not None else int(rng.integers(len(DOMAINS)))]
     inst = "inst_main"
     ancestors = dom["ancestors"]
     n_anc = len(ancestors)
@@ -354,5 +354,6 @@ def generate_realtext(scenario_id: str, cfg: RealConfig, seed: int,
 
 
 def generate_many_realtext(n: int, cfg: RealConfig, embedder: EmbedClient,
-                           base_seed: int = 0) -> list[Scenario]:
-    return [generate_realtext(f"r{i:04d}", cfg, base_seed + i, embedder) for i in range(n)]
+                           base_seed: int = 0, domain_idx: int | None = None) -> list[Scenario]:
+    return [generate_realtext(f"r{i:04d}", cfg, base_seed + i, embedder, domain_idx=domain_idx)
+            for i in range(n)]

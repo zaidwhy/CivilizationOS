@@ -144,7 +144,7 @@ the contribution much harder to dismiss.
 holds by construction. Hand the embedding/run to N06.
 
 ### N06 - Second-domain run + decision tier
-**Status:** OPEN | **Env:** LOCAL-ONLY (needs Ollama) | **Answers:** the generalization objection (part 2)
+**Status:** DONE (2026-08-06) | **Env:** LOCAL-ONLY (needs Ollama) | **Answers:** the generalization objection (part 2)
 
 - Embed the N05 corpora (`nomic-embed-text`), retune tau **on the tune split only** per
   domain, run the full 8-method set plus the decision tier on both new domains.
@@ -301,7 +301,7 @@ is quantified. Run under N03's protocol with N02's CIs.
 major finding and the paper's claim must narrow to "for this encoder family."
 
 ### N14 - Full regeneration, reproducibility pack, paper integration
-**Status:** OPEN | **Env:** LOCAL-ONLY (needs Ollama for the real-text/decision tiers)
+**Status:** DONE (2026-08-06) | **Env:** LOCAL-ONLY (needs Ollama for the real-text/decision tiers)
 
 - One command regenerates every table and figure from scratch. Write `REPRODUCE.md` with
   exact commands, expected runtimes, and which artifacts are cache-backed.
@@ -312,6 +312,15 @@ major finding and the paper's claim must narrow to "for this encoder family."
   counts).
 
 **Verify:** a clean clone plus the caches reproduces every headline number bit-for-bit.
+
+**Scope actually covered (2026-08-06):** `REPRODUCE.md` documents every result directory that
+exists as of this date, with the exact command that regenerates it, verified by rerunning several
+fresh (not just trusted from old logs - this caught `results_main_pool80`/`results_mixed_pool80`
+as stale/superseded by `results_*_scale`, already explained in FINDINGS.md's N01 addendum, not a
+new bug). `paper/REVIEW.md`'s build-status note and venue verdict were updated against the current
+evidence base, including N06. N07/N09-N13/N16/N17 have no artifact yet - `REPRODUCE.md` says so
+explicitly rather than guessing at their eventual runtime; each gets a row the day it lands, and
+whoever completes one of those items should re-check this item's REVIEW.md verdict too.
 
 ---
 

@@ -915,3 +915,48 @@ machine" caveat. Both closed. Not a queue item; run locally by Zaid's direction.
   cloud night should skip it and take N07 (additional retrieval baselines: MMR, BM25,
   summary-buffer, community-summary, extract-and-consolidate), which is CLOUD-OK and next in
   line after N06 in the queue's numbering.
+
+## 2026-08-06 (local, not a routine night) - N06: per-domain tuned real-text tier, and N14: reproducibility pack + honest orphan-number check
+
+- **N06 ran end to end.** Added an optional `domain_idx` param to `realtext.py`'s
+  `generate_realtext`/`generate_many_realtext` (default `None` preserves the existing random-domain
+  behavior used by `results_realtext`, so nothing regressed). New `tcmfbench/run_n06_domains.py`
+  holds out a 10-scenario TUNE split per domain to select the causal-similarity threshold by mean
+  `tcmf_add` recall@5 (same rule N03 uses), then reports the full 8-method eval plus the decision
+  tier on a disjoint 15-scenario TEST split, per domain, at that domain's own threshold. All 8
+  domains (the original 6 plus N05's software-debugging and cybersecurity), never pooled.
+- **First attempt was killed mid-run** (background task terminated before writing output; cause
+  unclear, possibly a host-side limit). Embedding and LLM caches had already been flushed
+  incrementally per domain, so the rerun was mostly cache hits and finished cleanly - a real
+  argument for the per-domain incremental-flush design over a single end-of-run write.
+- **The causal-recall finding (F1) is domain-invariant: 8/8, no exceptions.** `tcmf_add`/
+  `causal_only` causal@5 is 0.98-1.00 in every domain; `tcmf_mult` never exceeds 0.47 in any of
+  them. Two authoring registers (civic-governance, software/security ops) that share no
+  vocabulary, real embeddings, real threshold retuned per domain - the effect does not have a
+  single counterexample.
+- **The decision-accuracy finding (F8) "replicates" by a strict pass/fail check in 4/8 domains**
+  (plague, water, power, cybersecurity); the other 4 (cyber, crime, housing, software-debugging)
+  fail the check because their no-retrieval floor is already high (up to 1.00 for crime - the
+  decision task is fully saturated, guessable from world knowledge alone), not because the causal
+  story broke. `tcmf_add`/`causal_only` still score >=0.93 decision_acc in all four "failed"
+  domains - they just can't be distinguished from the ceiling. Written up honestly as confirmed
+  where measurable, not contradicted where the task saturates, in `FINDINGS.md`'s new N06 section.
+- **N14 (reproducibility pack).** Wrote `REPRODUCE.md`: every result directory that exists, with
+  its exact regenerating command, runtime, and cache status. Verified rather than trusted from old
+  logs - reran the pool-80 command fresh for both regimes and found `results_main_pool80`/
+  `results_mixed_pool80` do **not** reproduce from the current codebase (fresh output matches
+  `results_*_scale` instead, e.g. mixed `tcmf_add` recall@10 = 0.7983 vs pool80's stale 0.7875).
+  Traced this to an already-known, already-explained gap: `FINDINGS.md`'s N01 addendum documents
+  two independently-written harnesses landing ~0.01 apart, deliberately left unreconciled at the
+  time as a cross-implementation noise estimate, superseded once N03's tune split landed. Checked
+  `paper/main.tex` - Table 8 already cites the reproducible `scale` number (0.80), not the stale
+  `pool80` number (0.79), so nothing in the paper was broken; the `_pool80` dirs are just
+  superseded artifacts, now documented as such rather than silently sitting there. Re-ran
+  `paper/build.ps1`: clean, 19 pages (fixed `REVIEW.md`'s stale "18 pages" note), 0 undefined, no
+  bitmap fonts. `REVIEW.md`'s venue verdict was left untouched pending N06's real numbers, then
+  updated once they landed (see the file itself for the current verdict).
+- **Not attempted:** N07/N09-N13/N16/N17 remain open, no artifact exists for any of them -
+  `REPRODUCE.md` says so explicitly rather than guessing at eventual runtimes. Two parallel cloud
+  routines (created 2026-08-05, "TCMF Night Queue (compressed)" and "AI-Ecosystem Night Shift Tier
+  9 (compressed)", both authorized to self-merge on green CI) are working through the remaining
+  cloud-doable items twice daily; whoever completes one should re-check REVIEW.md's verdict again.
