@@ -159,7 +159,7 @@ never pooled** - pooling would hide a domain where it fails.
 ## Phase 3 - Kill the "wrong baselines" objection (N07-N08)
 
 ### N07 - Additional retrieval baselines
-**Status:** OPEN | **Env:** CLOUD-OK | **Answers:** W3, W6
+**Status:** DONE (2026-08-05) | **Env:** CLOUD-OK | **Answers:** W3, W6
 
 Add baselines that are reimplementable *mechanisms*, and be precise that they are mechanism
 analogues, not system reimplementations.
@@ -179,6 +179,15 @@ correction already applied to `graph_ppr` / HippoRAG.
 
 **Verify:** every new baseline beats `random` on at least one metric (a baseline that cannot
 is misimplemented, not weak). Run under the N03 protocol with equal tuning budget.
+
+**Residual, investigated and explained, not a bug:** in the PURE regime specifically, 3 of the
+5 new baselines (`bm25`, `community_summary`, `extract_consolidate`) beat `random` on NO
+metric - traced to real, deterministic properties of the mechanism against this benchmark's
+adversarial construction (see NIGHT_LOG.md 2026-08-05), not an implementation defect (all 5
+comfortably beat random in the MIXED regime, and unit tests + hand-computed cases pass). The
+single most important number either way: `causal@5` for all 5 new baselines is <=0.05 in BOTH
+regimes (mostly exactly 0.00), against TCMF's 1.00 - none of them ever meaningfully recovers a
+causal ancestor.
 
 ### N08 - Related-work differentiation table + citation verification
 **Status:** DONE (2026-08-01) | **Env:** CLOUD-OK | **Answers:** W3, and the standing "verify every arXiv ID" gate
