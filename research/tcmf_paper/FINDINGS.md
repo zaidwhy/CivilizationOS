@@ -752,6 +752,66 @@ substring of the real source file it claims to be; and both figures render to no
 PDF (`%PDF` header) and PNG. Full benchmark suite: 96 tests (88 pre-existing + 8 new), all
 green.
 
+## N10 - Fig 3 (fusion operator) + Fig 4 (recall vs lambda)
+
+The brief here was rewritten 2026-08-04 after N15 measured the original framing ("a near-zero
+episodic score makes multiplication annihilate the causal signal") false: root episodic score is
+not near zero (0.96 vs a distractor's 2.48), and outright impossibility hits about 1 of 200
+root-cause/distractor pairs. Both figures instead draw `theory.py`'s actual affine-margin
+mechanism from real scenario data, never hand-drawn geometry and never hand-typed numbers.
+
+**Fig 3** (`tcmfbench/methods.py` + `theory.py` feeding `figures/make_figures.py`'s new
+`build_fig3_pairs()` / `draw_fig3`): the same 10-seed mixed-regime protocol `run_theory.py`
+already uses (`results_theory/`), one panel per operator. For each seed, the root cause's
+*hardest* distractor (the one requiring the largest multiplicative lambda, or - for seed 7 - the
+one no lambda solves at all) is plotted as a margin-vs-lambda line in both panels. Left panel
+(multiplicative): the 9 solvable crossings scatter from lambda=3.11 to 9.26 (matching
+`results_theory`'s own numbers to 3 decimals - cross-checked at runtime by
+`test_n10_figures.py`), the shipped default (0.6) sits left of every one of them, and seed 7's
+line is drawn distinctly (dashed) plunging and never crossing zero. Right panel (additive): the
+same 9 crossings cluster tightly (2.04 to 3.13), every one left of a single drawn vertical line
+at 3.64 (the worst-case `1/(b_root - b_distractor)` bound across all ten seeds - Proposition 2),
+and the shipped lambda=4 sits to its right, clearing it. That is the whole claim as a picture:
+one line works for additive, no line works for multiplicative.
+
+**A real, mechanistically-traced (not hand-waved) determinism wrinkle, found by the figure's own
+test suite, not silently patched around:** `api/memory/stream.py`'s memory-id generator is a
+module-level `itertools.count(1)`, shared for the process's lifetime. Calling
+`build_fig3_pairs()` twice in one process (as `test_fig3_pair_generation_is_deterministic` does)
+yields different `root_id`/`distractor_id` strings each time - traced directly to that counter,
+not assumed - while every numeric field (episodic scores, causal boosts, crossover lambdas)
+stays bit-identical. Fig 1 (N09) never hits this because it deliberately never calls
+`materialize()`. Fig 3 needs the real materialized scenario for real scores, so instead its
+determinism tests compare everything except the two id fields (`_strip_ids` in
+`test_n10_figures.py`) - the ids are provenance-only, and nothing in `draw_fig3` reads them.
+
+**Fig 4** (`tcmfbench/run_lambda_sweep.py`, new script, `results_lambda_sweep/`): recall@5 vs
+lambda for both operators on one shared 16-point grid (0 to 20), same N01-scale pure-regime pool
+and 5-seed protocol as `results_main_scale`, with N02 bootstrap CIs. The script asserts its own
+lambda=0.6/8 (multiplicative) and lambda=4 (additive) points reproduce
+`results_main_scale/results.json` to machine precision before writing any output - this run's own
+version of the item's "at p=0 the numbers reproduce N01 exactly" verify criterion. The
+multiplicative curve is genuinely flat through lambda=0.3 (recall@5 < 0.01, shaded on the
+figure) and then rises smoothly, reaching 0.52 [0.51, 0.53] at the N03 tune-selected value 2.4
+(marked on the figure) and 0.96 by lambda=8 - the honest picture is "a practitioner sweeping
+small lambda values would see nothing and stop", not "multiplicative fusion never works." (The
+brief's own approximate figure, "recall@5 0.54" at lambda=2.4, was measured slightly differently
+- the number actually produced by this script and plotted on the figure is 0.52 [0.51, 0.53];
+recorded here as measured, not adjusted to match the brief.)
+
+`tcmfbench/test_n10_figures.py` (15 tests): Fig 3 pair generation is deterministic (modulo the
+id-counter caveat above); the committed `fig3_pairs.json` matches a fresh regeneration; exactly
+one of the ten seeds (7) is unreachable, and only because its distractor's causal boost equals or
+exceeds the root cause's own - the actual boost-defect condition, not asserted from the curve
+shape; every additive crossing sits at or below its own uniform bound (Proposition 2, checked
+against the real pairs the figure draws); the shipped additive lambda=4 clears every solvable
+bound and the shipped multiplicative lambda=0.6 clears none of the crossings; both figures render
+to non-empty vector PDF/PNG. Fig 4: the committed sweep data used the full 300x5-seed reference
+protocol and its own runtime sanity check passed; the lambda grid matches the script's own
+constant; the multiplicative curve is flat at low lambda and not flat by the top of the grid; the
+tuned-point annotation matches its own grid row. Full benchmark suite: 111 tests (96 pre-existing
++ 15 new), all green.
+
 ## Still open before submission
 
 - **Write-up** (Phase 5) drafted (kept in a private repo); fold in the F8 decision tier + table,

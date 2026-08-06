@@ -1259,3 +1259,136 @@ machine" caveat. Both closed. Not a queue item; run locally by Zaid's direction.
   palette, vector-PDF-plus-PNG save pattern) and should learn from tonight's font-size lesson:
   render and inspect at final layout before considering a figure done, not just before
   committing the script.
+
+---
+
+## 2026-08-06 (N10 - Fig 3 fusion operator + Fig 4 recall vs. lambda)
+
+- **Item:** N10, the lowest-numbered OPEN + CLOUD-OK item (N01-N09, N15, N18 already DONE; the
+  prior entry's own "Next" note pointed here). Environment: cloud sandbox, no Ollama, no access
+  to Zaid's machine - LOCAL-ONLY items untouched. Built a throwaway `.venv_ci_n10` (Python
+  3.11.15, numpy 2.4.6, networkx 3.6.1, pytest 9.1.1, matplotlib 3.11.1, same pinned version as
+  N09) since this repo ships no committed venv; confirmed the 96-test benchmark suite reruns
+  green before touching anything.
+- **Branch note:** `night-tcmf/2026-08-06` (today's plain date, per the queue's own naming rule)
+  was already taken by N09's own branch/PR earlier the same day, so this session used
+  `night-tcmf/2026-08-06-2` instead of colliding with it - the same accommodation the 2026-07-23
+  addendum made for two independent same-night N01 attempts.
+- **What was built:**
+  - `tcmfbench/run_lambda_sweep.py` (new, Fig 4 data): recall@5 vs lambda for both fusion
+    operators on one shared 16-point grid (0 to 20, dense at the low end where the
+    multiplicative curve is flat, extending past both the N03 tune-selected value 2.4 and
+    additive's own saturation point 4), same N01-scale pure-regime pool and 5-seed protocol as
+    `results_main_scale` (`run_eval._materialize`, `SEED_STRIDE`). The script's own runtime
+    assertion - not eyeballed after the fact - checks its lambda=0.6/8 (multiplicative) and
+    lambda=4 (additive) points reproduce `results_main_scale/results.json`'s `fusion` table to
+    machine precision before writing any output; this is this item's own version of N04's "at
+    p=0 the numbers reproduce N01 exactly" verify pattern, and it passed on the first full run
+    (`--n 300 --n-seeds 5`, ~2 min).
+  - `figures/make_figures.py` extended with `build_fig3_pairs()` / `draw_fig3` and `draw_fig4`,
+    reusing N09's colorblind-safe-palette / dump-to-JSON-then-reload-before-drawing / vector-PDF-
+    plus-PNG conventions. `build_fig3_pairs()` regenerates the same 10-seed mixed-regime scenario
+    protocol `run_theory.py` already uses (`BOOST_KW`, `MixedConfig(n_distractors=20,
+    n_noise=55)`, seeds 1-10) and, per seed, finds the root cause's *hardest* distractor (the one
+    requiring the largest multiplicative crossover lambda via `theory.mult_crossover_lambda`, or
+    - for seed 7 - the one no lambda solves at all, via `theory.mult_promotable`), dumping the
+    real e/b/ehat values and crossover lambdas for all 10 pairs to the committed
+    `figures/fig3_pairs.json`.
+  - `figures/fig3_fusion_operator.pdf`/`.png`: two panels, one shared lambda axis. The plotted
+    lines are `theory.mult_margin`/`theory.add_margin` evaluated directly on the committed pair
+    data, not hand-drawn geometry.
+  - `figures/fig4_recall_vs_lambda.pdf`/`.png`: both operators' curves with N02-style bootstrap
+    CI bands (`fill_between`), the flat low-lambda region shaded, and the N03 tune-selected point
+    annotated.
+- **What the numbers actually said (read from the committed `figures/fig3_pairs.json` and
+  `results_lambda_sweep/results_lambda_sweep.json`, not hand-typed):**
+  - **Fig 3 reproduces N15's already-published summary numbers, cross-checked at 3-decimal
+    precision, not just visually similar.** The 9 solvable pairs' multiplicative crossover
+    lambdas: 3.11, 3.48, 3.64, 3.78, 4.65, 5.54, 5.63, 5.88, 9.26 - matching
+    `results_theory/results_theory.json`'s own `mult_required_lambda` column to within 1e-3 for
+    every seed (`test_fig3_matches_results_theory_within_float_noise`). Seed 7 is the sole
+    unreachable pair, and the test suite confirms *why*, mechanically, not just that the number
+    says so: that seed's hardest distractor has causal boost 0.520, exceeding the root cause's
+    own 0.290 - the exact boost-function-defect condition THEORY.md already named, reproduced
+    independently here rather than assumed.
+  - **The additive bound really is closer to a single line than the multiplicative crossings are
+    to any bound.** The 9 solvable pairs' additive uniform bounds (`1/(b_root - b_distractor)`)
+    span only 3.32 to 3.64 (1.10x, matching THEORY.md), so one vertical line at the worst case
+    (3.64) truthfully bounds every plotted crossing - verified in-test
+    (`test_fig3_every_additive_crossing_is_below_its_own_bound`), not just drawn and hoped. The
+    shipped additive lambda=4 clears that line; the shipped multiplicative default (0.6) clears
+    none of the 9 multiplicative crossings (`test_fig3_shipped_multiplicative_lambda_clears_no_crossing`)
+    - visually, the pink "shipped lambda=0.6" vertical line sits to the left of every single
+    crossing dot in the left panel, which is the whole "a practitioner would never stumble onto
+    the fix" argument as a picture.
+  - **Fig 4's multiplicative curve is flat at low lambda and genuinely not flat overall - both
+    halves of the brief's explicit correction hold.** recall@5 stays under 0.011 through
+    lambda=0.3 (`test_fig4_multiplicative_curve_has_a_flat_low_lambda_region`), then rises
+    smoothly: 0.15 (l=1), 0.32 (l=1.5), 0.52 (l=2.4, the N03 tune-selected point), 0.70 (l=4),
+    0.96 (l=8), reaching 1.00 by l=15. The additive curve saturates much earlier (0.9998 by
+    l=3-4) and stays flat afterward - both curves are genuinely flat in different regions for
+    different reasons, and both regions are visible on the same axis.
+  - **Honest, small discrepancy against the brief's own approximate number, recorded rather than
+    quietly matched.** `NIGHT_QUEUE.md`'s N10 brief says "recall@5 0.54" at the tuned
+    lambda=2.4; this run's own script - same protocol, same seeds, bootstrap CI - measures
+    0.5227 [0.5136, 0.5318] there. Close (both round to "about half"), not identical; the
+    already-committed `results_main_tuned/results_tuned.json` TEST-split number for the same
+    hyperparameter is 0.5193, also in the same neighborhood but not 0.54 either. Plotted and
+    reported the number this script actually produced (0.52), not adjusted toward the brief's
+    approximate figure - per the standing rule that every number traces to a committed script,
+    not to a queue-file estimate.
+  - **A real, mechanistically-traced determinism wrinkle in the figure's OWN test suite, not a
+    finding about the benchmark's retrieval numbers, and not silently patched around.**
+    `api/memory/stream.py`'s memory-id generator (`_ids = itertools.count(1)`) is a
+    process-lifetime module-level counter, not reset per scenario. Calling `build_fig3_pairs()`
+    twice in one process yields different `root_id`/`distractor_id` strings each time - confirmed
+    by direct inspection, not assumed - while every numeric field it computes (episodic scores,
+    causal boosts, all ten crossover lambdas) stays bit-identical between the two calls. N09's
+    Fig 1 never hits this because its own code comment already notes it deliberately avoids
+    `materialize()` for exactly this kind of reason. Fig 3 needs the real materialized scenario
+    for real scores, so its determinism tests (`_strip_ids` in `test_n10_figures.py`) compare
+    every field except those two id strings, which are provenance-only - `draw_fig3` never reads
+    them. Did not touch `api/memory/stream.py` itself: the counter is shared, load-bearing
+    infrastructure well outside this item's scope, and nothing downstream of it depends on id
+    strings being stable across repeated in-process calls.
+  - **Design choice, stated rather than silently made: Fig 3 is a double-column (6.6in), not
+    single-column (3.3in) figure.** Phase 4's standing rule sets 3.3in as the default; a first
+    attempt at cramming two side-by-side panels into that width produced sub-1.5in panels with
+    illegible axes. Two panels showing complementary halves of one claim is the item's own
+    explicit brief, so this figure is written to span the full page width (LaTeX `figure*`),
+    the same kind of documented, reasoned deviation N09 made when it widened Fig 2 into two
+    columns instead of keeping <7pt text. Fig 4 stays single-column (3.3in) - no such need there.
+- **Verified vs assumed:** verified - `tcmfbench/test_n10_figures.py` (15 tests, all pass via
+  direct invocation and pytest) and the full benchmark suite (111 tests: 96 pre-existing + 15
+  new) rerun green; `run_lambda_sweep.py`'s own runtime sanity assertion against
+  `results_main_scale/results.json` passed (the run completed and wrote output, which it would
+  not have done had the assertion failed); Fig 3's per-pair numbers cross-checked against the
+  independently-computed, already-tested `results_theory/results_theory.json` to 1e-3, not just
+  visually compared; both figures re-rendered to PNG and visually inspected at final layout for
+  overlap, clipped text, and axis legibility (three iterations on Fig 3: first pass's full-height
+  seed-7 line compressed the other 9 crossings into a sliver near zero, fixed by a fixed y-range;
+  a follow-up arrow+text annotation for the same line then collided with the x-axis tick labels,
+  fixed by dropping it in favor of the existing legend entry) - per the item's own verify
+  criterion and N09's explicit lesson about rendering before considering a figure done. Not
+  assumed: nothing in this item makes a new retrieval-numbers claim (Fig 3/Fig 4 illustrate
+  already-established N01/N02/N03/N15 numbers), so there is no new experimental result to
+  independently confirm beyond the figures' internal consistency with their own committed source
+  data.
+- **Private paper repo:** not touched this session (no attempt to clone `syzayd/tcmf-paper` this
+  run, consistent with N09's own choice not to). LaTeX delta needed once someone integrates: add
+  `\includegraphics` for `figures/fig3_fusion_operator.pdf` (as a full-width `figure*`, per the
+  design note above) and `figures/fig4_recall_vs_lambda.pdf` (single-column) in the "Why the
+  operator decides" subsection THEORY.md's own delta note already asks for (N15); no prose claim
+  changes, since both figures illustrate already-published N01/N03/N15 numbers rather than
+  introducing new ones - except that Fig 4's caption should say "recall@5 = 0.52" at the tuned
+  point, not "0.54" (the small discrepancy recorded above).
+- **Files touched (public repo):** `tcmfbench/run_lambda_sweep.py` (new),
+  `tcmfbench/test_n10_figures.py` (new), `figures/make_figures.py` (extended),
+  `figures/fig3_pairs.json` (new), `figures/fig3_fusion_operator.pdf`/`.png` (new),
+  `figures/fig4_recall_vs_lambda.pdf`/`.png` (new), `results_lambda_sweep/` (new),
+  `FINDINGS.md`, `README.md`, `REPRODUCE.md`, `NIGHT_QUEUE.md` (N10 -> DONE).
+- **Next:** N11 (Fig 5 graph degradation + Fig 6 decision accuracy) is next in queue order and is
+  CLOUD-OK - the source data for both already exists (`results_spurious/` for Fig 5,
+  `results_decision/` for Fig 6's `no_retrieval`/`oracle` reference lines), so it should be a
+  pure plotting job reusing this session's and N09's `make_figures.py` scaffolding, not a new
+  experiment.

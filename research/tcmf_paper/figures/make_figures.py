@@ -36,6 +36,9 @@ import matplotlib.pyplot as plt
 from matplotlib.patches import FancyArrowPatch, FancyBboxPatch
 
 from tcmfbench.generator import GenConfig, generate
+from tcmfbench import methods as M
+from tcmfbench import theory as T
+from tcmfbench.mixed import MixedConfig, generate_mixed
 
 # Okabe-Ito colorblind-safe palette.
 COLOR_CAUSAL = "#0072B2"      # blue - causal-chain events / their witness memories
@@ -54,6 +57,23 @@ FIG1_CONFIG = GenConfig(
     dim=64, n_topics=24, chain_len=3, n_distractors=2, n_noise=0,
     witnesses_per_ancestor=1,
 )
+
+
+# ------------------------------------------------------------------------- Fig 3/4 (N10)
+
+# Same protocol run_theory.py uses (results_theory/), so Fig 3's per-seed pairs reproduce that
+# already-committed, already-tested table's own numbers exactly - this is not a new experiment,
+# just the same one drawn instead of tabulated.
+FIG3_BOOST_KW = dict(threshold=0.45, clean=True, favor_root=False)
+FIG3_MIXED_CONFIG = MixedConfig(n_distractors=20, n_noise=55)
+FIG3_SEEDS = list(range(1, 11))
+FIG3_SHIPPED_ADD_LAMBDA = 4.0
+FIG3_SHIPPED_MULT_LAMBDA = 0.6
+FIG3_LAMBDA_MAX = 11.0
+
+COLOR_MULT = "#CC79A7"     # reddish-purple - multiplicative fusion
+COLOR_ADD = "#0072B2"      # blue - additive fusion (reuse COLOR_CAUSAL's hue)
+COLOR_UNREACHABLE = "#D55E00"  # vermillion - the one scope-limited (boost-defect) pair
 
 
 def _cosine(a: list[float], b: list[float]) -> float:
@@ -206,6 +226,175 @@ def draw_fig1(data: dict, out_stub: Path) -> None:
     plt.close(fig)
 
 
+# ------------------------------------------------------------------------- Fig 3 (N10)
+#
+# The brief (NIGHT_QUEUE.md N10, rewritten 2026-08-04 after N15 measured the original framing
+# false): draw the affine-margin mechanism from theory.py on real scenario pairs, not hand-drawn
+# geometry. For each of 10 real mixed-regime scenarios (same protocol as run_theory.py /
+# results_theory/), find the root cause's hardest-to-beat distractor - the one requiring the
+# largest multiplicative lambda (or, for seed 7, the one no lambda solves at all, per THEORY.md's
+# recorded scope limit) - and plot both operators' pairwise margin against lambda for that real
+# (root, distractor) pair.
+
+def build_fig3_pairs() -> dict:
+    """Regenerate the 10 (root, hardest-distractor) pairs and their margin-vs-lambda data.
+    Every number here is computed from a freshly materialized scenario via the real generator
+    and the real `methods._episodic_scores` / `_causal_boosts`, not invented or hand-typed."""
+    rows = []
+    for seed in FIG3_SEEDS:
+        mat = M.materialize(generate_mixed(f"s{seed}", FIG3_MIXED_CONFIG, seed=seed))
+        e = M._episodic_scores(mat)
+        b = M._causal_boosts(mat, **FIG3_BOOST_KW)
+        ehat = M._minmax(e)
+        root = mat.root_id
+        dis = sorted(M.distractor_ids(mat))
+
+        chosen, unreachable, worst_cross = None, False, -1.0
+        for d in dis:
+            if not T.mult_promotable(e[root], b[root], e[d], b[d]):
+                chosen, unreachable = d, True
+                break
+            cross = T.mult_crossover_lambda(e[root], b[root], e[d], b[d])
+            if cross is not None and cross > worst_cross:
+                chosen, worst_cross = d, cross
+
+        mult_cross = None if unreachable else worst_cross
+        add_cross = T.additive_sufficient_lambda(ehat[root], b[root], ehat[chosen], b[chosen])
+        add_bound = T.additive_uniform_lambda(b[root], b[chosen])
+
+        rows.append({
+            "seed": seed, "root_id": root, "distractor_id": chosen,
+            "e_root": e[root], "b_root": b[root], "ehat_root": ehat[root],
+            "e_distractor": e[chosen], "b_distractor": b[chosen], "ehat_distractor": ehat[chosen],
+            "mult_crossover_lambda": mult_cross,
+            "additive_crossover_lambda": add_cross,
+            "additive_uniform_bound": add_bound,
+            "unreachable": unreachable,
+        })
+    return {
+        "generator": "tcmfbench.mixed.generate_mixed",
+        "protocol": "matches tcmfbench.run_theory (BOOST_KW, MixedConfig, seeds 1-10)",
+        "boost_kw": FIG3_BOOST_KW,
+        "config": {"n_distractors": FIG3_MIXED_CONFIG.n_distractors,
+                   "n_noise": FIG3_MIXED_CONFIG.n_noise},
+        "rows": rows,
+    }
+
+
+def draw_fig3(data: dict, out_stub: Path) -> None:
+    """Two panels, one shared lambda axis: multiplicative margin (left) scatters and one pair
+    never crosses zero; additive margin (right) all cross before one shared, episodic-score-
+    independent bound. Every line is `theory.py`'s own affine margin formula evaluated on the
+    committed per-seed pair data above - not hand-drawn geometry."""
+    rows = data["rows"]
+    lam = np.linspace(0.0, FIG3_LAMBDA_MAX, 400)
+
+    reachable_bounds = [r["additive_uniform_bound"] for r in rows if not r["unreachable"]]
+    worst_bound = max(reachable_bounds)
+
+    fig, (ax_mult, ax_add) = plt.subplots(1, 2, figsize=(6.6, 2.9), sharey=True)
+
+    for ax, op, cross_key in ((ax_mult, "mult", "mult_crossover_lambda"),
+                              (ax_add, "add", "additive_crossover_lambda")):
+        for r in rows:
+            if op == "mult":
+                margin = T.mult_margin(r["e_root"], r["b_root"],
+                                       r["e_distractor"], r["b_distractor"], lam)
+            else:
+                margin = T.add_margin(r["ehat_root"], r["b_root"],
+                                      r["ehat_distractor"], r["b_distractor"], lam)
+            if r["unreachable"]:
+                ax.plot(lam, margin, color=COLOR_UNREACHABLE, lw=1.3, ls="--", zorder=3,
+                        label="seed 7: stays negative,\nnever crosses" if ax is ax_mult else None)
+            else:
+                color = COLOR_MULT if op == "mult" else COLOR_ADD
+                ax.plot(lam, margin, color=color, lw=0.9, alpha=0.55, zorder=2)
+                cross = r[cross_key]
+                if cross is not None and cross <= FIG3_LAMBDA_MAX:
+                    ax.scatter([cross], [0.0], s=14, color=color, zorder=4,
+                              edgecolors="black", linewidths=0.3)
+        ax.axhline(0.0, color="black", lw=0.7, zorder=1)
+        ax.set_xlim(0, FIG3_LAMBDA_MAX)
+        # Fixed, shared y-range covering the 9 reachable pairs' full margin swing. Seed 7's
+        # margin plunges to about -11 at lambda=11 (drawn, just clipped) - showing that would
+        # compress the reachable pairs' crossings, which are the actual point of the panel, into
+        # a sliver near zero. An annotation marks where it exits instead.
+        ax.set_ylim(-2.3, 3.1)
+        ax.set_xlabel(r"$\lambda$", fontsize=8.0)
+        ax.tick_params(labelsize=7.0)
+
+    ax_add.axvline(worst_bound, color="#333333", lw=1.1, ls=":", zorder=3)
+    ax_add.text(worst_bound + 0.15, ax_add.get_ylim()[1] * 0.55,
+               f"bound = {worst_bound:.2f}\n(worst case, all seeds)",
+               fontsize=6.5, color="#333333", va="top")
+    ax_add.axvline(FIG3_SHIPPED_ADD_LAMBDA, color=COLOR_ADD, lw=1.1, ls="-", alpha=0.7, zorder=3)
+    ax_add.text(FIG3_SHIPPED_ADD_LAMBDA + 0.15, ax_add.get_ylim()[0] * 0.85,
+               f"shipped $\\lambda$={FIG3_SHIPPED_ADD_LAMBDA:g}", fontsize=6.5, color=COLOR_ADD)
+
+    ax_mult.axvline(FIG3_SHIPPED_MULT_LAMBDA, color=COLOR_MULT, lw=1.1, ls="-", alpha=0.7, zorder=3)
+    ax_mult.text(FIG3_SHIPPED_MULT_LAMBDA + 0.15, ax_mult.get_ylim()[0] * 0.85,
+               f"shipped $\\lambda$={FIG3_SHIPPED_MULT_LAMBDA:g}", fontsize=6.5, color=COLOR_MULT)
+
+    ax_mult.set_title("multiplicative: crossings scatter,\none pair never crosses", fontsize=7.5)
+    ax_add.set_title("additive: every crossing left of\none shared bound", fontsize=7.5)
+    ax_mult.set_ylabel("pairwise margin\n(root cause $-$ distractor)", fontsize=7.5)
+    ax_mult.legend(loc="lower right", fontsize=6.0, frameon=False)
+
+    fig.suptitle(
+        "10 real (root cause, hardest distractor) pairs, one per scenario "
+        "(same scenarios as results_theory/)", fontsize=6.5, y=1.02)
+    fig.tight_layout(pad=0.25)
+    fig.savefig(out_stub.with_suffix(".pdf"), bbox_inches="tight")
+    fig.savefig(out_stub.with_suffix(".png"), dpi=220, bbox_inches="tight")
+    plt.close(fig)
+
+
+# ------------------------------------------------------------------------- Fig 4 (N10)
+
+def draw_fig4(sweep: dict, out_stub: Path) -> None:
+    """Recall@5 vs lambda, both operators, one axis, N02 bootstrap CI bands
+    (`results_lambda_sweep/`). The multiplicative curve's flat low-lambda region and the marked
+    N03 tune-selected point (2.4) are both drawn from that committed, sanity-checked JSON."""
+    lambdas = sweep["multiplicative"]["lambda"]
+    fig, ax = plt.subplots(figsize=(3.3, 2.6))
+
+    for key, color, label in (("multiplicative", COLOR_MULT, "multiplicative"),
+                              ("additive", COLOR_ADD, "additive")):
+        curve = sweep[key]
+        mean = np.array(curve["mean"])
+        lo = np.array(curve["ci_lo"])
+        hi = np.array(curve["ci_hi"])
+        ax.plot(lambdas, mean, color=color, lw=1.3, marker="o", markersize=2.5, label=label,
+               zorder=3)
+        ax.fill_between(lambdas, lo, hi, color=color, alpha=0.18, zorder=1, linewidth=0)
+
+    # flat low-lambda region for the multiplicative curve, shaded to make it visually obvious
+    ax.axvspan(0, 1.0, color=COLOR_MULT, alpha=0.08, zorder=0)
+    ax.text(0.5, 0.03, "flat", ha="center", va="bottom", fontsize=6.5, color=COLOR_MULT,
+           transform=ax.get_xaxis_transform())
+
+    tuned = sweep["tuned_mult_lambda_recall5"]
+    ax.scatter([sweep["tuned_mult_lambda"]], [tuned["mean"]], s=32, color=COLOR_MULT,
+              edgecolors="black", linewidths=0.6, zorder=4)
+    ax.annotate(
+        f"tuned $\\lambda$={sweep['tuned_mult_lambda']:g}\nrecall@5={tuned['mean']:.2f}",
+        xy=(sweep["tuned_mult_lambda"], tuned["mean"]),
+        xytext=(sweep["tuned_mult_lambda"] + 1.2, tuned["mean"] - 0.22),
+        fontsize=6.5, color=COLOR_MULT,
+        arrowprops=dict(arrowstyle="-", color=COLOR_MULT, lw=0.6),
+    )
+
+    ax.set_xlabel(r"$\lambda$", fontsize=8.0)
+    ax.set_ylabel("recall@5", fontsize=8.0)
+    ax.set_ylim(-0.02, 1.05)
+    ax.tick_params(labelsize=7.0)
+    ax.legend(loc="upper left", fontsize=7.0, frameon=False)
+    fig.tight_layout(pad=0.25)
+    fig.savefig(out_stub.with_suffix(".pdf"))
+    fig.savefig(out_stub.with_suffix(".png"), dpi=220)
+    plt.close(fig)
+
+
 def _box(ax, xy, w, h, text, color, fontsize=8.0):
     x, y = xy
     box = FancyBboxPatch(
@@ -334,6 +523,10 @@ def draw_fig2(out_stub: Path) -> None:
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--out", type=str, default=str(_FIGURES_DIR))
+    ap.add_argument("--lambda-sweep", type=str,
+                    default=str(_TCMF_PAPER_DIR / "results_lambda_sweep" /
+                               "results_lambda_sweep.json"),
+                    help="N10 Fig 4 data, produced by `python -m tcmfbench.run_lambda_sweep`")
     args = ap.parse_args()
     out_dir = Path(args.out)
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -350,6 +543,24 @@ def main() -> None:
 
     draw_fig2(out_dir / "fig2_pipeline")
     print(f"wrote {out_dir / 'fig2_pipeline.pdf'} / .png")
+
+    fig3_data = build_fig3_pairs()
+    fig3_path = out_dir / "fig3_pairs.json"
+    fig3_path.write_text(json.dumps(fig3_data, indent=2, sort_keys=True) + "\n")
+    reloaded3 = json.loads(fig3_path.read_text())
+    draw_fig3(reloaded3, out_dir / "fig3_fusion_operator")
+    print(f"wrote {fig3_path}")
+    print(f"wrote {out_dir / 'fig3_fusion_operator.pdf'} / .png")
+
+    sweep_path = Path(args.lambda_sweep)
+    if sweep_path.exists():
+        sweep = json.loads(sweep_path.read_text())
+        draw_fig4(sweep, out_dir / "fig4_recall_vs_lambda")
+        print(f"wrote {out_dir / 'fig4_recall_vs_lambda.pdf'} / .png")
+    else:
+        print(f"SKIPPED Fig 4: {sweep_path} not found - run "
+              "`python -m tcmfbench.run_lambda_sweep --n 300 --n-seeds 5 "
+              "--out results_lambda_sweep` first")
 
 
 if __name__ == "__main__":
