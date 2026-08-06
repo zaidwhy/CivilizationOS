@@ -32,8 +32,12 @@ tcmfbench/
   run_baselines.py 5 additional retrieval-mechanism baselines (N07, MMR/BM25/summary-buffer/
                   community-summary/extract-consolidate) -> results_baselines_pure/,
                   results_baselines_mixed/
-figures/          Fig 1 (causal graph) + Fig 2 (retrieval pipeline), N09; make_figures.py
-                  regenerates both from committed data, never hand-drawn/hand-typed
+  theory.py       formal analysis of the fusion operator (N15) - affine margin propositions
+  run_theory.py   measures the propositions on real scenarios (N15) -> results_theory/
+  run_lambda_sweep.py  recall@5 vs lambda, both operators, one grid (N10) -> results_lambda_sweep/
+figures/          Fig 1 (causal graph) + Fig 2 (retrieval pipeline), N09; Fig 3 (fusion
+                  operator margin) + Fig 4 (recall vs lambda), N10; make_figures.py regenerates
+                  all four from committed data, never hand-drawn/hand-typed
 PAPER_PLAN.md     the correct framing, related work, and phase plan
 FINDINGS.md       what the runs show (read this first): F1-F7 + code fixes + real-text tier
 ```
@@ -173,6 +177,24 @@ semantically near). Fig 2 is a schematic of `TCMFRetriever.retrieve()`'s real pi
 `api/memory/tcmf.py` and `api/memory/causal_graph.py`, so the diagram cannot silently drift
 from the shipped retriever. Requires `matplotlib` (`research/tcmf_paper/requirements-bench.txt`,
 not needed for anything else in this package).
+
+### Fig 3 (fusion operator) + Fig 4 (recall vs lambda) (N10)
+
+Same `figures/make_figures.py` command as above also produces these two; Fig 4 additionally
+needs `results_lambda_sweep/` to exist first (`python -m tcmfbench.run_lambda_sweep --n 300
+--n-seeds 5 --out results_lambda_sweep`, ~2 min).
+
+Fig 3 draws `theory.py`'s affine margin-vs-lambda mechanism (Propositions 1-2) on 10 real
+(root cause, hardest distractor) pairs, one per `results_theory/`-protocol scenario: the
+multiplicative panel's zero-crossings scatter from lambda 3.11 to 9.26 with one pair that never
+crosses at all, while the additive panel's crossings all sit left of one shared, episodic-score-
+independent bound (3.64) that the shipped lambda=4 clears. Fig 4 plots recall@5 vs lambda for
+both operators on one shared 16-point grid with N02 bootstrap CI bands, from
+`tcmfbench/run_lambda_sweep.py` (new) - the multiplicative curve is genuinely flat through
+lambda~0.3 (shaded) and then rises, reaching 0.52 at the N03 tune-selected value 2.4 (marked),
+so the figure does not imply multiplicative fusion is flat everywhere, only that a small-lambda
+sweep would never find the fix. `tcmfbench/test_n10_figures.py` (15 tests) checks both against
+the real theory functions and the committed result JSON, not hand-typed numbers.
 
 ## What the benchmark holds fixed vs varies
 

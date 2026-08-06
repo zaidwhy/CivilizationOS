@@ -23,7 +23,8 @@ a bug per the standing rule in `NIGHT_QUEUE.md` - find its source or delete the 
 | `results_mixed_tuned` | `python -m tcmfbench.run_tuned --regime mixed --n 300 --out results_mixed_tuned` | ~1 min | none |
 | `results_spurious` | `python -m tcmfbench.run_spurious --n 300 --grid-n 100 --out results_spurious` | a few min | none |
 | `results_theory` | `python -m tcmfbench.run_theory --out results_theory` | seconds | none |
-| `figures/fig1_*`, `figures/fig2_*` | `python figures/make_figures.py --out figures` (needs `pip install -r requirements-bench.txt`) | seconds | `figures/fig1_scenario.json` (committed; regenerated fresh each run, but deterministic so it reproduces bit-for-bit) |
+| `results_lambda_sweep` | `python -m tcmfbench.run_lambda_sweep --n 300 --n-seeds 5 --out results_lambda_sweep` | ~2 min | none - the script itself asserts its own lambda=0.6/8 (mult) and lambda=4 (additive) points reproduce `results_main_scale/results.json` to machine precision before writing output |
+| `figures/fig1_*`, `figures/fig2_*`, `figures/fig3_*`, `figures/fig4_*` | `python figures/make_figures.py --out figures` (needs `pip install -r requirements-bench.txt`; Fig 4 needs `results_lambda_sweep/` to already exist, else it is skipped with a printed message) | seconds | `figures/fig1_scenario.json`, `figures/fig3_pairs.json` (both committed; regenerated fresh each run - deterministic modulo the memory-id-string caveat in `tcmfbench/test_n10_figures.py::_strip_ids`, so every *numeric* field reproduces bit-for-bit even though `root_id`/`distractor_id` strings can shift between process invocations) |
 
 **Checked, not a bug, but not bit-identical either:** running the documented command fresh
 against the current codebase reproduces `results_main_scale`/`results_mixed_scale` exactly
@@ -60,7 +61,7 @@ is the one the paper actually draws from.
 
 ## Not yet regenerable (open NIGHT_QUEUE.md items as of this writing)
 
-N10-N11 (remaining figures), N12 (ablation), N13 (second encoder + latency), N16 (scale/
+N11 (remaining figures), N12 (ablation), N13 (second encoder + latency), N16 (scale/
 multi-crisis stress), N17 (TCMFBench spinoff) have no committed result artifact yet - their
 rows will be added to this file the day each lands, not before. Do not cite a number for any
 of these; none exists.

@@ -240,7 +240,7 @@ N09; matplotlib is not currently installed locally.
 width, and that Fig 1's node labels match the scenario JSON it was generated from.
 
 ### N10 - Fig 3 (fusion operator) + Fig 4 (recall vs lambda)
-**Status:** OPEN | **Env:** CLOUD-OK
+**Status:** DONE (2026-08-06) | **Env:** CLOUD-OK
 
 - **Fig 3:** the paper's core claim as a picture. **The brief here was rewritten 2026-08-04 -
   the original said to show "why multiplication annihilates a causal signal riding on a
