@@ -23,6 +23,7 @@ a bug per the standing rule in `NIGHT_QUEUE.md` - find its source or delete the 
 | `results_mixed_tuned` | `python -m tcmfbench.run_tuned --regime mixed --n 300 --out results_mixed_tuned` | ~1 min | none |
 | `results_spurious` | `python -m tcmfbench.run_spurious --n 300 --grid-n 100 --out results_spurious` | a few min | none |
 | `results_theory` | `python -m tcmfbench.run_theory --out results_theory` | seconds | none |
+| `figures/fig1_*`, `figures/fig2_*` | `python figures/make_figures.py --out figures` (needs `pip install -r requirements-bench.txt`) | seconds | `figures/fig1_scenario.json` (committed; regenerated fresh each run, but deterministic so it reproduces bit-for-bit) |
 
 **Checked, not a bug, but not bit-identical either:** running the documented command fresh
 against the current codebase reproduces `results_main_scale`/`results_mixed_scale` exactly
@@ -59,10 +60,10 @@ is the one the paper actually draws from.
 
 ## Not yet regenerable (open NIGHT_QUEUE.md items as of this writing)
 
-N07 (extra baselines), N09-N11 (figures), N12 (ablation), N13 (second encoder + latency), N16
-(scale/multi-crisis stress), N17 (TCMFBench spinoff) have no committed result artifact yet -
-their rows will be added to this file the day each lands, not before. Do not cite a number for
-any of these; none exists.
+N10-N11 (remaining figures), N12 (ablation), N13 (second encoder + latency), N16 (scale/
+multi-crisis stress), N17 (TCMFBench spinoff) have no committed result artifact yet - their
+rows will be added to this file the day each lands, not before. Do not cite a number for any
+of these; none exists.
 
 ## Structural validation (LaTeX draft, private repo)
 

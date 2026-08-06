@@ -1169,3 +1169,93 @@ machine" caveat. Both closed. Not a queue item; run locally by Zaid's direction.
   stress), N17 (TCMFBench as a standalone contribution - now unblocked, since it was gated on
   N14 freezing the evidence base and N14 is DONE). The lowest-numbered OPEN + CLOUD-OK item for
   the next cloud night is N09.
+
+---
+
+## 2026-08-06 (N07 merge + N09 - Fig 1/Fig 2)
+
+- **First action this run: merged an already-completed N07, rather than duplicating it.** On
+  startup, `NIGHT_QUEUE.md` still showed N07 as OPEN (the lowest-numbered CLOUD-OK item), but a
+  parallel cloud routine had already opened PR #10 (`night-tcmf/2026-08-05`) with a complete,
+  verified N07 implementation - CI green (test suite + Vercel), `mergeable_state: clean`,
+  sitting unmerged for about a day. Re-implementing N07 from scratch would have wasted the work
+  and produced a second, conflicting PR for the same queue item, so per the standing
+  self-merge-on-green-CI authorization (2026-08-05, which this queue's own log already
+  documents applying to more than one concurrent routine), the existing PR was merged as-is
+  (`git merge`, not squash, matching this queue's convention) instead of opening a new one.
+  `NIGHT_QUEUE.md`'s N07 status (already `DONE (2026-08-05)` on that branch) landed on `main`
+  with the merge; nothing further needed doing for that item. The entry immediately above this
+  one (dated 2026-08-05, "N07 - additional retrieval baselines") is that merged PR's own log
+  entry, appended here unmodified with the merge.
+- **Then took N09** (Fig 1 causal graph + Fig 2 retrieval pipeline), the next lowest-numbered
+  OPEN + CLOUD-OK item after the N07 merge, exactly as the prior entry's own "Next" note said.
+  Environment: cloud sandbox, no Ollama, no access to Zaid's machine - LOCAL-ONLY items
+  untouched. Built a throwaway `.venv_ci_n09` (Python 3.11.15, numpy 2.4.6, networkx 3.6.1,
+  pytest 9.1.1, matplotlib 3.11.1 - matching the version verified locally on 2026-08-04) since
+  this repo ships no committed venv; confirmed the full 88-test benchmark suite needs only
+  numpy/networkx/pytest (no FastAPI/pydantic stack), so figures could be built without
+  installing the huge root `requirements.txt`.
+- **What was built:**
+  - `research/tcmf_paper/requirements-bench.txt` (new): pins `matplotlib==3.11.1`, the one
+    extra dependency this item's own spec calls for, isolated from everything else in the
+    package.
+  - `research/tcmf_paper/figures/make_figures.py` (new): generates one small illustrative
+    scenario via the real `tcmfbench.generator.generate` (chain_len=3, 2 distractors, no noise
+    - deliberately reduced cardinality for column-width legibility, not a hand-drawn cartoon),
+    writes it to the committed `figures/fig1_scenario.json`, **re-loads it from that file**
+    before drawing (so Fig 1 is provably drawn from the committed artifact, not from whatever
+    was still in memory), and draws both figures to vector PDF + PNG via matplotlib. Fig 1
+    annotates the real computed cosine similarities (root-cause witness vs. crisis = 0.21,
+    distractor vs. crisis = 0.85) rather than asserting the "semantically far / near" claim in
+    prose. Fig 2's box text is checked against a `SOURCE_GROUNDING` dict of literal substrings
+    pulled from `api/memory/tcmf.py` and `api/memory/causal_graph.py`, so the pipeline
+    schematic cannot silently drift from the shipped retriever's real steps.
+  - `tcmfbench/test_n09_figures.py` (8 tests, all pass via `python -m
+    tcmfbench.test_n09_figures` or pytest): scenario-generation determinism; the committed
+    `fig1_scenario.json` matches the generator byte-for-byte (not stale, not hand-edited); the
+    causal-chain shape and per-label memory counts match `FIG1_CONFIG` exactly; the root-cause
+    witness's cosine to the crisis is below the benchmark's own 0.45 causal-similarity
+    threshold and the distractor's is above it (the regime holds for this specific illustrative
+    scenario, not just asserted); every `SOURCE_GROUNDING` phrase is a real substring of the
+    file it names; both figures render to non-empty vector PDF (`%PDF` header) and PNG. Full
+    suite: 96/96 (88 pre-existing + 8 new), no regressions.
+- **A real design mistake caught only by actually rendering and looking, exactly as the item's
+  own verify criterion demands - not by any unit test.** The first pass at Fig 2 packed 4 boxes
+  across a horizontal row at <7pt fonts to fit the 3.3in single-column width, which is below
+  Phase 4's own ">= 8pt effective font" bar; the fusion box's rounded corners also visually
+  collided with the box above it because two independently-hand-picked y-centers left only a
+  ~0.05in vertical gap between edges. Fixed by (a) re-laying Fig 2 into two narrow vertical
+  columns - causal stream left, episodic stream right, both converging into one fusion box at
+  the bottom - instead of one wide row, which leaves each box wide enough for 8pt text, and
+  (b) replacing hand-picked box centers with a small `_stack_down()` helper that computes
+  centers from explicit heights and a fixed edge-to-edge gap, so overlap is structurally
+  impossible rather than eyeballed. Fig 1 had a matching bug: the distractor cluster, placed to
+  the right of the crisis node, overflowed the figure's right edge once its label was rendered
+  at 8pt; fixed by moving it above the crisis node instead, which uses vertical space (free at
+  any figure width) rather than horizontal (capped at 3.3in). No committed number changed - this
+  was purely a legibility bug, but it took two full render-and-inspect cycles to catch, which is
+  the entire reason this item's own verify text insists on "actually look at it."
+- **Verified vs. assumed:** verified - `test_n09_figures.py` (8/8) and the full 96-test suite
+  pass; both PDFs confirmed to start with the `%PDF` magic byte and open as single-page vector
+  documents (`file` command); both PNGs re-rendered and visually inspected at their final layout
+  (viewed directly in-session) for overlap and edge clipping, per the item's own verify
+  criterion, not just generated and trusted. Not assumed: nothing in this item makes a claim
+  about retrieval numbers, so there is no result to independently confirm beyond the figures'
+  internal consistency with their own source data.
+- **Private paper repo:** not touched this session (no attempt to clone `syzayd/tcmf-paper`
+  this run). LaTeX delta needed once someone integrates: add `\includegraphics` for
+  `figures/fig1_causal_graph.pdf` and `figures/fig2_pipeline.pdf` (both already vector PDF,
+  single-column width) at the "regime" and "method" sections respectively; no prose claim
+  changes, since these figures illustrate the existing F1/method-section claims rather than
+  introducing new ones.
+- **Files touched (public repo):** `research/tcmf_paper/requirements-bench.txt` (new),
+  `research/tcmf_paper/figures/make_figures.py` (new), `research/tcmf_paper/figures/
+  fig1_scenario.json` (new), `research/tcmf_paper/figures/fig1_causal_graph.pdf` / `.png` (new),
+  `research/tcmf_paper/figures/fig2_pipeline.pdf` / `.png` (new),
+  `tcmfbench/test_n09_figures.py` (new), `FINDINGS.md`, `README.md`, `REPRODUCE.md`,
+  `NIGHT_QUEUE.md` (N09 -> DONE).
+- **Next:** N10 (Fig 3 fusion operator + Fig 4 recall vs. lambda) is next in queue order and is
+  CLOUD-OK - it can reuse this session's `figures/make_figures.py` scaffolding (colorblind-safe
+  palette, vector-PDF-plus-PNG save pattern) and should learn from tonight's font-size lesson:
+  render and inspect at final layout before considering a figure done, not just before
+  committing the script.

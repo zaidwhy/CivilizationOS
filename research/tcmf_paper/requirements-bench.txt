@@ -1,0 +1,5 @@
+# Extra dependency for the figures pipeline (N09-N11), on top of the benchmark's existing
+# numpy + networkx. Not needed to run any tcmfbench eval/test - only figures/make_figures.py.
+# Pinned to the version verified locally (2026-08-04 session note) and in the cloud sandbox
+# that first ran N09 (2026-08-06).
+matplotlib==3.11.1
