@@ -7,6 +7,7 @@ method is scored on identical memory ids.
 from __future__ import annotations
 
 import math
+import re
 from dataclasses import dataclass, field
 
 import numpy as np
@@ -323,3 +324,220 @@ def rank_tcmf_rrf(mat: Materialized, c: float = 10.0, threshold: float = 0.45,
         sorted(mat.all_ids, key=lambda i: boost.get(i, 0.0), reverse=True))}
     rrf = {i: 1.0 / (c + epi_rank[i] + 1) + 1.0 / (c + caus_rank[i] + 1) for i in mat.all_ids}
     return sorted(mat.all_ids, key=lambda i: rrf[i], reverse=True)
+
+
+# ---------------------------------------------------------------- N07: additional baselines
+#
+# Reimplementable *mechanisms*, not system reimplementations - named "X-style mechanism" in
+# both code and prose, the same correction already applied to graph_ppr/HippoRAG. These test
+# whether the causal-ancestor effect is an artifact of dense-embedding retrieval specifically
+# (MMR, community-summary), of embeddings at all (BM25), or survives against the context-
+# management mechanisms real long-running agents actually ship (summary-buffer,
+# extract-and-consolidate).
+
+def rank_mmr(mat: Materialized, mmr_lambda: float = 0.5) -> list[str]:
+    """Maximal marginal relevance: the standard diversity re-ranker. Iteratively picks the
+    candidate maximizing ``mmr_lambda*sim(query) - (1-mmr_lambda)*max_sim(already selected)``,
+    vectorized via a precomputed pairwise-cosine matrix. Tests whether plain diversification
+    (pushing past redundant high-similarity distractors, no causal signal at all) already
+    surfaces causal ancestors. ``mmr_lambda=1.0`` degenerates to pure relevance ranking
+    (identical to ``rank_semantic``) - asserted in ``test_n07_baselines.py``."""
+    ids = list(mat.all_ids)
+    n = len(ids)
+    if n == 0:
+        return []
+    E = np.asarray([mat.mem[i]["embedding"] for i in ids], dtype=np.float64)
+    norms = np.linalg.norm(E, axis=1)
+    norms[norms == 0] = 1.0
+    En = E / norms[:, None]
+    q = np.asarray(mat.scenario.query_embedding, dtype=np.float64)
+    qn = q / (np.linalg.norm(q) or 1.0)
+    qsim = En @ qn
+    S = En @ En.T
+
+    selected = np.zeros(n, dtype=bool)
+    max_sel_sim = np.zeros(n, dtype=np.float64)  # no selection yet -> diversity term 0
+    order: list[str] = []
+    for _ in range(n):
+        score = mmr_lambda * qsim - (1.0 - mmr_lambda) * max_sel_sim
+        score = np.where(selected, -np.inf, score)
+        best = int(np.argmax(score))
+        order.append(ids[best])
+        selected[best] = True
+        max_sel_sim = np.maximum(max_sel_sim, S[best])
+    return order
+
+
+def _tokenize(text: str) -> list[str]:
+    return re.findall(r"[a-z0-9]+", text.lower())
+
+
+def rank_bm25(mat: Materialized, k1: float = 1.5, b: float = 0.75) -> list[str]:
+    """BM25 lexical ranking of memory text against the query text - the standard sparse-
+    retrieval baseline, computed with no embeddings at all. Tests whether the causal-ancestor
+    effect is an artifact of dense retrieval specifically, or survives (or fails) under pure
+    term-overlap scoring."""
+    ids = list(mat.all_ids)
+    n_docs = len(ids)
+    if n_docs == 0:
+        return []
+    docs = {i: _tokenize(mat.mem[i]["text"]) for i in ids}
+    doc_len = {i: len(docs[i]) for i in ids}
+    avgdl = (sum(doc_len.values()) / n_docs) or 1.0
+
+    df: dict[str, int] = {}
+    for i in ids:
+        for term in set(docs[i]):
+            df[term] = df.get(term, 0) + 1
+    idf = {t: math.log(1.0 + (n_docs - c + 0.5) / (c + 0.5)) for t, c in df.items()}
+
+    q_terms = _tokenize(mat.scenario.query_text)
+
+    def score(i: str) -> float:
+        tf: dict[str, int] = {}
+        for t in docs[i]:
+            tf[t] = tf.get(t, 0) + 1
+        dl = doc_len[i]
+        s = 0.0
+        for t in q_terms:
+            f = tf.get(t, 0)
+            if f == 0:
+                continue
+            s += idf.get(t, 0.0) * (f * (k1 + 1)) / (f + k1 * (1 - b + b * dl / avgdl))
+        return s
+
+    return sorted(ids, key=score, reverse=True)
+
+
+def rank_summary_buffer(mat: Materialized, recent_window: int = 10, page_size: int = 10) -> list[str]:
+    """Summary-buffer / paging retrieval, a MemGPT-style mechanism: the most recent
+    ``recent_window`` memories stay in the working context and are read first (as MemGPT's
+    recall storage keeps recent turns in-context), everything older is chunked into fixed-size,
+    time-ordered pages, each page is represented by a single averaged embedding standing in
+    for an LLM-written page summary, and pages are pulled in order of that summary's
+    similarity to the query (memories within a page keep their recency order). Tests whether
+    an agent's ordinary context-management paging - no causal graph, no re-ranking within the
+    recent window - already surfaces causal ancestors."""
+    ids_by_recency = sorted(mat.all_ids, key=lambda i: mat.mem[i]["tick"], reverse=True)
+    recent = ids_by_recency[:recent_window]
+    older = ids_by_recency[recent_window:]
+
+    q = mat.scenario.query_embedding
+    pages = [older[j:j + page_size] for j in range(0, len(older), page_size)]
+
+    def page_summary_sim(page: list[str]) -> float:
+        embs = np.asarray([mat.mem[i]["embedding"] for i in page], dtype=np.float64)
+        centroid = embs.mean(axis=0).tolist()
+        return _cosine(centroid, q)
+
+    pages_ranked = sorted(pages, key=page_summary_sim, reverse=True)
+    return recent + [i for page in pages_ranked for i in page]
+
+
+def _kmeans(X: np.ndarray, k: int, seed: int, iters: int = 50) -> np.ndarray:
+    """Minimal seeded Lloyd's-algorithm k-means, pure numpy. Returns a cluster label per row."""
+    n = X.shape[0]
+    k = max(1, min(k, n))
+    rng = np.random.default_rng(seed)
+    init_idx = rng.choice(n, size=k, replace=False)
+    centroids = X[init_idx].copy()
+    labels = np.full(n, -1, dtype=int)
+    for _ in range(iters):
+        d = np.linalg.norm(X[:, None, :] - centroids[None, :, :], axis=2)
+        new_labels = np.argmin(d, axis=1)
+        if np.array_equal(new_labels, labels):
+            break
+        labels = new_labels
+        for c in range(k):
+            members = X[labels == c]
+            if len(members):
+                centroids[c] = members.mean(axis=0)
+    return labels
+
+
+def rank_community_summary(mat: Materialized, n_communities: int = 6, seed: int = 0) -> list[str]:
+    """Community-summary retrieval, a GraphRAG-style mechanism: cluster the memory pool into
+    communities (seeded k-means on embeddings stands in for GraphRAG's graph-community
+    detection - there is no LLM here to write prose summaries, so each community's centroid
+    stands in for one), rank communities by summary-to-query similarity, then rank memories
+    within a community by their own query similarity. Tests whether retrieving via cluster
+    summaries - no per-edge causal traversal - already surfaces causal ancestors."""
+    ids = list(mat.all_ids)
+    if not ids:
+        return []
+    E = np.asarray([mat.mem[i]["embedding"] for i in ids], dtype=np.float64)
+    labels = _kmeans(E, n_communities, seed=seed)
+    q = mat.scenario.query_embedding
+
+    communities: dict[int, list[str]] = {}
+    for idx, i in enumerate(ids):
+        communities.setdefault(int(labels[idx]), []).append(i)
+
+    def centroid_sim(members: list[str]) -> float:
+        embs = np.asarray([mat.mem[i]["embedding"] for i in members], dtype=np.float64)
+        centroid = embs.mean(axis=0).tolist()
+        return _cosine(centroid, q)
+
+    ranked_communities = sorted(communities.values(), key=centroid_sim, reverse=True)
+    out: list[str] = []
+    for members in ranked_communities:
+        out.extend(sorted(members, key=lambda i: _cosine(mat.mem[i]["embedding"], q), reverse=True))
+    return out
+
+
+def rank_extract_consolidate(mat: Materialized, dedup_threshold: float = 0.92) -> list[str]:
+    """Extract-and-consolidate memory, a Mem0-style mechanism: greedily merge near-duplicate
+    memories (pairwise cosine >= ``dedup_threshold``) into groups before ranking - the dedup/
+    merge step Mem0 performs to keep memory compact, approximated here without an LLM by
+    embedding-similarity clustering (single-pass, deterministic: each memory joins the first
+    existing group whose representative it is similar enough to, else starts a new group).
+    Each group's representative (its highest-importance member, standing in for the
+    consolidated/extracted memory) is ranked by query similarity; the rest of the group trails
+    immediately after in importance order. Tests whether deduping the pool before ranking helps
+    (removing near-duplicate distractors competing for top-k slots) or hurts (merging a true
+    ancestor's rank into a distractor-dominated group) causal-ancestor recall."""
+    ids = list(mat.all_ids)
+    n = len(ids)
+    if n == 0:
+        return []
+    E = np.asarray([mat.mem[i]["embedding"] for i in ids], dtype=np.float64)
+    norms = np.linalg.norm(E, axis=1)
+    norms[norms == 0] = 1.0
+    En = E / norms[:, None]
+    S = En @ En.T
+
+    group_reps_idx: list[int] = []
+    groups: list[list[str]] = []
+    for idx, i in enumerate(ids):
+        placed = False
+        for gidx, rep_idx in enumerate(group_reps_idx):
+            if S[idx, rep_idx] >= dedup_threshold:
+                groups[gidx].append(i)
+                placed = True
+                break
+        if not placed:
+            groups.append([i])
+            group_reps_idx.append(idx)
+
+    q = mat.scenario.query_embedding
+
+    def representative(members: list[str]) -> str:
+        return max(members, key=lambda i: mat.mem[i]["importance"])
+
+    reps = {gidx: representative(members) for gidx, members in enumerate(groups)}
+    group_order = sorted(
+        range(len(groups)),
+        key=lambda gidx: _cosine(mat.mem[reps[gidx]]["embedding"], q),
+        reverse=True,
+    )
+
+    out: list[str] = []
+    for gidx in group_order:
+        rep = reps[gidx]
+        rest = sorted(
+            (i for i in groups[gidx] if i != rep),
+            key=lambda i: mat.mem[i]["importance"], reverse=True,
+        )
+        out.append(rep)
+        out.extend(rest)
+    return out

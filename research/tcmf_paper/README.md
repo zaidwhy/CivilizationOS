@@ -29,6 +29,9 @@ tcmfbench/
   run_realtext.py real-text tier (needs Ollama) -> results_realtext/
   run_tuned.py    held-out tune/test split (N03) -> results_main_tuned/, results_mixed_tuned/
   run_spurious.py spurious false-ancestor edge robustness (N04) -> results_spurious/
+  run_baselines.py 5 additional retrieval-mechanism baselines (N07, MMR/BM25/summary-buffer/
+                  community-summary/extract-consolidate) -> results_baselines_pure/,
+                  results_baselines_mixed/
 PAPER_PLAN.md     the correct framing, related work, and phase plan
 FINDINGS.md       what the runs show (read this first): F1-F7 + code fixes + real-text tier
 ```
@@ -120,6 +123,32 @@ precision metric this experiment introduces is already near-ceiling for every me
 `causal_only`, an honest methodological gap flagged for a future night rather than hidden.
 `tcmfbench/test_n04_spurious.py` unit-tests the RNG-gating invariant, the injected edge's BFS
 depth, and the precision metric against hand-computed cases.
+
+### Additional retrieval baselines (N07)
+
+Five more reimplementable *mechanisms* (named "X-style mechanism", not a reimplementation of
+X, the same correction already applied to `graph_ppr`/HippoRAG): `rank_mmr` (maximal marginal
+relevance), `rank_bm25` (lexical, no embeddings), `rank_summary_buffer` (MemGPT-style recent
+window + paged archival summary), `rank_community_summary` (GraphRAG-style cluster-then-
+retrieve-by-summary), `rank_extract_consolidate` (Mem0-style dedupe/merge before ranking) - all
+in `tcmfbench/methods.py`. Each one's single hyperparameter is swept on the N03 TUNE split
+(equal 5-candidate budget) and reported on the disjoint TEST split, alongside the 10
+pre-existing methods at their N03-tuned values:
+
+```powershell
+& "..\..\.venv\Scripts\python" -m tcmfbench.run_baselines --regime pure  --out results_baselines_pure
+& "..\..\.venv\Scripts\python" -m tcmfbench.run_baselines --regime mixed --out results_baselines_mixed
+```
+
+See `FINDINGS.md` (N07) for the result: none of the 5 new baselines ever meaningfully recovers
+a causal ancestor (`causal@5` <= 0.05 in both regimes, vs TCMF's 1.00) - TCMF's margin is not
+an artifact of weak baseline choice. In the pure regime specifically, 3 of the 5
+(`bm25`/`community_summary`/`extract_consolidate`) fail to beat even a `random` baseline on any
+metric; traced to a real, deterministic property of each mechanism against this benchmark's
+adversarial construction, not an implementation bug (all 5 beat `random` comfortably in the
+mixed regime). `tcmfbench/test_n07_baselines.py` (16 tests) unit-tests each mechanism against
+hand-computed cases, including an exact MMR tie-breaking construction and a hand-derived BM25
+score.
 
 ## What the benchmark holds fixed vs varies
 

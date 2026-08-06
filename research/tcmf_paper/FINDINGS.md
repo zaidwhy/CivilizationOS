@@ -609,6 +609,105 @@ domains too (see `results_n06/RESULTS_N06.md`) - they just can't be told apart f
 unmeasurable (not contradicted) in the domains whose decoys are too easy.** Hardening the harder
 decoys is future work (would live in a `decision.py` revision, not in this queue).
 
+## N07 - Additional retrieval baselines - none of five more mechanism analogues ever
+## meaningfully recovers a causal ancestor; three of five don't even beat random in the pure
+## regime, and that is a real property of the mechanism, not a bug
+
+`tcmfbench/methods.py` adds five more reimplementable *mechanisms* (named "X-style mechanism,"
+not a reimplementation of X, the same correction already applied to `graph_ppr`/HippoRAG):
+`rank_mmr` (maximal marginal relevance, the standard diversity re-ranker), `rank_bm25`
+(lexical, no embeddings at all), `rank_summary_buffer` (MemGPT-style recent window + paged
+archival summary), `rank_community_summary` (GraphRAG-style k-means-cluster-then-retrieve-by-
+summary), `rank_extract_consolidate` (Mem0-style dedupe/merge of near-duplicate memories before
+ranking). `tcmfbench/run_baselines.py` sweeps each one's single hyperparameter on the N03 TUNE
+split (equal 5-candidate budget, same protocol) and reports every number on the disjoint TEST
+split, alongside the 10 pre-existing methods held at their already-committed N03-tuned values.
+`tcmfbench/test_n07_baselines.py` (16 tests) checks each mechanism against hand-computed cases,
+including an exact-tie MMR construction (mirror-symmetric candidates so raw relevance cannot
+separate them, isolating the diversity term) and a hand-derived BM25 score.
+
+**Headline result, and the one that actually answers W3/W6: causal@5 for all 5 new baselines
+is <=0.05 in BOTH regimes (mostly exactly 0.00), against TCMF's 1.00.** Pure regime (pool 78,
+n=900 TEST scenarios): `mmr` recall@5 0.10 [0.09,0.11] (the best of the five, still far below
+`tcmf_add`'s 1.00), `bm25`/`community_summary`/`extract_consolidate` recall@5 = 0.00,
+`summary_buffer` recall@5 0.01. Mixed regime (pool 80): `bm25` gets the highest causal@5 of the
+five at 0.05 [0.04,0.05]; `mmr`/`community_summary`/`extract_consolidate` causal@5 = 0.00.
+TCMF's advantage over the field is therefore not an artifact of being compared only to plain
+semantic/episodic baselines - it holds against five additional, structurally different
+mechanisms (diversity re-ranking, sparse lexical retrieval, context paging, graph-community
+clustering, memory consolidation), none of which ever meaningfully finds a causal ancestor.
+
+**Honest, investigated (not asserted) finding: in the pure regime, `bm25`, `community_summary`,
+and `extract_consolidate` beat `random` on NO metric - this is a real, deterministic property
+of each mechanism against this benchmark's construction, not a bug.** Traced by hand for each:
+- `bm25`'s root_rank is **78.0 [78.0, 78.0]** across all 900 test scenarios - the root cause
+  lands at the literal last position, with zero variance, every single time. This benchmark's
+  synthetic memory text is boilerplate authored as embedding scaffolding, not natural
+  language: every memory's text contains the literal string `"(topic N)"`, and a distractor's
+  topic number is always identical to the crisis's own topic number by construction (that is
+  what makes it a distractor). BM25 therefore perfectly and deterministically identifies all
+  20 distractors (they share BOTH "topic" and the literal number token with the query, scoring
+  far above everything else) and monopolizes the entire top-20 with them, before the root
+  cause (whose topic number differs and shares only the generic word "topic") is ever reached.
+  Among the ~58 non-distractor items - all tied near zero - the root cause's own text template
+  ("witness of root_cause (topic N)", 6 tokens) is marginally *longer* than most noise text
+  ("background chatter N (topic M)", 5 tokens), so BM25's length-normalization term ranks it
+  fractionally lowest of that entire tied group, every time. Verified directly against the raw
+  score distribution (not inferred from the curve), not a tie-break artifact of insertion order.
+- `community_summary`/`extract_consolidate` reduce, in the pure regime, to a *reordering* of
+  plain semantic similarity (clustering-then-rank-by-centroid, or dedupe-then-rank-by-
+  representative) - and that reordering makes root_rank measurably *worse* than plain semantic
+  ranking already is (pure regime: `semantic_rag` root_rank 50.0 - already close to chance -
+  `community_summary`/`extract_consolidate` land at 50.4/50.0, statistically indistinguishable
+  from `semantic_rag`, and both are worse than `random`'s 38.6.). The root cause's topic is
+  semantically far from the crisis by construction (F1), so any signal that routes through
+  query-relevance at all is already fighting the benchmark's entire premise; clustering does
+  not rescue it.
+- `summary_buffer` beats `random` on recall@10 only (0.14 vs 0.12 in the mixed regime) and
+  loses on every other metric in both regimes, including causal@5 (0.01 vs random's 0.06) and
+  root_rank (58.6 vs 41.6, mixed regime) - the worst of the five. Traced to the generator's
+  timestamp design: `noise` memories are spread uniformly across the *entire* scenario
+  timeline (tick 1-79 in one inspected scenario), while the causal chain and its witnesses
+  cluster tightly just before the crisis (tick 43-48 in the same scenario) - but noise
+  continues to accumulate *past* the crisis too, so a small "most-recent" window is
+  systematically buried under noise that is chronologically newer than the crisis-relevant
+  memories, not older. This is a real property of MemGPT-style recency paging against a
+  benchmark where "recent" and "causally relevant" are deliberately decoupled - exactly the
+  regime the paper is about, just showing up in a different mechanism than embeddings.
+- All 5 baselines DO beat `random` comfortably in the **mixed** regime (recall@3/5/10 and/or
+  semantic@5), confirming they are implemented correctly and respond to real signal when the
+  benchmark's semantic-gold subset provides one - the pure regime's zero-wins result is a
+  genuine property of that regime's fully-adversarial construction (F1: even `semantic_rag`
+  itself gets recall@5 = 0.00 there), not evidence of a coding defect. Unit tests (16/16) and
+  hand-computed cases both pass; nothing was retuned to hide this.
+
+**A secondary, interesting point: MMR is the one mechanism among the five that partially
+resists the pure regime, and the gap to TCMF quantifies why diversity is a blunt instrument
+next to targeted causal-graph traversal.** `mmr`'s diversity term has no ground truth about
+*which* direction away from the distractor cluster is causally relevant, so it recovers some
+of the causal-ancestor signal (recall@5 0.10, root_rank 14.6, both clearly better than random)
+but nowhere near TCMF's complete recovery (recall@5 1.00, root_rank 3.0) - an 8-point root_rank
+gap between "diversify away from what's already been picked" and "traverse the actual causal
+graph."
+
+**Verified vs assumed:** verified - all numbers above read from the committed
+`results_baselines_pure/results_baselines.json` and `results_baselines_mixed/
+results_baselines.json` (produced by `tcmfbench.run_baselines`, not hand-typed); the bm25
+root_rank mechanism was traced directly against the raw per-scenario score distribution for a
+real materialized scenario (shown in the night log), not inferred from the aggregate; the
+pre-existing 10 methods' hyperparameters are the already-committed, already-verified N03
+tune-selected values (loaded, not re-derived); `test_n07_baselines.py` (16/16) passes,
+including hand-computed MMR-tie and BM25 cases; the full benchmark suite (88 tests) reruns
+green, confirming N07 did not regress anything. Not assumed / still open: whether this pattern
+replicates on the real-text tier - N06 landed in a separate, concurrent local session the same
+night and its own results are in the section immediately above, but N06 did not run any of
+tonight's 5 new baselines, only the 10 pre-existing methods per-domain, so this specific
+question is still unanswered. BM25 in particular can only be meaningfully judged against real
+prose, and this synthetic-tier result should not be read as a verdict on lexical retrieval in
+general, only on lexical retrieval against this specific benchmark's placeholder text - running
+`rank_bm25` and the other 4 new baselines over N06's natural-language real-text corpora is the
+natural follow-up.
+
 ## Still open before submission
 
 - **Write-up** (Phase 5) drafted (kept in a private repo); fold in the F8 decision tier + table,
@@ -617,12 +716,20 @@ decoys is future work (would live in a `decision.py` revision, not in this queue
   previously-unflagged significant recall@5 loss to graph_ppr at both pool sizes), N03's
   confirmation that the tie/loss is not a test-set-peeking artifact (plus the caveat that N01's
   "graph_ppr collapses to 0.33" number was at an untuned alpha and recovers to 0.67 once
-  graph_ppr gets the same tuning fairness as TCMF), and now N04's spurious-edge robustness
-  curve (graceful recall degradation, no crossover below semantic_rag up to p=0.4, the emergent
+  graph_ppr gets the same tuning fairness as TCMF), N04's spurious-edge robustness curve
+  (graceful recall degradation, no crossover below semantic_rag up to p=0.4, the emergent
   favor-root robustness finding with its direct-vs-deep-edge scope caveat, and the honest
-  precision-metric ceiling-effect limitation).
-- **Scale the real-text tier** (more domains / larger n) and add a second encoder to show the
-  threshold-tuning point generalizes.
+  precision-metric ceiling-effect limitation), N06's per-domain tuned real-text tier (the
+  causal-recall finding replicates 8/8 domains with no exceptions; the decision-accuracy finding
+  replicates in the 4/8 domains whose decoys are not already saturated), and now N07's
+  additional-baselines result (none of 5 more mechanisms ever meaningfully recovers a causal
+  ancestor - causal@5 <= 0.05 in both regimes vs TCMF's 1.00 - directly answering "did you only
+  compare against weak baselines").
+- **Add a second encoder** to show the anisotropy-threshold-tuning point generalizes beyond
+  `nomic-embed-text` (N06 already covers all 8 real-text domains under that one encoder). Also
+  the right place to re-test `bm25` and the other 4 N07 baselines against real natural-language
+  memory text (N07's synthetic-tier BM25 result is an artifact of this benchmark's boilerplate
+  placeholder text, not a general verdict on lexical retrieval).
 - **Statistical rigor / robustness** (REVIEW.md B4-B5, W7): N01 lands the multi-seed harness,
   N02 lands bootstrap CIs + paired significance tests, N03 lands the held-out lambda/tau split,
   N04 lands spurious (wrong-edge) robustness alongside F7's existing missing-edge robustness.
