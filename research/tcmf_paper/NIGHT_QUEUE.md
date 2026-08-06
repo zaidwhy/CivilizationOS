@@ -227,7 +227,7 @@ never hand-typed numbers**. Add `research/tcmf_paper/requirements-bench.txt` (ma
 N09; matplotlib is not currently installed locally.
 
 ### N09 - Fig 1 (causal graph) + Fig 2 (retrieval pipeline)
-**Status:** OPEN | **Env:** CLOUD-OK
+**Status:** DONE (2026-08-06) | **Env:** CLOUD-OK
 
 - **Fig 1:** a real scenario's causal graph - crisis node, its ancestor chain, the root
   cause, the semantically-similar distractors sitting *off* the causal path. This single
