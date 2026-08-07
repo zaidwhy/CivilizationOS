@@ -34,6 +34,28 @@ def bootstrap_ci(values, statistic=np.mean, n_boot: int = 10000, alpha: float = 
     return point, lo, hi
 
 
+_Z975 = 1.959963984540054  # standard normal 97.5th percentile - a fixed constant, not a
+# scipy call: the two-sided 95% Wilson interval only ever needs this one z-value.
+
+
+def wilson_ci(k: int, n: int, z: float = _Z975) -> tuple[float, float, float]:
+    """Wilson score interval (Wilson, 1927) for a binomial proportion ``k`` successes out of
+    ``n`` trials. Closed-form, no resampling needed - used where only the aggregate count is
+    available (no per-trial array to bootstrap over), e.g. N11's Fig 6 reconstructs it from an
+    already-committed ``mean`` and ``n``. Preferred over the naive Wald interval
+    (``p +/- z*sqrt(p(1-p)/n)``) because Wald has poor coverage and can leave [0,1] entirely
+    when ``p`` is near 0 or 1 - exactly the regime several decision_acc values sit in (e.g.
+    0.97). Returns ``(p, lo, hi)``.
+    """
+    if n <= 0:
+        return float("nan"), float("nan"), float("nan")
+    p = k / n
+    denom = 1.0 + z * z / n
+    center = (p + z * z / (2 * n)) / denom
+    half = (z * math.sqrt(p * (1 - p) / n + z * z / (4 * n * n))) / denom
+    return p, max(0.0, center - half), min(1.0, center + half)
+
+
 def _rankdata(x: np.ndarray) -> np.ndarray:
     """Average ranks (1-based), ties get the mean of the ranks they would occupy - the same
     convention scipy.stats.rankdata uses and the one the Wilcoxon test requires."""

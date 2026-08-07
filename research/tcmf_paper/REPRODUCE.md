@@ -24,7 +24,7 @@ a bug per the standing rule in `NIGHT_QUEUE.md` - find its source or delete the 
 | `results_spurious` | `python -m tcmfbench.run_spurious --n 300 --grid-n 100 --out results_spurious` | a few min | none |
 | `results_theory` | `python -m tcmfbench.run_theory --out results_theory` | seconds | none |
 | `results_lambda_sweep` | `python -m tcmfbench.run_lambda_sweep --n 300 --n-seeds 5 --out results_lambda_sweep` | ~2 min | none - the script itself asserts its own lambda=0.6/8 (mult) and lambda=4 (additive) points reproduce `results_main_scale/results.json` to machine precision before writing output |
-| `figures/fig1_*`, `figures/fig2_*`, `figures/fig3_*`, `figures/fig4_*` | `python figures/make_figures.py --out figures` (needs `pip install -r requirements-bench.txt`; Fig 4 needs `results_lambda_sweep/` to already exist, else it is skipped with a printed message) | seconds | `figures/fig1_scenario.json`, `figures/fig3_pairs.json` (both committed; regenerated fresh each run - deterministic modulo the memory-id-string caveat in `tcmfbench/test_n10_figures.py::_strip_ids`, so every *numeric* field reproduces bit-for-bit even though `root_id`/`distractor_id` strings can shift between process invocations) |
+| `figures/fig1_*` .. `figures/fig6_*` | `python figures/make_figures.py --out figures` (needs `pip install -r requirements-bench.txt`; Fig 4 needs `results_lambda_sweep/` to already exist and Fig 5 needs `results_spurious/` + `results_mixed_scale/` to already exist, else each is skipped with a printed message; Fig 6 needs `results_decision/` to already exist, which is committed) | seconds | `figures/fig1_scenario.json`, `figures/fig3_pairs.json`, `figures/fig6_data.json` (all committed; regenerated fresh each run - deterministic modulo the memory-id-string caveat in `tcmfbench/test_n10_figures.py::_strip_ids`, so every *numeric* field reproduces bit-for-bit even though `root_id`/`distractor_id` strings can shift between process invocations) |
 
 **Checked, not a bug, but not bit-identical either:** running the documented command fresh
 against the current codebase reproduces `results_main_scale`/`results_mixed_scale` exactly
@@ -53,6 +53,24 @@ is the one the paper actually draws from.
 |---|---|---|---|
 | `results_decision` | `python -m tcmfbench.run_decision --n 60 --out results_decision` | first run: a few min (60 x 10 = 600 LLM calls); reruns: seconds | `results_decision/llm_cache.json` (committed) |
 
+**Found while building Fig 6 (N11), not fixed - out of scope for a figures-only item:** the
+documented `results_decision` rerun command above no longer completes from only the committed
+caches on a fresh CLOUD-OK checkout (no Ollama). `run_decision.py` calls
+`realtext.generate_many_realtext` with no `domain_idx`, so it draws a random domain per
+scenario from `realtext.DOMAINS` for the fixed base seed; `results_decision/results_decision.json`
+was committed *before* N05 grew `DOMAINS` from 6 to 8 entries (the two new domains,
+software-debugging and cybersecurity), so the same seed now draws a different domain sequence
+than it did when the committed file was produced, and the resulting scenario texts are not in
+`results_realtext/emb_cache.json`. This is the same category of issue as the already-documented
+`_pool80` non-reproducibility above (a result committed before an upstream generator changed),
+not a bug in the committed numbers themselves - they are frozen and correct for the codebase
+state they were produced under. Fig 6 (`build_fig6_data` in `figures/make_figures.py`) does not
+rerun `run_decision.py` at all - it reads the already-committed `results_decision.json` and
+derives Wilson CIs from its `(mean, n)` alone, so this reproducibility gap does not block Fig 6.
+Recorded rather than fixed here because fixing it is outside a figures-only item; whoever next
+touches `run_decision.py` should either pin `domain_idx` to the original 6 governance domains
+for reproducibility or accept and document a fresh, differently-seeded regeneration.
+
 ## LoCoMo public-benchmark check (N18, needs Ollama for embedding)
 
 | Result dir | Command | Notes |
@@ -61,10 +79,9 @@ is the one the paper actually draws from.
 
 ## Not yet regenerable (open NIGHT_QUEUE.md items as of this writing)
 
-N11 (remaining figures), N12 (ablation), N13 (second encoder + latency), N16 (scale/
-multi-crisis stress), N17 (TCMFBench spinoff) have no committed result artifact yet - their
-rows will be added to this file the day each lands, not before. Do not cite a number for any
-of these; none exists.
+N12 (ablation), N13 (second encoder + latency), N16 (scale/multi-crisis stress), N17
+(TCMFBench spinoff) have no committed result artifact yet - their rows will be added to this
+file the day each lands, not before. Do not cite a number for any of these; none exists.
 
 ## Structural validation (LaTeX draft, private repo)
 

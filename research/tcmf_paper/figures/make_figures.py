@@ -39,6 +39,7 @@ from tcmfbench.generator import GenConfig, generate
 from tcmfbench import methods as M
 from tcmfbench import theory as T
 from tcmfbench.mixed import MixedConfig, generate_mixed
+from tcmfbench.stats import wilson_ci
 
 # Okabe-Ito colorblind-safe palette.
 COLOR_CAUSAL = "#0072B2"      # blue - causal-chain events / their witness memories
@@ -74,6 +75,21 @@ FIG3_LAMBDA_MAX = 11.0
 COLOR_MULT = "#CC79A7"     # reddish-purple - multiplicative fusion
 COLOR_ADD = "#0072B2"      # blue - additive fusion (reuse COLOR_CAUSAL's hue)
 COLOR_UNREACHABLE = "#D55E00"  # vermillion - the one scope-limited (boost-defect) pair
+
+# ------------------------------------------------------------------------- Fig 5/6 (N11)
+
+# One Okabe-Ito colorblind-safe color per method, reused across both figures so a method
+# means the same color everywhere in the paper.
+METHOD_COLORS = {
+    "semantic_rag": "#999999",   # gray - the semantic-only floor
+    "episodic":     "#56B4E9",   # sky blue
+    "causal_only":  "#009E73",   # green
+    "graph_ppr":    COLOR_DISTRACTOR,  # orange
+    "tcmf_mult":    COLOR_MULT,  # reddish-purple - the broken fusion operator
+    "tcmf_add":     COLOR_ADD,   # blue
+    "tcmf_shipped": "#000000",   # black - the paper's shipped method
+    "tcmf_rrf":     "#F0E442",   # yellow
+}
 
 
 def _cosine(a: list[float], b: list[float]) -> float:
@@ -395,6 +411,154 @@ def draw_fig4(sweep: dict, out_stub: Path) -> None:
     plt.close(fig)
 
 
+def draw_fig5(spurious: dict, dropout: dict, out_stub: Path) -> None:
+    """Fig 5: degradation under edge dropout (left panel, `results_mixed_scale/
+    results_mixed.json`'s `dropout_curve`, spurious=0) and the N04 spurious-edge rate (right
+    panel, `results_spurious/results_spurious.json`'s `curve`, dropout=0, with N02 bootstrap CI
+    bands). `semantic_rag` is flat at 0.40 in both regimes because it never reads the causal
+    graph at all - drawn as a dashed reference line ("semantic floor") in both panels rather
+    than just another solid curve, since it is the operating floor the other methods are
+    compared against, not a competitor being degraded."""
+    fig, (ax_drop, ax_spur) = plt.subplots(1, 2, figsize=(6.6, 2.7), sharey=True)
+
+    # left panel: dropout curve (3 methods, point estimates - results_mixed_scale's own grid,
+    # no CI computed there; the CI'd axis is the spurious one on the right). Iterate the
+    # original string keys directly (not re-formatted floats) - "1.0"/"0.0" round-trip
+    # through `f"{float(k):g}"` as "1"/"0", which would silently miss the dict lookup.
+    drop_keys = list(dropout["dropout_curve"].keys())
+    drop_rates = [float(r) for r in drop_keys]
+    drop_methods = list(next(iter(dropout["dropout_curve"].values())).keys())
+    for name in drop_methods:
+        vals = [dropout["dropout_curve"][rk][name] for rk in drop_keys]
+        color = METHOD_COLORS[name]
+        if name == "semantic_rag":
+            ax_drop.plot(drop_rates, vals, color=color, lw=1.1, ls="--", zorder=2,
+                        label="semantic floor")
+        else:
+            ax_drop.plot(drop_rates, vals, color=color, lw=1.3, marker="o", markersize=2.5,
+                        zorder=3, label=name)
+    ax_drop.set_xlabel("edge dropout rate", fontsize=7.5)
+    ax_drop.set_ylabel("recall@10", fontsize=8.0)
+    ax_drop.set_title("(a) missing edges", fontsize=8.0)
+    ax_drop.tick_params(labelsize=7.0)
+    ax_drop.legend(loc="upper right", fontsize=6.0, frameon=False)
+
+    # right panel: spurious-edge curve (5 methods, dropout=0, with N02 bootstrap CI bands)
+    spur_keys = list(spurious["curve"].keys())
+    spur_rates = [float(r) for r in spur_keys]
+    spur_methods = list(next(iter(spurious["curve"].values())).keys())
+    for name in spur_methods:
+        mean = [spurious["curve"][rk][name]["recall@10"]["mean"] for rk in spur_keys]
+        lo = [spurious["curve"][rk][name]["recall@10"]["ci_lo"] for rk in spur_keys]
+        hi = [spurious["curve"][rk][name]["recall@10"]["ci_hi"] for rk in spur_keys]
+        color = METHOD_COLORS[name]
+        if name == "semantic_rag":
+            ax_spur.plot(spur_rates, mean, color=color, lw=1.1, ls="--", zorder=2,
+                        label="semantic floor")
+        else:
+            ax_spur.plot(spur_rates, mean, color=color, lw=1.3, marker="o", markersize=2.5,
+                        zorder=3, label=name)
+            ax_spur.fill_between(spur_rates, lo, hi, color=color, alpha=0.15, zorder=1,
+                                 linewidth=0)
+    ax_spur.set_xlabel("spurious-edge rate", fontsize=7.5)
+    ax_spur.set_title("(b) false ancestor edges (N04)", fontsize=8.0)
+    ax_spur.tick_params(labelsize=7.0)
+    ax_spur.legend(loc="upper right", fontsize=6.0, frameon=False)
+
+    ax_drop.set_ylim(-0.02, 1.02)
+    fig.suptitle("Graph degradation: recall@10 under missing vs. false causal edges",
+                fontsize=7.5, y=1.03)
+    fig.tight_layout(pad=0.25)
+    fig.savefig(out_stub.with_suffix(".pdf"), bbox_inches="tight")
+    fig.savefig(out_stub.with_suffix(".png"), dpi=220, bbox_inches="tight")
+    plt.close(fig)
+
+
+# ------------------------------------------------------------------------- Fig 6 (N11)
+#
+# results_decision/results_decision.json stores only the aggregate (mean, std, n) per method -
+# not the per-scenario 0/1 correctness array - so there is nothing to bootstrap over directly.
+# decision_acc IS exactly `k/n` for some integer k (a mean of binary outcomes), so k is
+# recovered exactly from the committed mean and n, and a closed-form Wilson score interval
+# (tcmfbench.stats.wilson_ci, unit-tested against Newcombe 1998's published table in
+# test_stats.py) gives a proper 95% CI from (k, n) alone - no resampling, no reconstruction of
+# a fake per-scenario ordering, no reuse of the LLM cache required.
+
+def build_fig6_data() -> dict:
+    """Recompute Wilson CIs for every method's and control's decision_acc from the committed
+    `results_decision/results_decision.json`. Every number here is read from that file or
+    derived from it by `wilson_ci` - nothing hand-typed."""
+    src_path = _TCMF_PAPER_DIR / "results_decision" / "results_decision.json"
+    src = json.loads(src_path.read_text())
+    n = src["n"]
+
+    def _row(mean: float) -> dict:
+        k = mean * n
+        k_round = round(k)
+        assert abs(k - k_round) < 1e-6, f"decision_acc mean {mean} * n={n} is not integer k"
+        p, lo, hi = wilson_ci(k_round, n)
+        return {"mean": p, "ci_lo": lo, "ci_hi": hi, "k": k_round, "n": n}
+
+    return {
+        "source": "results_decision/results_decision.json",
+        "ci_method": "wilson_score_95pct",
+        "n": n,
+        "methods": {name: _row(v["decision_acc"]["mean"])
+                    for name, v in src["methods"].items()},
+        "controls": {name: _row(v["decision_acc"]["mean"])
+                     for name, v in src["controls"].items()},
+    }
+
+
+FIG6_ORDER = ["semantic_rag", "episodic", "causal_only", "graph_ppr",
+              "tcmf_mult", "tcmf_add", "tcmf_shipped", "tcmf_rrf"]
+
+
+def draw_fig6(data: dict, out_stub: Path) -> None:
+    """Fig 6: decision accuracy per method with Wilson 95% CIs (horizontal dot-and-whisker,
+    one row per method), plus the `no_retrieval` floor and `oracle` ceiling as dashed
+    horizontal reference lines. The paper's punchline figure: retrieval choice changes the
+    LLM council's actual decision, not just a ranking metric."""
+    methods = data["methods"]
+    controls = data["controls"]
+    y_pos = list(range(len(FIG6_ORDER)))[::-1]  # top-to-bottom in FIG6_ORDER
+
+    fig, ax = plt.subplots(figsize=(3.3, 2.9))
+
+    floor = controls["no_retrieval"]["mean"]
+    ceiling = controls["oracle"]["mean"]
+    ax.axvline(floor, color="#777777", lw=1.0, ls="--", zorder=1)
+    ax.axvline(ceiling, color="#777777", lw=1.0, ls=":", zorder=1)
+    # Labels sit in axes-fraction y (above every data row, regardless of ylim) so they can
+    # never collide with the top method's dot/whiskers.
+    ax.text(floor, 1.01, "no_retrieval\nfloor", ha="center", va="bottom", fontsize=5.8,
+           color="#555555", transform=ax.get_xaxis_transform())
+    ax.text(ceiling, 1.01, "oracle\nceiling", ha="center", va="bottom", fontsize=5.8,
+           color="#555555", transform=ax.get_xaxis_transform())
+
+    for y, name in zip(y_pos, FIG6_ORDER):
+        row = methods[name]
+        color = METHOD_COLORS[name]
+        lo_err = row["mean"] - row["ci_lo"]
+        hi_err = row["ci_hi"] - row["mean"]
+        ax.errorbar([row["mean"]], [y], xerr=[[lo_err], [hi_err]], fmt="o", color=color,
+                   ecolor=color, elinewidth=1.2, capsize=2.5, markersize=4.5, zorder=3)
+
+    ax.set_yticks(y_pos)
+    ax.set_yticklabels(FIG6_ORDER, fontsize=7.5)
+    ax.set_ylim(-0.7, len(FIG6_ORDER) - 0.3)
+    ax.set_xlim(-0.02, 1.02)
+    ax.set_xlabel("decision accuracy (Wilson 95% CI)", fontsize=7.5)
+    ax.tick_params(labelsize=7.0)
+    ax.set_axisbelow(True)
+    ax.grid(axis="x", color="#dddddd", lw=0.5, zorder=0)
+
+    fig.tight_layout(pad=0.25)
+    fig.savefig(out_stub.with_suffix(".pdf"), bbox_inches="tight")
+    fig.savefig(out_stub.with_suffix(".png"), dpi=220, bbox_inches="tight")
+    plt.close(fig)
+
+
 def _box(ax, xy, w, h, text, color, fontsize=8.0):
     x, y = xy
     box = FancyBboxPatch(
@@ -527,6 +691,17 @@ def main() -> None:
                     default=str(_TCMF_PAPER_DIR / "results_lambda_sweep" /
                                "results_lambda_sweep.json"),
                     help="N10 Fig 4 data, produced by `python -m tcmfbench.run_lambda_sweep`")
+    ap.add_argument("--spurious", type=str,
+                    default=str(_TCMF_PAPER_DIR / "results_spurious" /
+                               "results_spurious.json"),
+                    help="N11 Fig 5 spurious-edge data, produced by "
+                         "`python -m tcmfbench.run_spurious`")
+    ap.add_argument("--dropout", type=str,
+                    default=str(_TCMF_PAPER_DIR / "results_mixed_scale" /
+                               "results_mixed.json"),
+                    help="N11 Fig 5 edge-dropout data, produced by "
+                         "`python -m tcmfbench.run_mixed --n 300 --seeds 0,1,2,3,4 "
+                         "--n-distractors 20 --n-noise 55 --out results_mixed_scale`")
     args = ap.parse_args()
     out_dir = Path(args.out)
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -561,6 +736,23 @@ def main() -> None:
         print(f"SKIPPED Fig 4: {sweep_path} not found - run "
               "`python -m tcmfbench.run_lambda_sweep --n 300 --n-seeds 5 "
               "--out results_lambda_sweep` first")
+
+    spurious_path, dropout_path = Path(args.spurious), Path(args.dropout)
+    if spurious_path.exists() and dropout_path.exists():
+        spurious_data = json.loads(spurious_path.read_text())
+        dropout_data = json.loads(dropout_path.read_text())
+        draw_fig5(spurious_data, dropout_data, out_dir / "fig5_graph_degradation")
+        print(f"wrote {out_dir / 'fig5_graph_degradation.pdf'} / .png")
+    else:
+        print(f"SKIPPED Fig 5: {spurious_path} or {dropout_path} not found")
+
+    fig6_data = build_fig6_data()
+    fig6_path = out_dir / "fig6_data.json"
+    fig6_path.write_text(json.dumps(fig6_data, indent=2, sort_keys=True) + "\n")
+    reloaded6 = json.loads(fig6_path.read_text())
+    draw_fig6(reloaded6, out_dir / "fig6_decision_accuracy")
+    print(f"wrote {fig6_path}")
+    print(f"wrote {out_dir / 'fig6_decision_accuracy.pdf'} / .png")
 
 
 if __name__ == "__main__":
