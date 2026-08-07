@@ -812,6 +812,69 @@ constant; the multiplicative curve is flat at low lambda and not flat by the top
 tuned-point annotation matches its own grid row. Full benchmark suite: 111 tests (96 pre-existing
 + 15 new), all green.
 
+## N11 - Fig 5 (graph degradation) + Fig 6 (decision accuracy)
+
+A pure plotting job - unlike N09/N10, no new experiment ran; both figures draw entirely from
+data already committed by earlier nights (`results_spurious/`, `results_mixed_scale/`,
+`results_decision/`).
+
+**Fig 5** (`figures/make_figures.py`'s new `draw_fig5`): two panels on one shared recall@10
+axis. Left, missing edges - `results_mixed_scale/results_mixed.json`'s `dropout_curve` (0 to
+100%): `tcmf_add` falls from 0.80 to 0.25, `causal_only` from 0.64 to 0.13, both crossing below
+the flat `semantic_rag` floor (0.40, drawn as a dashed reference line) partway through. Right,
+N04's false-ancestor edges (dropout=0, `results_spurious/results_spurious.json`'s `curve`, with
+N02 bootstrap CI bands): `tcmf_add` barely moves (0.80 to 0.76 at p=0.4) and never crosses below
+the semantic floor at any tested rate - reproducing N04's own reported crossover ("never")
+directly on the figure rather than as a table cell. Putting both degradations on one axis makes
+the asymmetry visible at a glance: TCMF is far more sensitive to missing structure than to
+adversarially injected false structure, over the ranges tested.
+
+**Fig 6** (`build_fig6_data` / `draw_fig6`): decision accuracy per method as a Wilson 95% score
+interval, `no_retrieval` (0.32 [0.21, 0.44]) and `oracle` (0.95 [0.86, 0.98]) as reference lines.
+`results_decision/results_decision.json` only ever stored the aggregate `(mean, std, n)` per
+method (see F8/N06 above) - no per-scenario array survives to bootstrap over. Since
+`decision_acc` is a mean of `n=60` binary outcomes, it is exactly `k/n` for some integer `k`;
+`build_fig6_data` recovers `k` from the committed mean (asserted to land on an integer to within
+1e-6) and calls the new `tcmfbench.stats.wilson_ci(k, n)` for a closed-form CI - no resampling,
+no fabricated per-scenario ordering, no need to touch the LLM cache. The causal-recall methods
+clear the floor with room to spare (`causal_only` 0.85 [0.74, 0.92], `tcmf_add` 0.83
+[0.72, 0.91], `tcmf_shipped` 0.97 [0.89, 0.99]); the pure-symptom baselines sit near it
+(`semantic_rag` 0.35 [0.24, 0.48], `episodic` 0.25 [0.16, 0.37]); the broken `tcmf_mult` lands
+in between (0.50 [0.38, 0.62]) - the same F8 story, now with intervals instead of bare means, and
+visibly not overlapping between the causal leaders and the floor.
+
+**A real reproducibility gap found while building Fig 6, recorded rather than fixed (out of
+scope for a figures-only item, and Fig 6 does not depend on it - see below):** attempting to
+rerun `python -m tcmfbench.run_decision --n 60 --out results_decision` from only the committed
+caches, to get a genuine per-scenario array instead of reconstructing `k` from the mean, hit a
+cache miss and failed outright (`RuntimeError: Ollama unreachable and text not cached`).
+Traced to `realtext.DOMAINS` growing from 6 to 8 entries when N05 added the software-debugging
+and cybersecurity domains - `run_decision.py` draws a random domain per scenario with no
+`domain_idx` pin, so the same base seed now draws a different domain sequence than it did when
+`results_decision.json` was originally committed, producing scenario texts absent from
+`results_realtext/emb_cache.json`. Same category as the already-documented `_pool80`
+non-reproducibility (REPRODUCE.md): a result frozen before an upstream generator changed, not a
+bug in the committed numbers. This is why Fig 6 reconstructs `k` from the committed mean instead
+of rerunning the experiment for a raw array - the Wilson-CI approach sidesteps the gap entirely
+rather than papering over it. Full detail and the fix recommendation (pin `domain_idx` to the
+original 6 domains) are in REPRODUCE.md.
+
+`tcmfbench/test_n11_figures.py` (13 tests): `semantic_rag` is confirmed flat at the same value
+in both source files (the "semantic floor" claim, not assumed from one file alone); the dropout
+curve is monotone non-increasing for the causal methods; every method plotted in either figure
+has a defined color (no silent fallback to matplotlib's default cycle); Fig 6's data generation
+is deterministic and matches the committed `fig6_data.json`; every `k` recovered from the source
+mean reproduces that mean when divided back by `n`; every committed CI is cross-checked against
+an independent fresh call to `wilson_ci`; every CI contains its own point estimate and stays in
+`[0, 1]`; the causal leaders' CI lower bound clears the floor's CI upper bound (guards against a
+sign error silently flipping the headline finding); both figures render to non-empty vector
+PDF/PNG. `tcmfbench/stats.py`'s new `wilson_ci` has its own 6 tests in `test_stats.py`: exact
+algebraic boundary identities at `k=0` (lower bound is exactly 0) and `k=n` (upper bound is
+exactly 1, to float precision), a cross-check against Newcombe (1998)'s published Wilson-interval
+table (r=8, n=10 -> [0.490, 0.943]), symmetry at p=0.5, monotone narrowing as `n` grows, and the
+`n=0` degenerate case. Full benchmark suite: 130 tests (111 pre-existing + 6 new `wilson_ci`
+tests + 13 new N11 tests), all green.
+
 ## Still open before submission
 
 - **Write-up** (Phase 5) drafted (kept in a private repo); fold in the F8 decision tier + table,

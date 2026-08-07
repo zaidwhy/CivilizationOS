@@ -265,13 +265,23 @@ width, and that Fig 1's node labels match the scenario JSON it was generated fro
 that every plotted additive crossing really does fall below its drawn bound.
 
 ### N11 - Fig 5 (graph degradation) + Fig 6 (decision accuracy)
-**Status:** OPEN | **Env:** CLOUD-OK
+**Status:** DONE (2026-08-07) | **Env:** CLOUD-OK
 
 - **Fig 5:** degradation under edge dropout *and* the N04 spurious-edge rate, with CI bands
   and the semantic floor drawn as a reference line.
 - **Fig 6:** decision accuracy per method with CIs, plus the `no_retrieval` floor and
   `oracle` ceiling as horizontal reference lines. This is the paper's punchline figure -
   retrieval choice changes the decision.
+
+**Residual, found and recorded, not fixed (out of scope for a figures-only item):**
+`results_decision/results_decision.json` never stored a per-scenario array, only
+`(mean, std, n)`, so Fig 6's CIs come from a closed-form Wilson score interval on `k` recovered
+exactly from the committed mean (`tcmfbench.stats.wilson_ci`, new), not from bootstrapping a
+real per-scenario array. Attempting to rerun `run_decision.py` to get that array instead failed
+outright on a clean CLOUD-OK checkout: `realtext.DOMAINS` grew from 6 to 8 entries after N05,
+so the same seed now draws a different, uncached scenario sequence. See REPRODUCE.md and
+NIGHT_LOG.md 2026-08-07 for the full trace and the fix recommendation for whoever next touches
+`run_decision.py`.
 
 **Verify:** every plotted value matches the source JSON exactly (assert it in the script, do
 not eyeball it).

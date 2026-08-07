@@ -23,7 +23,8 @@ tcmfbench/
   methods.py      baselines (random, recency, semantic RAG, episodic, causal-only, graph PPR)
                   + real TCMF retriever + additive / RRF / multiplicative operator variants
   metrics.py      recall@k, root-cause MRR/rank, nDCG@k
-  stats.py        bootstrap CIs + paired Wilcoxon signed-rank + Holm-Bonferroni (pure numpy)
+  stats.py        bootstrap CIs + paired Wilcoxon signed-rank + Holm-Bonferroni + Wilson score
+                  interval (N11, for aggregates with only mean+n committed) (pure numpy)
   run_eval.py     pure regime: main comparison + ablations -> results_main/
   run_mixed.py    mixed regime: fusion beats single signals + dropout -> results_mixed/
   run_realtext.py real-text tier (needs Ollama) -> results_realtext/
@@ -36,8 +37,10 @@ tcmfbench/
   run_theory.py   measures the propositions on real scenarios (N15) -> results_theory/
   run_lambda_sweep.py  recall@5 vs lambda, both operators, one grid (N10) -> results_lambda_sweep/
 figures/          Fig 1 (causal graph) + Fig 2 (retrieval pipeline), N09; Fig 3 (fusion
-                  operator margin) + Fig 4 (recall vs lambda), N10; make_figures.py regenerates
-                  all four from committed data, never hand-drawn/hand-typed
+                  operator margin) + Fig 4 (recall vs lambda), N10; Fig 5 (graph degradation:
+                  dropout + N04 spurious edges) + Fig 6 (decision accuracy w/ Wilson CIs), N11;
+                  make_figures.py regenerates all six from committed data, never hand-drawn/
+                  hand-typed
 PAPER_PLAN.md     the correct framing, related work, and phase plan
 FINDINGS.md       what the runs show (read this first): F1-F7 + code fixes + real-text tier
 ```
@@ -195,6 +198,33 @@ lambda~0.3 (shaded) and then rises, reaching 0.52 at the N03 tune-selected value
 so the figure does not imply multiplicative fusion is flat everywhere, only that a small-lambda
 sweep would never find the fix. `tcmfbench/test_n10_figures.py` (15 tests) checks both against
 the real theory functions and the committed result JSON, not hand-typed numbers.
+
+### Fig 5 (graph degradation) + Fig 6 (decision accuracy) (N11)
+
+Same `figures/make_figures.py` command as above also produces these two; both are a pure
+plotting job over already-committed data (`results_spurious/`, `results_mixed_scale/`,
+`results_decision/`) - no new experiment.
+
+Fig 5 has two panels sharing one recall@10 axis: (a) `results_mixed_scale/results_mixed.json`'s
+`dropout_curve` (missing edges, 0 to 100%) and (b) `results_spurious/results_spurious.json`'s
+`curve` (N04's false-ancestor edges, dropout=0, with N02 bootstrap CI bands). `semantic_rag` is
+flat at 0.40 in both - drawn as a dashed "semantic floor" reference line rather than another
+solid curve, since it never reads the causal graph at all. `tcmf_add` degrades under dropout
+(0.80 -> 0.25) but is essentially flat under spurious edges alone (0.80 -> 0.76 at p=0.4) and
+never drops below the semantic floor in either panel - matching N04's own reported crossover
+("never"). Fig 6 plots decision accuracy (LLM council picking the true root cause, N06/W1) per
+method as a Wilson 95% score interval, with `no_retrieval` (0.32 [0.21, 0.44]) and `oracle`
+(0.95 [0.86, 0.98]) as dashed/dotted reference lines. `results_decision/results_decision.json`
+only stores the aggregate `(mean, std, n)` per method, not a per-scenario array to bootstrap
+over; since `decision_acc` is exactly `k/n` for some integer `k`, `k` is recovered exactly from
+the committed mean, and `tcmfbench.stats.wilson_ci` (new, N11 - closed-form, unit-tested against
+Newcombe 1998's published table) gives a proper CI from `(k, n)` alone. The causal-recall
+methods (`causal_only` 0.85, `tcmf_add` 0.83, `tcmf_shipped` 0.97) sit clearly above the floor
+toward the ceiling; the pure-symptom baselines (`semantic_rag` 0.35, `episodic` 0.25) sit near
+the floor; the broken `tcmf_mult` (0.50) lands in between - the same story RESULTS_DECISION.md
+already told, now with CIs instead of bare means. `tcmfbench/test_n11_figures.py` (13 tests)
+checks both figures against the committed source JSON and cross-checks the Wilson CI values
+independently, not hand-typed numbers.
 
 ## What the benchmark holds fixed vs varies
 

@@ -10,7 +10,7 @@ from __future__ import annotations
 import numpy as np
 
 from . import _bootstrap  # noqa: F401
-from .stats import bootstrap_ci, holm_bonferroni, wilcoxon_signed_rank
+from .stats import bootstrap_ci, holm_bonferroni, wilcoxon_signed_rank, wilson_ci
 
 
 # ------------------------------------------------------------------------- bootstrap_ci
@@ -167,6 +167,53 @@ def test_holm_bonferroni_unsorted_input_order_preserved() -> None:
 
 def test_holm_bonferroni_empty() -> None:
     assert holm_bonferroni([]) == []
+
+
+# ------------------------------------------------------------------------- wilson_ci
+
+def test_wilson_ci_k_zero_lower_bound_is_exactly_zero() -> None:
+    # Hand-derivable identity, not just a plugged-in number: at k=0, p=0, so the
+    # p*(1-p)/n term under the sqrt vanishes and `half` reduces algebraically to exactly
+    # `center` (both equal z**2/(2n) / (1+z**2/n)), so center - half = 0 exactly.
+    p, lo, hi = wilson_ci(0, 10)
+    assert p == 0.0
+    assert lo == 0.0
+    assert 0.0 < hi < 1.0
+
+
+def test_wilson_ci_k_equals_n_upper_bound_is_exactly_one() -> None:
+    # Mirror image of the k=0 case by the interval's p -> 1-p symmetry.
+    p, lo, hi = wilson_ci(10, 10)
+    assert p == 1.0
+    assert abs(hi - 1.0) < 1e-12  # exact algebraically; float cancellation leaves ~1e-16 noise
+    assert 0.0 < lo < 1.0
+
+
+def test_wilson_ci_matches_newcombe_1998_published_table() -> None:
+    # Newcombe RG (1998), "Two-sided confidence intervals for the single proportion",
+    # Statistics in Medicine 17:857-872, Table II, method 3 (Wilson): r=8, n=10 -> (0.490, 0.943).
+    p, lo, hi = wilson_ci(8, 10)
+    assert abs(p - 0.8) < 1e-12
+    assert abs(lo - 0.490) < 5e-4
+    assert abs(hi - 0.943) < 5e-4
+
+
+def test_wilson_ci_symmetric_at_p_half() -> None:
+    p, lo, hi = wilson_ci(50, 100)
+    assert p == 0.5
+    # symmetric around 0.5 since k/n = 1 - k/n at p=0.5
+    assert abs((0.5 - lo) - (hi - 0.5)) < 1e-12
+
+
+def test_wilson_ci_narrows_as_n_grows_at_fixed_proportion() -> None:
+    _, lo10, hi10 = wilson_ci(5, 10)
+    _, lo100, hi100 = wilson_ci(50, 100)
+    assert (hi100 - lo100) < (hi10 - lo10)
+
+
+def test_wilson_ci_n_zero_is_nan() -> None:
+    p, lo, hi = wilson_ci(0, 0)
+    assert p != p and lo != lo and hi != hi  # NaN != NaN
 
 
 def _run_all() -> None:

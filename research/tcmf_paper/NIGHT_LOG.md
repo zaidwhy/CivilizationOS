@@ -1392,3 +1392,100 @@ machine" caveat. Both closed. Not a queue item; run locally by Zaid's direction.
   `results_decision/` for Fig 6's `no_retrieval`/`oracle` reference lines), so it should be a
   pure plotting job reusing this session's and N09's `make_figures.py` scaffolding, not a new
   experiment.
+
+## 2026-08-07 (N11 - Fig 5 graph degradation + Fig 6 decision accuracy)
+
+- **Item:** N11, the lowest-numbered OPEN + CLOUD-OK item (N01-N10, N15, N18 already DONE; the
+  prior entry's own "Next" note pointed here and correctly predicted it would be a pure plotting
+  job). Environment: cloud sandbox, no Ollama. Installed `networkx`, `matplotlib==3.11.1`
+  (`requirements-bench.txt`) and `pytest` fresh; confirmed the 111-test benchmark suite reran
+  green before touching anything. Branch `night-tcmf/2026-08-07`.
+- **What was built:**
+  - `tcmfbench/stats.py`: new `wilson_ci(k, n, z)` - closed-form Wilson score interval for a
+    binomial proportion, pure math (one hardcoded standard-normal-97.5th-percentile constant, no
+    scipy). 6 new tests in `test_stats.py`: exact algebraic boundary identities at `k=0`
+    (lower bound is exactly 0 - derivable by hand, since the `p(1-p)` term vanishes and `half`
+    reduces to exactly `center`) and `k=n` (mirror image, upper bound exactly 1 to float
+    precision); cross-checked against Newcombe (1998)'s published Wilson-interval table
+    (r=8, n=10 -> [0.490, 0.943], matched to 5e-4); symmetry at p=0.5; monotone narrowing as `n`
+    grows; the `n=0` degenerate (NaN) case.
+  - `figures/make_figures.py`: `draw_fig5` (two panels sharing one recall@10 axis - missing
+    edges from `results_mixed_scale/results_mixed.json`'s `dropout_curve`, N04's false-ancestor
+    edges from `results_spurious/results_spurious.json`'s `curve` with its own N02 bootstrap CI
+    bands - `semantic_rag` drawn as a dashed "semantic floor" reference line in both, since it
+    never reads the causal graph); `build_fig6_data` / `draw_fig6` (decision accuracy per method
+    as a Wilson 95% interval, `no_retrieval`/`oracle` as reference lines). New
+    `METHOD_COLORS` dict (Okabe-Ito palette) so a method means the same color in every figure
+    from now on. `figures/fig6_data.json` (new, committed, mirrors N10's `fig3_pairs.json`
+    dump-then-reload-before-drawing pattern) - Fig 5 needed no such intermediate file since it
+    plots source data directly, matching N10's Fig 4 precedent.
+  - `tcmfbench/test_n11_figures.py` (13 tests, new): `semantic_rag` confirmed flat at the same
+    value in both source files (not assumed from one alone); dropout curve monotone
+    non-increasing for the causal methods; every plotted method has a defined color; Fig 6 data
+    generation is deterministic and matches the committed JSON; every `k` recovered from the
+    source mean reproduces that mean when divided by `n`; every committed CI independently
+    cross-checked against a fresh `wilson_ci` call; every CI contains its point estimate and
+    stays in `[0, 1]`; the causal leaders' CI lower bound clears the floor's CI upper bound
+    (guards the headline finding against a silent sign flip); both figures render to non-empty
+    vector PDF/PNG.
+- **A real reproducibility gap, found and recorded, not fixed (out of scope for a figures-only
+  item):** the plan was to rerun `run_decision.py` under the committed `llm_cache.json` +
+  `emb_cache.json` to get a genuine per-scenario correctness array to bootstrap over, matching
+  N02's convention exactly instead of a closed-form approximation. That rerun failed outright:
+  `RuntimeError: Ollama unreachable and text not cached`. Traced (not assumed) to
+  `realtext.DOMAINS` growing from 6 to 8 entries when N05 added `software-debugging` and
+  `cybersecurity`; `run_decision.py` draws a random domain per scenario with no `domain_idx`
+  pin, so the same base seed (0) now draws a different domain sequence than it did when
+  `results_decision.json` was originally committed (before N05 landed), producing scenario texts
+  absent from `results_realtext/emb_cache.json`. Same category as the already-documented
+  `_pool80` non-reproducibility (REPRODUCE.md) - a result frozen before an upstream generator
+  changed, not a bug in the committed numbers. Chose not to fix `run_decision.py` under this
+  item (scope creep on a figures-only night) and not to force a fresh, differently-seeded rerun
+  (would silently diverge from the already-reported F8/N06 decision-tier numbers without a
+  clear reason). Instead: since `decision_acc` is exactly `k/n` for `n=60` binary outcomes, `k`
+  is recoverable exactly from the already-committed mean (verified: every method's and control's
+  `mean * 60` lands on an integer to float precision), and the Wilson score interval gives a
+  proper 95% CI from `(k, n)` alone with no resampling and no fabricated scenario ordering.
+  Recorded in REPRODUCE.md and NIGHT_QUEUE.md with the fix recommendation (pin `domain_idx` to
+  the original 6 domains) for whoever next touches `run_decision.py`.
+- **What the numbers actually said (read from `figures/fig5_graph_degradation.*` and
+  `figures/fig6_data.json`, not hand-typed):**
+  - Fig 5: `tcmf_add` degrades much faster under missing edges (0.80 at dropout=0 -> 0.25 at
+    dropout=1.0, crossing below the 0.40 semantic floor around dropout~0.5) than under N04's
+    false ancestor edges alone (0.80 at p=0 -> 0.76 at p=0.4, never crossing the floor) - the
+    same asymmetry N04 already reported in `RESULTS_SPURIOUS.md`, now visible on one axis rather
+    than two separate tables.
+  - Fig 6: causal-recall methods clear the `no_retrieval` floor (0.32 [0.21, 0.44]) with
+    non-overlapping CIs and approach the `oracle` ceiling (0.95 [0.86, 0.98]) - `causal_only`
+    0.85 [0.74, 0.92], `tcmf_add` 0.83 [0.72, 0.91], `tcmf_shipped` 0.97 [0.89, 0.99]. The
+    pure-symptom baselines sit near the floor with overlapping CIs - `semantic_rag` 0.35
+    [0.24, 0.48], `episodic` 0.25 [0.16, 0.37]. The broken `tcmf_mult` lands in between, CI
+    overlapping neither cluster tightly - 0.50 [0.38, 0.62]. Same F8/N06 story, now with
+    intervals instead of bare means.
+- **Verified vs assumed:** verified - `tcmfbench/test_stats.py` (6 new `wilson_ci` tests) and
+  `tcmfbench/test_n11_figures.py` (13 new tests) pass via direct invocation and pytest; full
+  benchmark suite reruns green at 130 tests (111 pre-existing + 6 + 13); regenerating all six
+  figures end to end (`python figures/make_figures.py --out figures`) reproduces Fig 1-4's PNGs
+  and `fig1_scenario.json`/`fig3_pairs.json` bit-for-bit (only each PDF's embedded
+  `CreationDate` metadata differs - confirmed by diffing the exact byte offset, not assumed);
+  both new figures re-rendered to PNG and visually inspected for overlap and legibility (one
+  fix: Fig 6's floor/ceiling text labels initially collided with the top method row, moved to
+  axes-fraction coordinates above the plot area so they cannot collide regardless of `ylim`).
+  Not assumed: this item makes no new retrieval-numbers claim (both figures illustrate
+  already-published N01/N02/N04/N06/N08(F8) numbers), so there is no new experimental result to
+  independently confirm beyond the figures' internal consistency with their own committed
+  source data - covered by the "matches source JSON exactly" tests above.
+- **Private paper repo:** not touched this session (consistent with N09/N10's own choice).
+  LaTeX delta needed once someone integrates: add `\includegraphics` for
+  `figures/fig5_graph_degradation.pdf` and `figures/fig6_decision_accuracy.pdf` (both
+  single-column, 3.3in-class) in the "Robustness" and "Decision quality" subsections
+  respectively; no prose claim changes, since both figures illustrate already-published numbers.
+- **Files touched (public repo):** `tcmfbench/stats.py`, `tcmfbench/test_stats.py`,
+  `figures/make_figures.py` (extended), `figures/fig5_graph_degradation.pdf`/`.png` (new),
+  `figures/fig6_data.json` (new), `figures/fig6_decision_accuracy.pdf`/`.png` (new),
+  `tcmfbench/test_n11_figures.py` (new), `FINDINGS.md`, `README.md`, `REPRODUCE.md`,
+  `NIGHT_QUEUE.md` (N11 -> DONE).
+- **Next:** N12 (leave-one-out ablation of the four shipped fixes), N13 (second encoder +
+  latency), N16 (scale/multi-crisis stress), and N17 (TCMFBench standalone API) are the
+  remaining OPEN, CLOUD-OK items. N12 is lowest-numbered and requires no new infrastructure
+  (methods.py's existing knobs), so it is the natural next pick.
