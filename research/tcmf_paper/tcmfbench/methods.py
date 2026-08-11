@@ -127,16 +127,18 @@ def rank_semantic(mat: Materialized) -> list[str]:
     return sorted(mat.all_ids, key=lambda i: _cosine(mat.mem[i]["embedding"], q), reverse=True)
 
 
-def _ancestor_map(mat: Materialized, clean: bool = False) -> dict[str, int]:
+def _ancestor_map(mat: Materialized, clean: bool = False, max_depth: int = 4) -> dict[str, int]:
     """Ancestor set for the causal boost.
 
     ``clean=False`` reproduces the SHIPPED TCMF set: true BFS predecessors PLUS the
     institution-scoped weak-ancestor fallback (which, note, includes the crisis event
     itself at depth 3 and thereby leaks a boost to semantically-similar distractors).
-    ``clean=True`` uses only the true BFS causal ancestors of the crisis.
+    ``clean=True`` uses only the true BFS causal ancestors of the crisis. ``max_depth``
+    (default 4, matching ``TCMFRetriever``'s own default) is the BFS depth cap - exposed as a
+    parameter so N12 can sweep it; every existing caller keeps the old hardcoded value.
     """
     sc = mat.scenario
-    ancestors = mat.graph.predecessors(sc.crisis_event_id, max_depth=4)
+    ancestors = mat.graph.predecessors(sc.crisis_event_id, max_depth=max_depth)
     if not clean:
         for ev in mat.graph.events_for_institution(sc.institution_id)[-20:]:
             ancestors.setdefault(ev["id"], 3)
@@ -286,9 +288,11 @@ def _episodic_scores(mat: Materialized) -> dict[str, float]:
 
 
 def _causal_boosts(mat: Materialized, threshold: float, clean: bool = False,
-                   favor_root: bool = False) -> dict[str, float]:
-    """Per-memory causal boost, identical formula to TCMF._causal_boost_for_memory."""
-    ancestors = _ancestor_map(mat, clean=clean)
+                   favor_root: bool = False, bfs_depth_cap: int = 4) -> dict[str, float]:
+    """Per-memory causal boost, identical formula to TCMF._causal_boost_for_memory.
+    ``bfs_depth_cap`` is the ancestor-search depth limit (N12 sweep parameter); every existing
+    caller keeps the default, matching ``TCMFRetriever``'s own hardcoded value."""
+    ancestors = _ancestor_map(mat, clean=clean, max_depth=bfs_depth_cap)
     max_depth = max(ancestors.values(), default=1) or 1
     return {
         i: _boost(mat.mem[i]["embedding"], ancestors, mat.graph, threshold, max_depth, favor_root)
@@ -311,6 +315,56 @@ def rank_tcmf_additive(mat: Materialized, lam: float = 4.0, threshold: float = 0
     boost = _causal_boosts(mat, threshold, clean=clean, favor_root=favor_root)
     score = {i: epi.get(i, 0.0) + lam * boost.get(i, 0.0) for i in mat.all_ids}
     return sorted(mat.all_ids, key=lambda i: score[i], reverse=True)
+
+
+def _prune_pool(mat: Materialized, epi: dict[str, float], prune_k: int | None) -> tuple[list[str], list[str]]:
+    """Reproduce fix #4's OLD defect: a per-citizen top-``prune_k`` cut on RAW episodic score,
+    applied BEFORE the causal boost ever sees the rest of the pool - exactly what
+    ``MemoryStream.retrieve(..., k=candidate_k)`` did with the old default before
+    ``TCMFRetriever.candidate_k`` was raised to 10,000 (see ``api/memory/tcmf.py``).
+    ``prune_k=None`` reproduces the fix (full pool, nothing dropped). Returns
+    ``(kept_ids, pruned_ids)``; pruned memories can never be recovered by any fusion score,
+    matching the real bug."""
+    if prune_k is None:
+        return list(mat.all_ids), []
+    by_citizen: dict[str, list[str]] = {}
+    for i in mat.all_ids:
+        by_citizen.setdefault(mat.mem[i]["citizen_id"], []).append(i)
+    kept: set[str] = set()
+    for ids in by_citizen.values():
+        kept.update(sorted(ids, key=lambda i: epi.get(i, 0.0), reverse=True)[:prune_k])
+    return [i for i in mat.all_ids if i in kept], [i for i in mat.all_ids if i not in kept]
+
+
+def rank_tcmf_ablation(
+    mat: Materialized, *, additive: bool = True, clean: bool = True, favor_root: bool = True,
+    prune_k: int | None = None, lam: float = 4.0, threshold: float = 0.45, bfs_depth_cap: int = 4,
+) -> list[str]:
+    """N12: leave-one-out ablation of the four shipped fixes, independently toggleable, on the
+    SAME episodic scores and causal boosts every other variant in this module uses (only the
+    toggled mechanism changes). ``additive=True, clean=True, favor_root=True, prune_k=None`` is
+    the full (shipped) method; flip exactly one flag to measure that fix's individual
+    contribution, or several at once to measure interaction (N06/F8: (1) and (3) are the pair
+    the paper's own decision-quality result suggests interact).
+
+        fix 1 (operator):     additive=False  -> the old multiplicative form
+        fix 2 (ancestor leak): clean=False     -> crisis leaks into its own ancestor set
+        fix 3 (depth weight):  favor_root=False -> favors the proximate cause, not the root
+        fix 4 (pre-fusion prune): prune_k=int  -> per-citizen top-k cut before fusion
+    """
+    epi_full = _episodic_scores(mat)
+    pool_ids, pruned_ids = _prune_pool(mat, epi_full, prune_k)
+    boost_full = _causal_boosts(mat, threshold, clean=clean, favor_root=favor_root,
+                                bfs_depth_cap=bfs_depth_cap)
+
+    if additive:
+        epi_n = _minmax({i: epi_full[i] for i in pool_ids})
+        score = {i: epi_n.get(i, 0.0) + lam * boost_full.get(i, 0.0) for i in pool_ids}
+    else:
+        score = {i: epi_full.get(i, 0.0) * (1.0 + lam * boost_full.get(i, 0.0)) for i in pool_ids}
+
+    ranked = sorted(pool_ids, key=lambda i: score[i], reverse=True)
+    return ranked + pruned_ids
 
 
 def rank_tcmf_rrf(mat: Materialized, c: float = 10.0, threshold: float = 0.45,

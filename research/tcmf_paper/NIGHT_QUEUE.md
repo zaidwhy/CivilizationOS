@@ -337,7 +337,7 @@ hboxes.
 ## Phase 5 - Ablations and closing (N12-N14)
 
 ### N12 - Leave-one-out ablation of the four shipped fixes
-**Status:** OPEN | **Env:** CLOUD-OK
+**Status:** DONE (2026-08-11) | **Env:** CLOUD-OK
 
 The paper claims four defects mattered. Prove each one's individual contribution instead of
 asserting it.
@@ -351,6 +351,25 @@ asserting it.
 
 **Verify:** the four effects sum roughly to the full gap, or they do not and the interaction
 is quantified. Run under N03's protocol with N02's CIs.
+
+**Scope actually covered (2026-08-11):** `methods.rank_tcmf_ablation` (new) toggles all four
+fixes independently on the same episodic scores/causal boosts every other variant shares;
+cross-checked bit-for-bit against `rank_tcmf_additive`/`rank_tcmf_multiplicative` at the
+all-fixed/all-broken extremes (`test_n12_ablation.py`, 6 tests). `run_ablation.py` reports the
+7-arm leave-one-out table, the fix1xfix3 interaction (on both recall@5 and root_mrr, since fix3
+alone moves only the latter - matches F5's own "decides which ancestor, not whether" framing),
+and the tau/BFS-depth-cap sweeps, at the pure regime's `results_main`-identical pool.
+**Two real, non-obvious findings, not hedged:** (a) fixes 2 and 4 measure as null in isolation
+at this pool - fix 2 because the true ancestors out-boost the leak regardless, fix 4 because the
+benchmark's own `materialize()` never lets a citizen exceed the old prune cap by construction, a
+structural fact rather than a substantive one. A supplementary run with citizens forced to hold
+more memories than the old cap (realistic pool, `max_mem_per_citizen=32`) makes fix 4's effect
+dramatic: recall@5 $1.00\to0.14$. Also checked fix 2 in the mixed regime (its natural habitat,
+distractors near the crisis's own topic) - still null. (b) the fix1xfix3 interaction is real:
+reverting both costs far more recall@5 than the two isolated drops summed (residual $+0.18$;
+$+0.08$ on root_mrr). Written into `main.tex` as a new Section 6.1. Builds clean: 26 pages, 0
+undefined refs, same 4 pre-existing overfull hboxes (one new one introduced by this section's
+own math, fixed before commit).
 
 ### N13 - Second encoder + latency
 **Status:** OPEN | **Env:** CLOUD-OK for the encoder (sentence-transformers, pip), LOCAL-ONLY if using a second Ollama model
