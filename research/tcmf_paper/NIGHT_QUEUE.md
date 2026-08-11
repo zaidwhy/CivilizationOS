@@ -436,7 +436,7 @@ pairs) and is a boost-function defect, not a fusion defect, so the claim is "add
 scenario-independent lambda, multiplicative does not" and NOT "multiplicative can never work."
 
 ### N16 - Scale and multi-crisis stress
-**Status:** OPEN | **Env:** CLOUD-OK | **Answers:** the generalization objection (part 3)
+**Status:** DONE (2026-08-11) | **Env:** CLOUD-OK | **Answers:** the generalization objection (part 3)
 
 The external review asked for larger memory sizes and multiple simultaneous crises; N01 took
 the pool to 80, which is still small next to a real deployed agent's memory.
@@ -452,6 +452,33 @@ the pool to 80, which is still small next to a real deployed agent's memory.
 **Verify:** at pool 80 the numbers reproduce N01 exactly (same seeds). Report the pool size at
 which `tcmf_add`'s causal@5 margin over `graph_ppr` closes, if it closes. Per-crisis metrics in
 the multi-crisis mode, never pooled.
+
+**Scope actually covered (2026-08-11):** `run_scale.py` sweeps 5 pool points (17, 78, 378,
+978, 1503, `chain_len` fixed - graph size never scales, only the memory pool does), `n=30`/point
+for recall (bootstrap CI) and `n=15`/point for latency (median of one timed call each). Pool 17
+and 78 reproduce the existing small/realistic-pool config exactly (`test_n16_scale.py`
+confirms this at the config level). **Finding (F12): the causal@5 margin never closes** -
+`tcmf_add` holds 1.00 through pool 978 and is still 0.99 at 1503, against `graph_ppr`'s flat
+0.333 (its PPR mass depends on the fixed graph, not the pool). Latency confirms the structural
+claim: BFS-only stays ~flat (0.004ms to 0.010ms across an 88x pool increase) while plain
+semantic and full fusion both grow roughly linearly with the pool (~113-119x); fusion costs a
+constant ~3-4x over semantic at every scale, not a growing multiple.
+
+`multi_crisis.py` (new module) builds one combined scenario per point - every crisis's chain in
+one shared graph, one shared memory pool, materialized once - then scores each crisis
+separately via `crisis_scoped_mat` (swaps only the query/gold fields, shares everything else).
+`run_multi_crisis.py` sweeps 2/3/4/8 concurrent crises, `n=60` scenarios/point.
+**Finding (F13): the causal boost discriminates cleanly** - even at 8 simultaneous crises,
+causal@5 stays at 0.999 and cross-crisis boost leakage stays ~3 orders of magnitude below the
+true own-crisis boost (0.0023 worst case vs. 0.571 mean), because bounded backward BFS from one
+crisis's event structurally cannot reach another chain that shares no edges with it -
+`test_n16_scale.py` asserts this leakage is exactly 0.0 in the 2-crisis case.
+
+Both written into `main.tex` as new Section 5.8 (`sec:scale-stress`), and the existing
+"Candidate pool" limitation was narrowed to state explicitly that it now applies only to the
+aggregate recall@10 metric, not the causal-ancestor subset. Builds clean: 27 pages, 0 undefined
+refs, same 4 pre-existing overfull hboxes (two new ones from this section's own table/paragraph
+widths, both fixed before commit).
 
 ### N17 - TCMFBench as a standalone contribution
 **Status:** OPEN | **Env:** CLOUD-OK | **Answers:** long-term impact
