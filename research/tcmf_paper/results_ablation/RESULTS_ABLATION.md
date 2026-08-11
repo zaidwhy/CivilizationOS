@@ -53,9 +53,13 @@ Pure regime, pool=17, n=300, seed=0 - identical scenarios to results_main/ (same
 | minus fix1+fix3 (interaction) | 0.20 [0.20, 0.20] | 0.51 [0.50, 0.52] | 0.64 [0.63, 0.66] | 0.88 [0.87, 0.89] | 0.17 [0.15, 0.18] | 8.2 [7.7, 8.5] | 0.70 [0.69, 0.71] |
 | all 4 reverted (sanity) | 0.20 [0.20, 0.20] | 0.51 [0.50, 0.52] | 0.64 [0.63, 0.66] | 0.88 [0.87, 0.89] | 0.17 [0.15, 0.18] | 8.2 [7.7, 8.5] | 0.70 [0.69, 0.71] |
 
-### N12 fix4 supplementary check: realistic pool, citizens concentrated to ~26 memories each (max_mem_per_citizen=32, well above the old prune_k=8 cap)
+### N12 fix4 dose-response: recall@5 vs. per-citizen memory count (realistic pool, prune_k=8)
 
-| method | recall@1 | recall@3 | recall@5 | recall@10 | root_mrr | root_rank | ndcg@10 |
-|---|---|---|---|---|---|---|---|
-| full (all 4 fixes) | 0.33 [0.33, 0.33] | 1.00 [0.99, 1.00] | 1.00 [1.00, 1.00] | 1.00 [1.00, 1.00] | 1.00 [1.00, 1.00] | 1.0 [1.0, 1.0] | 1.00 [1.00, 1.00] |
-| minus fix4 (pre-fusion prune) | 0.12 [0.10, 0.14] | 0.14 [0.11, 0.16] | 0.14 [0.11, 0.16] | 0.14 [0.11, 0.16] | 0.04 [0.03, 0.06] | 50.0 [48.1, 51.9] | 0.13 [0.11, 0.15] |
+| max_mem_per_citizen | actual per-citizen count | full recall@5 | minus-fix4 recall@5 |
+|---|---|---|---|
+| 8 | 8 | 1.000 | 1.000 [1.000,1.000] |
+| 10 | 10 | 1.000 | 0.920 [0.902,0.937] |
+| 12 | 12 | 1.000 | 0.813 [0.788,0.838] |
+| 16 | 16 | 1.000 | 0.478 [0.442,0.513] |
+| 20 | 20 | 1.000 | 0.297 [0.267,0.328] |
+| 32 | 26 | 1.000 | 0.136 [0.113,0.158] |

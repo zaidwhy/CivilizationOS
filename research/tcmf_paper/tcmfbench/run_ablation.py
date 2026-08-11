@@ -42,6 +42,7 @@ ARMS: dict[str, dict] = {
 
 TAU_GRID = (0.30, 0.45, 0.60, 0.75)
 DEPTH_CAP_GRID = (1, 2, 3, 4, 6, 8)
+MEM_CAP_GRID = (8, 10, 12, 16, 20, 32)  # fix4 dose-response: excess over PRUNE_K=8
 
 
 async def _eval_arms(mats: list, arms: dict[str, dict]) -> dict:
@@ -107,25 +108,40 @@ async def run(args) -> None:
     mixed_md = RE._table("N12 leave-one-out ablation, MIXED regime (n=%d, pool=%d)"
                          % (args.n, mixed_pool), mixed_main, list(ARMS))
 
-    # ---- Supplementary B: fix4 (pre-fusion prune) with citizens forced to hold more than
-    # PRUNE_K memories each - the benchmark's own materialize() keeps every citizen AT OR
-    # BELOW max_mem_per_citizen by construction (n_citizens = ceil(pool/max_mem_per_citizen)),
-    # so the default pool never actually exercises an old top-8 cut. Concentrating memories
-    # into fewer citizens (max_mem_per_citizen=32, realistic pool) reproduces conditions where
-    # the old cap would actually have discarded memories before fusion, as it did in a real,
-    # long-running simulation's organically-growing memory streams.
+    # ---- Supplementary B: fix4 (pre-fusion prune) dose-response - the benchmark's own
+    # materialize() keeps every citizen AT OR BELOW max_mem_per_citizen by construction
+    # (n_citizens = ceil(pool/max_mem_per_citizen)), so the default pool never actually
+    # exercises an old top-8 cut. Sweeping max_mem_per_citizen past PRUNE_K reproduces
+    # conditions where the old cap would actually have discarded memories before fusion, as it
+    # did in a real, long-running simulation's organically-growing memory streams - and shows
+    # this is a smooth function of the excess, not a single cherry-picked point.
     concentrated_cfg = GenConfig(n_distractors=20, n_noise=55)
-    concentrated_scs = RE.generate_many(args.n, concentrated_cfg, base_seed=args.seed)
-    concentrated_mats = [M.materialize(sc, max_mem_per_citizen=32) for sc in concentrated_scs]
-    conc_pool = len(concentrated_mats[0].all_ids) if concentrated_mats else 0
     conc_arms = {"full (all 4 fixes)": FULL_KW, "minus fix4 (pre-fusion prune)":
                 dict(FULL_KW, prune_k=PRUNE_K)}
     conc_fns = {name: (lambda m, kw=kw: M.rank_tcmf_ablation(m, **kw)) for name, kw in conc_arms.items()}
-    conc_main = await RE._eval_methods(concentrated_mats, conc_fns)
-    conc_md = RE._table(
-        "N12 fix4 supplementary check: realistic pool, citizens concentrated to ~%d memories "
-        "each (max_mem_per_citizen=32, well above the old prune_k=%d cap)"
-        % (conc_pool // 3, PRUNE_K), conc_main, list(conc_arms))
+    conc_rows = []
+    for mem_cap in MEM_CAP_GRID:
+        concentrated_scs = RE.generate_many(args.n, concentrated_cfg, base_seed=args.seed)
+        concentrated_mats = [M.materialize(sc, max_mem_per_citizen=mem_cap)
+                             for sc in concentrated_scs]
+        per_cit = max(sum(1 for i in concentrated_mats[0].all_ids
+                          if concentrated_mats[0].mem[i]["citizen_id"] == c)
+                     for c in {concentrated_mats[0].mem[i]["citizen_id"]
+                               for i in concentrated_mats[0].all_ids})
+        agg = await RE._eval_methods(concentrated_mats, conc_fns)
+        conc_rows.append({"max_mem_per_citizen": mem_cap, "actual_per_citizen": per_cit,
+                          "full_recall5": agg["full (all 4 fixes)"]["recall@5"],
+                          "minus_fix4_recall5": agg["minus fix4 (pre-fusion prune)"]["recall@5"]})
+
+    conc_md = ["### N12 fix4 dose-response: recall@5 vs. per-citizen memory count "
+              f"(realistic pool, prune_k={PRUNE_K})", "",
+              "| max_mem_per_citizen | actual per-citizen count | full recall@5 | "
+              "minus-fix4 recall@5 |", "|---|---|---|---|"]
+    for r in conc_rows:
+        m = r["minus_fix4_recall5"]
+        conc_md.append(f"| {r['max_mem_per_citizen']} | {r['actual_per_citizen']} | "
+                       f"{r['full_recall5'][0]:.3f} | {m[0]:.3f} [{m[1]:.3f},{m[2]:.3f}] |")
+    conc_md = "\n".join(conc_md)
 
     order = list(ARMS)
     main_md = RE._table("N12 leave-one-out ablation (pure regime, n=%d, pool=%d)"
@@ -160,9 +176,16 @@ async def run(args) -> None:
         "full_kw": FULL_KW, "prune_k": PRUNE_K,
         "arms": _ser(main), "tau_sweep": _ser(tau_agg), "depth_cap_sweep": _ser(depth_agg),
         "mixed_regime_pool_size": mixed_pool, "mixed_regime_arms": _ser(mixed_main),
-        "concentrated_pool_size": conc_pool,
-        "concentrated_max_mem_per_citizen": 32,
-        "concentrated_arms": _ser(conc_main),
+        "fix4_dose_response": [
+            {"max_mem_per_citizen": r["max_mem_per_citizen"],
+             "actual_per_citizen": r["actual_per_citizen"],
+             "full_recall5": {"mean": r["full_recall5"][0], "ci_lo": r["full_recall5"][1],
+                              "ci_hi": r["full_recall5"][2]},
+             "minus_fix4_recall5": {"mean": r["minus_fix4_recall5"][0],
+                                    "ci_lo": r["minus_fix4_recall5"][1],
+                                    "ci_hi": r["minus_fix4_recall5"][2]}}
+            for r in conc_rows
+        ],
         "interaction": {
             metric: {
                 "full": main["full (all 4 fixes)"][metric][0],

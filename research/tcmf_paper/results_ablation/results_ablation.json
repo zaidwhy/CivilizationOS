@@ -933,84 +933,92 @@
       }
     }
   },
-  "concentrated_pool_size": 78,
-  "concentrated_max_mem_per_citizen": 32,
-  "concentrated_arms": {
-    "full (all 4 fixes)": {
-      "recall@1": {
-        "mean": 0.3333333333333333,
-        "ci_lo": 0.3333333333333333,
-        "ci_hi": 0.3333333333333333
-      },
-      "recall@3": {
-        "mean": 0.9955555555555554,
-        "ci_lo": 0.991111111111111,
-        "ci_hi": 0.9988888888888889
-      },
-      "recall@5": {
+  "fix4_dose_response": [
+    {
+      "max_mem_per_citizen": 8,
+      "actual_per_citizen": 8,
+      "full_recall5": {
         "mean": 1.0,
         "ci_lo": 1.0,
         "ci_hi": 1.0
       },
-      "recall@10": {
+      "minus_fix4_recall5": {
         "mean": 1.0,
         "ci_lo": 1.0,
         "ci_hi": 1.0
-      },
-      "root_mrr": {
-        "mean": 1.0,
-        "ci_lo": 1.0,
-        "ci_hi": 1.0
-      },
-      "root_rank": {
-        "mean": 1.0,
-        "ci_lo": 1.0,
-        "ci_hi": 1.0
-      },
-      "ndcg@10": {
-        "mean": 0.9997047801669882,
-        "ci_lo": 0.9994095603339762,
-        "ci_hi": 0.9999261950417471
       }
     },
-    "minus fix4 (pre-fusion prune)": {
-      "recall@1": {
-        "mean": 0.11777777777777779,
-        "ci_lo": 0.09888888888888889,
-        "ci_hi": 0.13666666666666663
+    {
+      "max_mem_per_citizen": 10,
+      "actual_per_citizen": 10,
+      "full_recall5": {
+        "mean": 1.0,
+        "ci_lo": 1.0,
+        "ci_hi": 1.0
       },
-      "recall@3": {
+      "minus_fix4_recall5": {
+        "mean": 0.92,
+        "ci_lo": 0.9022222222222223,
+        "ci_hi": 0.9366666666666666
+      }
+    },
+    {
+      "max_mem_per_citizen": 12,
+      "actual_per_citizen": 12,
+      "full_recall5": {
+        "mean": 1.0,
+        "ci_lo": 1.0,
+        "ci_hi": 1.0
+      },
+      "minus_fix4_recall5": {
+        "mean": 0.8133333333333334,
+        "ci_lo": 0.7877777777777777,
+        "ci_hi": 0.8377777777777778
+      }
+    },
+    {
+      "max_mem_per_citizen": 16,
+      "actual_per_citizen": 16,
+      "full_recall5": {
+        "mean": 1.0,
+        "ci_lo": 1.0,
+        "ci_hi": 1.0
+      },
+      "minus_fix4_recall5": {
+        "mean": 0.4777777777777777,
+        "ci_lo": 0.4422222222222222,
+        "ci_hi": 0.5133333333333333
+      }
+    },
+    {
+      "max_mem_per_citizen": 20,
+      "actual_per_citizen": 20,
+      "full_recall5": {
+        "mean": 1.0,
+        "ci_lo": 1.0,
+        "ci_hi": 1.0
+      },
+      "minus_fix4_recall5": {
+        "mean": 0.2966666666666667,
+        "ci_lo": 0.26666666666666666,
+        "ci_hi": 0.3277777777777778
+      }
+    },
+    {
+      "max_mem_per_citizen": 32,
+      "actual_per_citizen": 26,
+      "full_recall5": {
+        "mean": 1.0,
+        "ci_lo": 1.0,
+        "ci_hi": 1.0
+      },
+      "minus_fix4_recall5": {
         "mean": 0.13555555555555554,
         "ci_lo": 0.11333333333333333,
         "ci_hi": 0.15777777777777777
-      },
-      "recall@5": {
-        "mean": 0.13555555555555554,
-        "ci_lo": 0.11333333333333333,
-        "ci_hi": 0.15777777777777777
-      },
-      "recall@10": {
-        "mean": 0.13555555555555554,
-        "ci_lo": 0.11333333333333333,
-        "ci_hi": 0.15777777777777777
-      },
-      "root_mrr": {
-        "mean": 0.04143822182005131,
-        "ci_lo": 0.028038208446686034,
-        "ci_hi": 0.05792927641074177
-      },
-      "root_rank": {
-        "mean": 49.97666666666667,
-        "ci_lo": 48.07991666666666,
-        "ci_hi": 51.88
-      },
-      "ndcg@10": {
-        "mean": 0.12998787971088507,
-        "ci_lo": 0.10908661688111239,
-        "ci_hi": 0.15183838486394638
       }
     }
-  },
+  ],
   "interaction": {
     "recall@5": {
       "full": 1.0,
