@@ -13,6 +13,7 @@ import sys
 
 from . import _bootstrap  # noqa: F401
 from . import methods as M
+from . import metrics as MT
 from .generator import GenConfig, generate_many
 from .multi_crisis import (MultiCrisisConfig, generate_multi_crisis, materialize_multi_crisis,
                            crisis_scoped_mat)
@@ -91,6 +92,35 @@ def test_crisis_scoped_mat_shares_the_underlying_pool():
         scoped = crisis_scoped_mat(mat, v)
         assert scoped.all_ids == mat.all_ids
         assert v.other_crises_gold_ids <= set(scoped.all_ids)
+
+
+def test_a_genuinely_shared_ancestor_is_correctly_boosted_for_both_crises():
+    """The generator's default chains are causally DISJOINT (no shared edges) - a real
+    limitation flagged in main.tex's Limitations, since the item asked for 'interleaved'
+    chains. This spot-checks the harder case directly: link one crisis's root-cause event as
+    a genuine additional ancestor of a SECOND crisis (a shared root cause, not background
+    noise), and confirm the mechanism still recovers both crises' full causal-gold set,
+    including the shared ancestor now correctly appearing in the second crisis's own ancestor
+    map - not a leak, a correct shared attribution."""
+    cfg = MultiCrisisConfig(n_crises=2)
+    sc, specs = generate_multi_crisis("shared_ancestor_test", cfg, seed=1)
+
+    root0_id = sc.events[0].id  # crisis 0's own root-cause event
+    crisis1_id = specs[1]["crisis_event_id"]
+    sc.edges.append((root0_id, crisis1_id))  # root0 is now ALSO a true ancestor of crisis 1
+
+    mat, views = materialize_multi_crisis(sc, specs, cfg)
+    root0_witness_id = next(i for i in mat.all_ids
+                            if mat.mem[i]["text"] == specs[0]["root_spec"].text)
+
+    for v in views:
+        scoped = crisis_scoped_mat(mat, v)
+        boosts = M._causal_boosts(scoped, threshold=0.45, clean=True)
+        ranked = M.rank_tcmf_additive(scoped, lam=4.0, threshold=0.45, clean=True)
+        assert MT.recall_at_k(ranked, scoped.gold_causal, 5) == 1.0
+        if v.crisis_idx == 1:
+            # crisis 1 now has a real second ancestor line; it must be boosted, not ignored
+            assert boosts.get(root0_witness_id, 0.0) > 0.1
 
 
 if __name__ == "__main__":
