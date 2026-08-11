@@ -264,6 +264,20 @@ width, and that Fig 1's node labels match the scenario JSON it was generated fro
 `additive_sufficient_lambda` on real scenario pairs, not from hand-drawn geometry, and check
 that every plotted additive crossing really does fall below its drawn bound.
 
+**Independent second build, then reconciled (2026-08-11):** a second session built Fig 3/Fig 4
+independently before discovering N10 was already DONE (a Night Shift collision - see
+[[night-shift-collision-lesson]] in memory). Both builds converged on the same Fig 3 design (one
+root-vs-hardest-distractor pair per seed, same 10 seeds `run_theory.py` sweeps); the second
+build's version is the one kept (`test_n10_n11_figures.py` cross-checks every pair against
+`results_theory.json`'s own `mult_required_lambda` and asserts every additive crossing sits at
+or below its bound). Fig 4 keeps the original `run_lambda_sweep.py`-based build (its tuned
+lambda=2.4 point, recall@5=0.52, comes from the actual N03 held-out tune/test split - the
+second build's own attempt at this point, 0.55, ran the full dataset directly through the same
+lambda value without going through the held-out split, which is a materially weaker claim for a
+point explicitly labeled "held-out tuned"; superseded and not carried forward, though its
+`mult_lambda` ablation in `run_eval.py` remains as a harmless, independently-useful addition to
+`results_main/results.json`).
+
 ### N11 - Fig 5 (graph degradation) + Fig 6 (decision accuracy)
 **Status:** DONE (2026-08-07) | **Env:** CLOUD-OK
 
@@ -285,6 +299,27 @@ NIGHT_LOG.md 2026-08-07 for the full trace and the fix recommendation for whoeve
 
 **Verify:** every plotted value matches the source JSON exactly (assert it in the script, do
 not eyeball it).
+
+**Independent second build, then reconciled (2026-08-11):** the same Night Shift collision that
+hit N10 hit N11 too. Fig 6 keeps the original build (Wilson score interval via
+`tcmfbench.stats.wilson_ci` - the statistically correct choice given `results_decision.json`
+only ever stored `(mean, std, n)`, not a per-scenario array to bootstrap; the second build's own
+Fig 6 used a normal-approximation CI from the same mean/std, which under-covers near the
+boundary where `tcmf_shipped` sits at 0.97 - superseded and not carried forward).
+
+Fig 5 keeps the SECOND build's two-panel design instead of the original's single-axis one, for a
+reason worth flagging rather than burying: the original build's dropout panel read
+`results_mixed_scale`'s own `dropout_curve` (realistic pool) directly, which - unnoticed by that
+build - already shows `tcmf_add` falling BELOW the `semantic_rag` floor at dropout >= 0.5 (0.41
+at 0.5, 0.32 at 0.75, 0.25 at 1.0 vs the floor's flat 0.40), the opposite of F7's "converges to
+the semantic floor, never below" claim, which was only ever verified at the small pool. **This
+is a real, measured, unreconciled result, not a bug in either build** - a CI'd rerun of the same
+curve (`run_spurious.py`'s new `dropout_curve`, same protocol as its existing spurious-rate
+curve) reproduces it bit-for-bit. It needs the same kind of pool-size reconciliation Section 5.3
+gave recall@10, and that reconciliation is Zaid's call, not something to fold into a figure
+silently. Until reconciled, the kept Fig 5 anchors its dropout panel to `results_mixed`'s
+small-pool `dropout_curve` (Table `tab:dropout`'s own published numbers) instead, and its
+spurious-edge panel to `results_spurious`'s existing CI'd `curve`.
 
 ---
 

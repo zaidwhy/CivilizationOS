@@ -21,10 +21,10 @@ a bug per the standing rule in `NIGHT_QUEUE.md` - find its source or delete the 
 | `results_mixed_scale` | `python -m tcmfbench.run_mixed --n 300 --seeds 0,1,2,3,4 --n-distractors 20 --n-noise 55 --out results_mixed_scale` | ~3.5 min | none |
 | `results_main_tuned` | `python -m tcmfbench.run_tuned --regime pure --n 300 --out results_main_tuned` | ~1 min | none |
 | `results_mixed_tuned` | `python -m tcmfbench.run_tuned --regime mixed --n 300 --out results_mixed_tuned` | ~1 min | none |
-| `results_spurious` | `python -m tcmfbench.run_spurious --n 300 --grid-n 100 --out results_spurious` | a few min | none |
+| `results_spurious` | `python -m tcmfbench.run_spurious --n 300 --grid-n 100 --out results_spurious` | a few min (roughly doubled by N11's added `dropout_curve` sweep, same protocol as the existing spurious-rate curve) | none |
 | `results_theory` | `python -m tcmfbench.run_theory --out results_theory` | seconds | none |
 | `results_lambda_sweep` | `python -m tcmfbench.run_lambda_sweep --n 300 --n-seeds 5 --out results_lambda_sweep` | ~2 min | none - the script itself asserts its own lambda=0.6/8 (mult) and lambda=4 (additive) points reproduce `results_main_scale/results.json` to machine precision before writing output |
-| `figures/fig1_*` .. `figures/fig6_*` | `python figures/make_figures.py --out figures` (needs `pip install -r requirements-bench.txt`; Fig 4 needs `results_lambda_sweep/` to already exist and Fig 5 needs `results_spurious/` + `results_mixed_scale/` to already exist, else each is skipped with a printed message; Fig 6 needs `results_decision/` to already exist, which is committed) | seconds | `figures/fig1_scenario.json`, `figures/fig3_pairs.json`, `figures/fig6_data.json` (all committed; regenerated fresh each run - deterministic modulo the memory-id-string caveat in `tcmfbench/test_n10_figures.py::_strip_ids`, so every *numeric* field reproduces bit-for-bit even though `root_id`/`distractor_id` strings can shift between process invocations) |
+| `figures/fig1_*` .. `figures/fig6_*` | `python figures/make_figures.py --out figures` (needs `pip install -r requirements-bench.txt`; Fig 4 needs `results_lambda_sweep/` to already exist, else it is skipped with a printed message; Fig 5 needs `results_mixed/` + `results_spurious/` to already exist; Fig 6 needs `results_decision/` to already exist - all three are committed) | seconds (figures only; excludes the result dirs they read) | `figures/fig1_scenario.json`, `figures/fig3_pairs.json`, `figures/fig6_data.json` (all committed; regenerated fresh each run, deterministic modulo the memory-id-string caveat noted in `tcmfbench/test_n10_n11_figures.py::_strip_volatile_ids` - every *numeric* field reproduces bit-for-bit even though `root_id`/`distractor_id` strings can shift between process invocations) |
 
 **Checked, not a bug, but not bit-identical either:** running the documented command fresh
 against the current codebase reproduces `results_main_scale`/`results_mixed_scale` exactly
@@ -76,6 +76,21 @@ for reproducibility or accept and document a fresh, differently-seeded regenerat
 | Result dir | Command | Notes |
 |---|---|---|
 | `results_locomo` | `python -m tcmfbench.run_locomo_regime --data <path to locomo10.json>` | `locomo10.json` itself is not committed (third-party dataset, download separately) - `results_locomo/results_locomo.json` and the embedding cache are, so the finding is inspectable without re-downloading. |
+
+**N10-N11 landed twice, reconciled 2026-08-11 (Night Shift collision - see NIGHT_QUEUE.md's N10/
+N11 entries for the full account):** the kept figure set is Fig 3 + Fig 5 from a second,
+independent build and Fig 4 + Fig 6 from the original. `results_main/results.json` gained a
+`mult_lambda` ablation (same `mats`/pool/protocol as the existing `lambda` ablation, grid
+`0.1, 0.3, 0.6, 1.2, 2.4, 8` - regenerated via the same `results_main` command above); not the
+source of the kept Fig 4 (which reads `results_lambda_sweep/` instead) but left in place as an
+independently-useful addition. `results_spurious/results_spurious.json` gained a `dropout_curve`
+(same protocol as the existing spurious-rate `curve`, rates `0.0, 0.25, 0.5, 0.75, 1.0`,
+regenerated via the same `results_spurious` command above) - not plotted either, but it is what
+confirmed the realistic-pool F7 contradiction reproduces bit-for-bit against
+`results_mixed_scale`'s own pre-existing `dropout_curve`. The kept Fig 5's dropout panel instead
+reuses `results_mixed/results_mixed.json`'s pre-existing `dropout_curve` (Table `tab:dropout`'s
+own small-pool, single-seed numbers) rather than either realistic-pool rerun - see the docstring
+on `draw_fig5` in `figures/make_figures.py` for why.
 
 ## Not yet regenerable (open NIGHT_QUEUE.md items as of this writing)
 

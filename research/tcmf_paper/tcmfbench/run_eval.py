@@ -240,6 +240,15 @@ async def run(args) -> None:
         for lam in (0.5, 1, 2, 4, 8)
     })
 
+    # ---- ablation: multiplicative lambda (N10/Fig 4 - the flat-low-lambda curve to set
+    # against additive's, on the same mats/pool as lam_ab so the two overlay validly). Grid
+    # centered on the old shipped default 0.6, matching run_tuned.py's tcmf_mult_lambda sweep;
+    # 0.6 and 8 duplicate the "fusion" ablation above as a cross-check the two agree. ----
+    mult_lam_ab = await _eval_methods(mats, {
+        f"mult l={lam}": (lambda m, lam=lam: M.rank_tcmf_multiplicative(m, lam=lam))
+        for lam in (0.1, 0.3, 0.6, 1.2, 2.4, 8)
+    })
+
     # ---- ablation: causal_sim_threshold ----
     thr_ab = await _eval_methods(mats, {
         f"threshold={t}": (lambda m, t=t: M.rank_tcmf_additive(m, lam=4.0, threshold=t, clean=True))
@@ -310,6 +319,7 @@ async def run(args) -> None:
         *([("\n".join(seed_tbl_lines)), ""] if seed_tbl_lines else []),
         _table("Ablation: fusion operator (F3/F4)", fusion), "",
         _table("Ablation: additive causal weight lambda", lam_ab), "",
+        _table("Ablation: multiplicative causal weight lambda", mult_lam_ab), "",
         _table("Ablation: causal_sim_threshold", thr_ab), "",
         _table("Ablation: depth-weighting direction (F5)", depth_ab), "",
         "\n".join(diff_tbl), "",
@@ -326,6 +336,7 @@ async def run(args) -> None:
         "analytic_random_recall": analytic_random, "empirical_random_recall": empirical_random,
         "seed_stability_recall_at_10": seed_stability,
         "main": _ser(main), "fusion": _ser(fusion), "lambda": _ser(lam_ab),
+        "mult_lambda": _ser(mult_lam_ab),
         "threshold": _ser(thr_ab), "depth": _ser(depth_ab),
         "difficulty": {a: _ser(v) for a, v in diff_rows.items()},
         "significance_tcmf_add_vs_all": significance,

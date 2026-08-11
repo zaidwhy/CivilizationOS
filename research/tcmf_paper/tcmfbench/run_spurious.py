@@ -37,6 +37,14 @@ SPURIOUS_RATES = (0.0, 0.05, 0.1, 0.2, 0.4)
 DROPOUT_RATES_2D = (0.0, 0.2, 0.4)   # coarser than F7's 5-point curve - this is the 2-D grid,
                                      # not a replacement for F7's own 1-D dropout curve
 
+# N11/Fig 5: F7's own dropout curve (Table tab:dropout in main.tex) is a single-seed legacy
+# result at the small mixed-regime pool (19 candidates), predating N02's bootstrap-CI
+# convention. Rather than mix it with this script's CI'd, realistic-pool spurious curve on the
+# same axes - two different pool sizes and no error bars on one side - this repeats F7's own
+# rate grid under the identical protocol `curve` above already uses (realistic pool, 5 seeds,
+# CI), so both panels of Fig 5 are directly comparable.
+DROPOUT_RATES_FIG5 = (0.0, 0.25, 0.5, 0.75, 1.0)
+
 # Methods stressed by the false-ancestor edge: every one of these consumes the causal graph
 # (semantic_rag does not, and is the reference floor a fooled causal method could fall below).
 _METHODS = {
@@ -146,6 +154,20 @@ async def run(args) -> None:
     semantic_r10 = [curve_agg[p]["semantic_rag"]["recall@10"][0] for p in SPURIOUS_RATES]
     crossover = _first_crossover(SPURIOUS_RATES, tcmf_add_r10, semantic_r10)
 
+    # ---- Part 1b: dropout-only curve (spurious=0), same protocol as the Part 1 curve, for
+    # Fig 5's CI'd complement to F7's legacy single-seed table. ----
+    dropout_raw: dict[float, dict[str, list[dict]]] = {}
+    for d in DROPOUT_RATES_FIG5:
+        mats = _pooled_mats(n, n_distractors, n_noise, edge_dropout=d, spurious_edge_rate=0.0)
+        dropout_raw[d] = await _eval_raw(mats, _METHODS)
+
+    dropout_agg = {
+        d: {m: {k: _agg_metric(rows, k) for k in ("recall@5", "recall@10", "causal@5",
+                                                    "distractor_top5")}
+            for m, rows in dropout_raw[d].items()}
+        for d in DROPOUT_RATES_FIG5
+    }
+
     # ---- Part 2: coarse 2-D grid (dropout x spurious), smaller n, 3 methods, recall@10 only ----
     grid_n = args.grid_n
     grid: dict[tuple[float, float], dict[str, float]] = {}
@@ -197,6 +219,16 @@ async def run(args) -> None:
         f"**Crossover: rate p at which tcmf_add's recall@10 first drops below semantic_rag's:** "
         f"{crossover if crossover is not None else 'never, across p in ' + str(SPURIOUS_RATES)}",
         "",
+        "### Dropout-only curve (spurious=0 fixed), recall@10 - Fig 5's CI'd complement to F7",
+        "",
+        "| method | " + " | ".join(f"drop={d}" for d in DROPOUT_RATES_FIG5) + " |",
+        "|" + "---|" * (len(DROPOUT_RATES_FIG5) + 1),
+    ]
+    for m in _METHODS:
+        lines.append(f"| {m} | " + " | ".join(
+            fmt(dropout_agg[d][m]["recall@10"]) for d in DROPOUT_RATES_FIG5) + " |")
+    lines += [
+        "",
         "### 2-D grid: recall@10, dropout x spurious rate (coarse resolution)",
         "",
     ]
@@ -215,11 +247,17 @@ async def run(args) -> None:
         "n": n, "grid_n": grid_n, "seeds": list(SEEDS), "seed_stride": SEED_STRIDE,
         "n_distractors": n_distractors, "n_noise": n_noise,
         "spurious_rates": list(SPURIOUS_RATES), "dropout_rates_2d": list(DROPOUT_RATES_2D),
+        "dropout_rates_fig5": list(DROPOUT_RATES_FIG5),
         "p0_repro_check": repro_note,
         "curve": {
             str(p): {m: {k: {"mean": v[0], "ci_lo": v[1], "ci_hi": v[2]} for k, v in agg.items()}
                      for m, agg in curve_agg[p].items()}
             for p in SPURIOUS_RATES
+        },
+        "dropout_curve": {
+            str(d): {m: {k: {"mean": v[0], "ci_lo": v[1], "ci_hi": v[2]} for k, v in agg.items()}
+                     for m, agg in dropout_agg[d].items()}
+            for d in DROPOUT_RATES_FIG5
         },
         "crossover_tcmf_add_below_semantic_rag": crossover,
         "grid_recall_at_10": {f"{d}|{p}": grid[(d, p)] for d in DROPOUT_RATES_2D

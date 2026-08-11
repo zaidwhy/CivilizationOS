@@ -1,12 +1,17 @@
-"""N11 unit tests: Fig 5 (graph degradation) + Fig 6 (decision accuracy).
+"""N11 unit tests: Fig 6 (decision accuracy).
 
 Same posture as test_n09_figures.py / test_n10_figures.py: ``figures/make_figures.py`` lives
-outside the package and is imported via sys.path. Both figures are a "pure plotting job" over
-already-committed result JSON (results_spurious/, results_mixed_scale/, results_decision/) -
-these tests check that every plotted value traces back to that source data exactly, per the
-item's own verify criterion ("every plotted value matches the source JSON exactly, assert it
-in the script, do not eyeball it"), and check the one new statistical primitive Fig 6 needed
-(tcmfbench.stats.wilson_ci) is used correctly against the committed decision-tier data.
+outside the package and is imported via sys.path. Fig 6 is a "pure plotting job" over the
+already-committed ``results_decision/`` tier - these tests check that every plotted value traces
+back to that source data exactly, per the item's own verify criterion ("every plotted value
+matches the source JSON exactly, assert it in the script, do not eyeball it"), and check the one
+new statistical primitive Fig 6 needed (``tcmfbench.stats.wilson_ci``) is used correctly against
+the committed decision-tier data.
+
+Fig 5's tests moved to ``test_n10_n11_figures.py`` when its build was reconciled with a second,
+independent implementation after a Night Shift collision (see NIGHT_QUEUE.md's N11 entry) - the
+second build's Fig 5 was kept (a different panel layout/data source, see ``draw_fig5``'s
+docstring), this file's original Fig 5 was not, so its tests came out too.
 
 Run: python -m tcmfbench.test_n11_figures (or pytest tcmfbench/test_n11_figures.py)
 """
@@ -28,68 +33,6 @@ MF = importlib.import_module("make_figures")
 
 _TCMF_PAPER_DIR = _bootstrap.REPO_ROOT / "research" / "tcmf_paper"
 
-
-# ------------------------------------------------------------------------------- Fig 5
-
-def _load_spurious():
-    path = _TCMF_PAPER_DIR / "results_spurious" / "results_spurious.json"
-    assert path.exists(), "results_spurious/results_spurious.json missing (N04 artifact)"
-    return json.loads(path.read_text())
-
-
-def _load_dropout():
-    path = _TCMF_PAPER_DIR / "results_mixed_scale" / "results_mixed.json"
-    assert path.exists(), "results_mixed_scale/results_mixed.json missing (N01 artifact)"
-    return json.loads(path.read_text())
-
-
-def test_fig5_semantic_rag_is_flat_at_the_documented_floor_in_both_regimes():
-    """The figure's own premise: semantic_rag never reads the causal graph, so it must be
-    constant across every dropout rate and every spurious rate - the "semantic floor"."""
-    spurious = _load_spurious()
-    dropout = _load_dropout()
-    spur_vals = {spurious["curve"][r]["semantic_rag"]["recall@10"]["mean"]
-                 for r in spurious["curve"]}
-    drop_vals = {dropout["dropout_curve"][r]["semantic_rag"] for r in dropout["dropout_curve"]}
-    assert len(spur_vals) == 1
-    assert len(drop_vals) == 1
-    assert spur_vals == drop_vals  # same floor value in both source files
-
-
-def test_fig5_dropout_curve_is_monotone_non_increasing_for_causal_methods():
-    dropout = _load_dropout()
-    keys = sorted(dropout["dropout_curve"].keys(), key=float)
-    for name in ("causal_only", "tcmf_add"):
-        vals = [dropout["dropout_curve"][k][name] for k in keys]
-        assert all(a >= b - 1e-9 for a, b in zip(vals, vals[1:]))
-
-
-def test_fig5_renders_to_nonempty_vector_pdf_and_png():
-    spurious = _load_spurious()
-    dropout = _load_dropout()
-    with tempfile.TemporaryDirectory() as td:
-        out = Path(td)
-        MF.draw_fig5(spurious, dropout, out / "fig5_graph_degradation")
-        pdf = out / "fig5_graph_degradation.pdf"
-        png = out / "fig5_graph_degradation.png"
-        assert pdf.stat().st_size > 500
-        assert png.stat().st_size > 500
-        assert pdf.read_bytes()[:4] == b"%PDF"
-
-
-def test_fig5_every_plotted_method_has_a_defined_color():
-    """Every method name the two source files use for Fig 5 must be in METHOD_COLORS, so the
-    figure cannot silently render a method with matplotlib's default color cycle instead of
-    the paper's fixed palette."""
-    spurious = _load_spurious()
-    dropout = _load_dropout()
-    spur_methods = set(next(iter(spurious["curve"].values())).keys())
-    drop_methods = set(next(iter(dropout["dropout_curve"].values())).keys())
-    for name in spur_methods | drop_methods:
-        assert name in MF.METHOD_COLORS, name
-
-
-# ------------------------------------------------------------------------------- Fig 6
 
 def _load_decision_source():
     path = _TCMF_PAPER_DIR / "results_decision" / "results_decision.json"
