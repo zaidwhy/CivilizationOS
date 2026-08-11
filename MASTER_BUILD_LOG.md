@@ -1243,3 +1243,54 @@ checked out at `research/tcmf_paper/paper/`.
   `et al.`, no `and others`, no VERIFY markers remain.
 - **N10's Fig 3 brief rewritten** in NIGHT_QUEUE.md - it still instructed the nightly routine to draw
   the refuted mechanism. matplotlib 3.11.1 installed into `.venv`, unblocking N09-N11.
+
+## 2026-08-11 (Tuesday) - TCMF paper: N09-N11 figures reconciled after a Night Shift collision, F9b, then N12/N13/N16/N17 complete
+
+Work spans this repo (`research/tcmf_paper/`, public) and the private draft repo `syzayd/tcmf-paper`
+checked out at `research/tcmf_paper/paper/`.
+
+- **Built figures 3-6, then discovered the TCMF Night Hardening cron had independently built and
+  merged the same six overnight** (N10 PR #12, N11 PR #14) - a second confirmed instance of the
+  Night Shift collision pattern, this time on a non-Genesis routine. Reconciled per Zaid's call
+  ("merge the best of both"): kept Fig 3 (fusion-operator margin vs lambda) + Fig 5 (degradation)
+  from the second build, Fig 4 (recall vs lambda) + Fig 6 (decision accuracy, Wilson CI - the
+  statistically correct choice for a stored mean/std/n with no per-scenario array) from the
+  original. 32 figure tests across 4 pruned/split test files, all passing. All six wired into
+  `main.tex` with real captions/labels/cross-references (the one thing neither build had done).
+- **Found and fixed a real unreconciled contradiction while wiring figures**: `tcmf_add`'s
+  edge-dropout curve falls BELOW the semantic floor at the realistic pool (F7 claimed it always
+  converges to the floor, verified only at the small pool). Added F9b next to the paper's
+  existing pool-size reconciliation (F9), explained the mechanism (at 100% dropout `tcmf_add`
+  reduces to ranking by the episodic score, not the semantic-similarity score `semantic_rag`
+  uses), and scoped the claim everywhere it appeared (F7, abstract/intro, Limitations,
+  Conclusion, Fig 5 caption).
+- **Completed every remaining NIGHT_QUEUE.md item except the paid external reviewer pass.** N12
+  (leave-one-out ablation of the 4 shipped fixes): fix1 x fix3 interact more than additively;
+  fixes 2 and 4 measure null in isolation at the benchmark's default scale, but fix4 shows a
+  clean monotone dose-response (recall@5 1.00 -> 0.14) once citizens exceed the old
+  `prune_k=8` cap. N13 (second encoder, sentence-transformers `all-MiniLM-L6-v2` vs nomic):
+  confirmed anisotropy is encoder-specific (thresholds 0.60 vs 0.30) and reported honestly that
+  the full 8-method ranking does NOT strictly hold across encoders (`causal_only`/`graph_ppr`
+  swap), rather than rounding to "preserved," per the item's own verify criterion. N16 (scale to
+  pool 1503 + up to 8 concurrent crises): causal@5 margin never closes; cross-crisis boost
+  leakage stays ~3 orders of magnitude below the true boost. N17: `tcmfbench/api.py` gives the
+  benchmark a public `evaluate()` surface, verified to reproduce published numbers with zero
+  internal edits.
+- **Ran a hostile self-review pass on the finished draft** (explicitly AI-driven, not a
+  substitute for Zaid's still-open paid external pass - documented as such in `REVIEW.md`
+  section 7) and fixed two real gaps it found: N16's multi-crisis chains were disjoint, not
+  "interleaved" as the item asked (added a shared-ancestor spot check confirming the mechanism
+  correctly attributes a genuinely shared ancestor to both crises, not a leak); N12's fix4
+  finding rested on one cherry-pickable data point (swept into the dose-response curve instead).
+  Also caught the Contributions list and Conclusion going stale relative to three new sections
+  and updated both.
+- **75 new/updated tests** across 4 new test files (`test_n12_ablation.py`,
+  `test_n13_encoder2.py`, `test_n16_scale.py`, `test_n17_api.py`), all passing; full
+  CivilizationOS backend suite green throughout. Paper: 28 pages, 0 undefined refs/citations,
+  same 4 pre-existing overfull hboxes never exceeded despite roughly ten successive section
+  additions in one session (verified via a stash-and-rebuild baseline check each time).
+- Files: `research/tcmf_paper/tcmfbench/{methods.py, api.py, multi_crisis.py, run_ablation.py,
+  run_scale.py, run_multi_crisis.py, run_encoder2.py, embed_client.py, run_eval.py,
+  run_spurious.py, test_n09-17*.py}` (new/modified), `figures/*`, `NIGHT_QUEUE.md`,
+  `REPRODUCE.md`; private `syzayd/tcmf-paper/{main.tex, REVIEW.md}`. Both repos pushed and
+  verified in sync throughout.
