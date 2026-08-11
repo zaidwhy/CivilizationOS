@@ -315,11 +315,22 @@ at 0.5, 0.32 at 0.75, 0.25 at 1.0 vs the floor's flat 0.40), the opposite of F7'
 the semantic floor, never below" claim, which was only ever verified at the small pool. **This
 is a real, measured, unreconciled result, not a bug in either build** - a CI'd rerun of the same
 curve (`run_spurious.py`'s new `dropout_curve`, same protocol as its existing spurious-rate
-curve) reproduces it bit-for-bit. It needs the same kind of pool-size reconciliation Section 5.3
-gave recall@10, and that reconciliation is Zaid's call, not something to fold into a figure
-silently. Until reconciled, the kept Fig 5 anchors its dropout panel to `results_mixed`'s
+curve) reproduces it bit-for-bit. The kept Fig 5 anchors its dropout panel to `results_mixed`'s
 small-pool `dropout_curve` (Table `tab:dropout`'s own published numbers) instead, and its
 spurious-edge panel to `results_spurious`'s existing CI'd `curve`.
+
+**Reconciled 2026-08-11 (F9b), the same way Section 5.3 (F9) already reconciled recall@10's
+pool-size sensitivity:** `main.tex` now states the realistic-pool numbers explicitly (new
+`sec:pool-scale` finding F9b: `tcmf_add` recall@10 $0.80\to0.57\to0.41\to0.31\to0.25$ against a
+flat $0.40$ floor as dropout goes $0\%\to100\%$, crossing below the floor between 50% and 75%
+dropout, CI-confirmed at 75%) and explains the mechanism (at 100% dropout `tcmf_add`'s score
+reduces to the normalized *episodic* score alone, not the *semantic* score `semantic_rag` uses,
+so the two have no reason to coincide at any pool size). F7's own claim, the abstract/intro
+bullet, the Limitations "Missing vs. spurious edges" paragraph, the Conclusion, and Fig 5's
+caption were all updated to scope the floor-convergence claim to the small pool - the
+relative-ordering claim (`tcmf_add` $\ge$ `causal_only` throughout) was never pool-size sensitive
+and needed no change. Builds clean at 25 pages, 0 undefined refs, same 4 pre-existing overfull
+hboxes.
 
 ---
 
