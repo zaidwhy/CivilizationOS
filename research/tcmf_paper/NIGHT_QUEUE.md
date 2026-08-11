@@ -481,7 +481,7 @@ refs, same 4 pre-existing overfull hboxes (two new ones from this section's own 
 widths, both fixed before commit).
 
 ### N17 - TCMFBench as a standalone contribution
-**Status:** OPEN | **Env:** CLOUD-OK | **Answers:** long-term impact
+**Status:** DONE (2026-08-11) | **Env:** CLOUD-OK | **Answers:** long-term impact
 
 The external review's strongest strategic point: a benchmark that other researchers actually
 run outlives the paper that introduced it, and TCMFBench already tests a failure mode
@@ -497,6 +497,17 @@ run outlives the paper that introduced it, and TCMFBench already tests a failure
 
 **Verify:** a retriever written against the public API alone, with no edits to `tcmfbench`
 internals, reproduces a known baseline's published numbers exactly.
+
+**Scope actually covered (2026-08-11):** `tcmfbench/api.py` (new) exposes one function,
+`evaluate(retriever_fn, tier="pure"|"mixed", n, seed, ...)`, returning
+`{metric: (mean, ci_lo, ci_hi)}` in the exact shape every internal method's own row already
+takes. Both sync and async retriever functions are accepted. `test_n17_api.py` (5 tests)
+registers retrievers written using only `mat`'s public attributes (no import from
+`methods.py`) and confirms they reproduce Table tab:main's/tab:mixed's own published
+`semantic_rag`/`causal_only` rows exactly - the item's own verify criterion. README.md gained
+a "Public API" section (the stranger-facing walkthrough) and its Layout/Caveats sections were
+brought current (they still described a pre-real-text-tier, pre-N12/N13/N16 state). Nothing
+outward-facing was touched - this is still a private repo, and no publish action was taken.
 
 ### N18 - Does the regime occur in public data?
 **Status:** DONE (2026-08-01) | **Env:** LOCAL-ONLY (needs Ollama) | **Answers:** the

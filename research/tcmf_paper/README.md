@@ -36,14 +36,62 @@ tcmfbench/
   theory.py       formal analysis of the fusion operator (N15) - affine margin propositions
   run_theory.py   measures the propositions on real scenarios (N15) -> results_theory/
   run_lambda_sweep.py  recall@5 vs lambda, both operators, one grid (N10) -> results_lambda_sweep/
+  run_ablation.py  leave-one-out ablation of the four shipped fixes + tau/BFS-depth-cap
+                  sweeps (N12) -> results_ablation/
+  run_scale.py    pool-size sweep to 1500+, causal@5 margin + BFS/semantic/fusion latency
+                  (N16) -> results_scale/
+  multi_crisis.py concurrent-crisis scenario generator: one shared graph/pool, N independent
+                  causal chains, per-crisis query views (N16)
+  run_multi_crisis.py  2-8 concurrent crises, per-crisis metrics never pooled (N16)
+                  -> results_multi_crisis/
+  run_encoder2.py second-encoder comparison (nomic-embed-text vs. sentence-transformers
+                  all-MiniLM-L6-v2), per-encoder tau tuning (N13) -> results_encoder2/
+  api.py          the public API (N17) - register a retriever as a plain function, get the
+                  standard metric table back, no internal edits required. See "Public API"
+                  below.
 figures/          Fig 1 (causal graph) + Fig 2 (retrieval pipeline), N09; Fig 3 (fusion
                   operator margin) + Fig 4 (recall vs lambda), N10; Fig 5 (graph degradation:
                   dropout + N04 spurious edges) + Fig 6 (decision accuracy w/ Wilson CIs), N11;
                   make_figures.py regenerates all six from committed data, never hand-drawn/
                   hand-typed
 PAPER_PLAN.md     the correct framing, related work, and phase plan
-FINDINGS.md       what the runs show (read this first): F1-F7 + code fixes + real-text tier
+FINDINGS.md       what the runs show (read this first): F1-F13 + code fixes + real-text tier
 ```
+
+## Public API
+
+Every module above is reachable by editing a `run_*.py` script's own hard-coded method dict -
+useful for reproducing this paper's own results, but not for trying your own retriever without
+learning the internals first. `tcmfbench.api` is the one stable surface for that:
+
+```python
+from tcmfbench.api import evaluate
+
+def my_retriever(mat):
+    """mat.all_ids: candidate memory ids. mat.mem[id]: dict with embedding/importance/tick/
+    topic/label/text. mat.scenario: query_text/query_embedding/crisis_event_id. mat.graph: the
+    real CausalGraph, if your method wants causal structure. Return a ranked list of ids."""
+    return sorted(mat.all_ids, key=lambda i: mat.mem[i]["importance"], reverse=True)
+
+table = evaluate(my_retriever, tier="pure", n=300)
+print(table["recall@5"])       # (mean, ci_lo, ci_hi) - 95% percentile bootstrap, seed 0 (N02)
+print(table["root_rank"])
+```
+
+- **`tier`**: `"pure"` (single causal-gold regime, the paper's main comparison table) or
+  `"mixed"` (both causal- and semantic-gold; adds `causal@5`/`semantic@5` to the returned
+  table). Both default to the exact protocol Tables tab:main/tab:mixed use.
+- **Async retrievers work too** - return an awaitable from your function and `evaluate` handles
+  it.
+- **`n`/`seed`/`n_distractors`/`n_noise`** override the scenario count and pool composition;
+  omit them to match the paper's own default configuration exactly.
+- The returned dict's shape (`{metric: (mean, ci_lo, ci_hi)}`) is identical to every internal
+  method's own row, so a retriever built purely against this API is directly comparable to the
+  paper's baselines with no other tooling.
+
+`tcmfbench/test_n17_api.py` verifies this end to end: a retriever written using only `mat`'s
+public attributes (no import from `methods.py`, no private helper) reproduces Table tab:main's
+published `semantic_rag`/`causal_only` rows exactly.
 
 ## Reproduce
 
@@ -236,9 +284,17 @@ weight lambda, similarity threshold, depth-weighting direction, and embedding di
 
 ## Caveats
 
-- Embeddings are synthetic (angle-mixed topic vectors), not a real text encoder. This buys full
-  control of the causal-vs-semantic separation and exact ground truth; a real-text tier (Ollama
-  `nomic-embed-text` over generated natural-language scenarios) is the planned follow-up.
-- See `FINDINGS.md` for the open item: fusion currently ties the causal-only oracle in the pure
-  regime; the mixed-regime experiment that justifies fusion over causal-only is the next task.
+- The main synthetic tiers (pure/mixed) use controlled embeddings (angle-mixed topic vectors),
+  not a real text encoder - full control of the causal-vs-semantic separation and exact ground
+  truth. The real-text tier (`realtext.py`/`run_realtext.py`) removes this by generating
+  natural-language scenarios and embedding them with a real encoder (`nomic-embed-text` via
+  Ollama by default; `run_encoder2.py` also runs `sentence-transformers` locally, N13, to check
+  the effect is not one encoder's artifact).
+- The synthetic tiers top out around a pool of 80 candidates by default; `run_scale.py` (N16)
+  extends this to 1503 and shows the causal-ancestor margin does not close. Real agent memory
+  stores can still exceed that; `results_scale/` documents exactly how far this has been tested.
+- Ground truth is authored, not induced from raw text - `Section 4.1`/`locomo_regime.py` (N18)
+  motivates the regime against a public, human-verified benchmark, but does not run TCMF on it,
+  since neither public dataset ships a causal graph. See `FINDINGS.md`/`main.tex`'s Limitations
+  section for the complete, current list - this file summarizes, `FINDINGS.md` is the record.
 </content>
