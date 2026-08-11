@@ -372,7 +372,7 @@ undefined refs, same 4 pre-existing overfull hboxes (one new one introduced by t
 own math, fixed before commit).
 
 ### N13 - Second encoder + latency
-**Status:** OPEN | **Env:** CLOUD-OK for the encoder (sentence-transformers, pip), LOCAL-ONLY if using a second Ollama model
+**Status:** DONE (2026-08-11) | **Env:** CLOUD-OK for the encoder (sentence-transformers, pip), LOCAL-ONLY if using a second Ollama model
 
 - Re-run the real-text tier under a second encoder (e.g. a sentence-transformers MiniLM) to
   show the effect is not an artifact of `nomic-embed-text`, and to show the anisotropy
@@ -383,6 +383,24 @@ own math, fixed before commit).
 
 **Verify:** the ordering of methods is preserved across encoders. If it is not, that is a
 major finding and the paper's claim must narrow to "for this encoder family."
+
+**Scope actually covered (2026-08-11):** `SentenceEmbedClient` (new, `embed_client.py`) wraps
+`sentence-transformers` (`all-MiniLM-L6-v2`, local, no server) behind the exact same interface
+as the Ollama `EmbedClient`, so `realtext.py`'s duck-typed embedder argument accepts either.
+`run_encoder2.py` reruns the real-text tier under both encoders on identical scenarios/seeds,
+N03's held-out tune ($n=40$)/test ($n=80$) split, each encoder selecting its own threshold from
+the same 5-point grid. **The verify criterion's own "if it is not" branch triggered**:
+`causal_only`/`graph_ppr` swap the top two places in the recall@5 ordering between encoders (a
+$0.01$ gap either way, well inside the per-method std at $n=80$) - reported honestly as
+"ordering not strictly preserved" rather than rounded to "preserved," per the item's own
+instruction. Every other pairwise comparison, including the paper's central operator contrast
+(`tcmf_mult` vs.\ `tcmf_add`), is unchanged. Anisotropy is confirmed encoder-specific: MiniLM's
+unrelated-pair cosine (0.123) is under a third of nomic's (0.447), and MiniLM's own tune sweep
+selects $\tau=0.30$ at the grid floor (true optimum untested, may be lower) versus nomic's
+$\tau=0.60$. Latency was already covered by N16's `run_scale.py` (which this item's own text
+anticipated: "this also feeds N13's latency item") and is cross-referenced rather than
+duplicated. 7 new tests (`test_n13_encoder2.py`). Written into `main.tex` as a new Section 5.5
+(F14).
 
 ### N14 - Full regeneration, reproducibility pack, paper integration
 **Status:** DONE (2026-08-06) | **Env:** LOCAL-ONLY (needs Ollama for the real-text/decision tiers)
