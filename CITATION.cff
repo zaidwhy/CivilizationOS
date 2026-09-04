@@ -1,0 +1,12 @@
+cff-version: 1.2.0
+message: "If you use this project, please cite it as below."
+title: "CivilizationOS"
+authors:
+  - family-names: "Syed"
+    given-names: "Zaid Ali"
+date-released: 2026-06-18
+url: "https://github.com/zaidwhy/CivilizationOS"
+repository-code: "https://github.com/zaidwhy/CivilizationOS"
+license: MIT
+abstract: >
+  A multi-agent civilization simulation.
