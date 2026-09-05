@@ -49,9 +49,16 @@ boost is nonzero only for true ancestors (gold), zero for distractors and noise.
 
 **F3 - The shipped multiplicative fusion throws the causal signal away.** `tcmf_score =
 episodic x (1 + l*boost)` cannot lift a root-cause memory whose episodic score is ~0: a
-near-zero base times a bounded factor stays near-zero. tcmf_mult = 0.00 at the shipped l, and
-the l-ablation is nearly flat (l=0 -> l=2 barely moves recall). This is a real defect in the
-current `TCMFRetriever`.
+near-zero base times a bounded factor stays near-zero. tcmf_mult = 0.02 recall@5 at the shipped
+l = 0.6 (95% CI 0.01 to 0.03), against 1.00 for causal_only on the same scores, and the
+l-ablation is nearly flat (l=0 -> l=2 barely moves recall). This is a real defect in the current
+`TCMFRetriever`.
+
+*Corrected 2026-09-05:* an earlier draft of this paragraph read "tcmf_mult = 0.00 at the shipped
+l", which does not match the tables above or `results_main/RESULTS.md`. The figure is 0.02;
+recall@5 = 0.00 belongs to `semantic_rag` and `episodic`. The conclusion is unchanged - 0.02
+against an available 1.00 is still "exploits none of the causal signal" - but the number was
+wrong and had been repeated downstream.
 
 **F4 - Additive/normalized fusion recovers the full signal.** `minmax(episodic) + l*boost`,
 using the identical episodic scores and causal boosts, reaches recall@5 = 1.00 at l>=4. Only
