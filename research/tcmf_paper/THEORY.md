@@ -212,7 +212,7 @@ Two further limits worth stating in the paper:
    isolates a failure mode, now with a formal account of the mechanism. That is a stronger
    framing than "new retrieval algorithm" and it is the one the evidence supports.
 
-### LaTeX delta needed in the private repo (`syzayd/tcmf-paper`)
+### LaTeX delta needed in the private repo (`zaidwhy/tcmf-paper`)
 
 Not applied here; `main.tex` lives in the private repo and narrowing a headline claim is Zaid's
 framing call.

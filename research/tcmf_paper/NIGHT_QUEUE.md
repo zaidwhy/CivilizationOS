@@ -22,7 +22,7 @@ forward, it is the wrong night's work.
    `qwen2.5:3b-instruct`). A cloud agent must **skip** these, say so in the night log, and
    take the next CLOUD-OK item instead. Never fake an Ollama result.
 3. Work in `research/tcmf_paper/`. Branch `night-tcmf/YYYY-MM-DD`. Open one PR on
-   `syzayd/CivilizationOS`.
+   `zaidwhy/CivilizationOS`.
 4. When the numbers land, **set `Status: DONE (YYYY-MM-DD)`** on the item and append the
    result to `NIGHT_LOG.md` (same folder), newest last.
 5. **Report the result honestly, including when it damages the paper.** A night that
@@ -40,7 +40,7 @@ forward, it is the wrong night's work.
   statistical gets a unit test against a hand-computed known answer.
 - **Never tune on the test split** once N03 lands the split. Report test numbers only.
 - No em dash (U+2014) anywhere. No Claude/Anthropic attribution in any commit or PR.
-- The paper prose lives in the **private** repo `syzayd/tcmf-paper`. If the night agent
+- The paper prose lives in the **private** repo `zaidwhy/tcmf-paper`. If the night agent
   cannot reach it, do the code and results work anyway and record the needed LaTeX delta in
   the night log as plain prose. Do not paste draft sections into the public repo.
 
