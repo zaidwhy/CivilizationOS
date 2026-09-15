@@ -82,6 +82,8 @@ def test_full_ordering_preservation_flag_matches_a_fresh_comparison():
 def test_sentence_embed_client_cache_round_trips():
     import tempfile
     from pathlib import Path
+    import pytest
+    pytest.importorskip("sentence_transformers")  # CI installs the API deps only; the encoder itself is optional there
     with tempfile.TemporaryDirectory() as td:
         cache_path = Path(td) / "cache.json"
         ec = SentenceEmbedClient(cache_path=cache_path)
