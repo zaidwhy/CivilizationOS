@@ -19,7 +19,7 @@ jobs:
           cache: pip
 
       - name: Install dependencies
-        run: pip install -r requirements.txt
+        run: pip install -r requirements.txt -r research/tcmf_paper/requirements-bench.txt
 
       - name: Run API tests
         run: pytest api/tests -q
