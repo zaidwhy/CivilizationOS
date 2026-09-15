@@ -20,7 +20,7 @@ import logging
 import time as _time
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
+from fastapi import Depends, FastAPI, Header, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
@@ -182,7 +182,17 @@ class SpeedRequest(BaseModel):
     seconds_per_tick: float = 1.0
 
 
-@app.post("/speed")
+def require_admin(x_admin_token: str | None = Header(default=None)) -> None:
+    """Gate for endpoints that change the shared simulation for every viewer.
+
+    Enforced only when ADMIN_TOKEN is configured (the public Render deploy); a local run
+    with the default empty token keeps the routes open.
+    """
+    if settings.admin_token and x_admin_token != settings.admin_token:
+        raise HTTPException(status_code=401, detail="X-Admin-Token required")
+
+
+@app.post("/speed", dependencies=[Depends(require_admin)])
 async def set_speed(req: SpeedRequest) -> dict:
     """Adjust simulation speed. 0.1 = very fast, 5.0 = very slow."""
     clamped = max(0.1, min(5.0, req.seconds_per_tick))
@@ -190,7 +200,7 @@ async def set_speed(req: SpeedRequest) -> dict:
     return {"tick_interval": engine.tick_interval}
 
 
-@app.post("/crisis/{template_key}/resolve")
+@app.post("/crisis/{template_key}/resolve", dependencies=[Depends(require_admin)])
 async def resolve_crisis(template_key: str) -> dict:
     """Manually resolve an active crisis by its template key."""
     from .sim.events import CRISIS_TEMPLATES
@@ -202,7 +212,7 @@ async def resolve_crisis(template_key: str) -> dict:
     return {"resolved": template_key, "message": result, "tick": engine.tick_count}
 
 
-@app.post("/crisis/id/{crisis_id}/resolve")
+@app.post("/crisis/id/{crisis_id}/resolve", dependencies=[Depends(require_admin)])
 async def resolve_crisis_by_id(crisis_id: str) -> dict:
     """Resolve any crisis by its registry ID — works for custom and template crises."""
     result = engine.resolve_crisis_by_id(crisis_id)
@@ -231,18 +241,34 @@ class CrisisRequest(BaseModel):
 
 
 _last_crisis_injected_at: float = 0.0
+_crisis_day: str = ""
+_crisis_count_today: int = 0
 
 
-@app.post("/crisis")
-async def post_crisis(req: CrisisRequest) -> dict:
-    global _last_crisis_injected_at
-    from .agents.council import COUNCILS
-    from .sim.events import CRISIS_TEMPLATES
-    now = _time.time()
+def _check_crisis_budget(now: float) -> None:
+    """Cooldown between injections plus a per-UTC-day cap. Raises 429 when either is hit."""
+    global _crisis_day, _crisis_count_today
     elapsed = now - _last_crisis_injected_at
     if elapsed < settings.crisis_cooldown_s:
         wait = round(settings.crisis_cooldown_s - elapsed, 1)
         raise HTTPException(status_code=429, detail=f"Crisis injection is rate-limited - wait {wait}s")
+    today = _time.strftime("%Y-%m-%d", _time.gmtime(now))
+    if today != _crisis_day:
+        _crisis_day, _crisis_count_today = today, 0
+    if _crisis_count_today >= settings.crisis_daily_cap:
+        raise HTTPException(
+            status_code=429,
+            detail=f"Daily crisis cap reached ({settings.crisis_daily_cap}); try again tomorrow (UTC)",
+        )
+
+
+@app.post("/crisis")
+async def post_crisis(req: CrisisRequest) -> dict:
+    global _last_crisis_injected_at, _crisis_count_today
+    from .agents.council import COUNCILS
+    from .sim.events import CRISIS_TEMPLATES
+    now = _time.time()
+    _check_crisis_budget(now)
     if req.institution_id not in COUNCILS:
         raise HTTPException(
             status_code=400,
@@ -253,6 +279,7 @@ async def post_crisis(req: CrisisRequest) -> dict:
     if not text:
         raise HTTPException(status_code=422, detail="crisis text is required")
     _last_crisis_injected_at = now
+    _crisis_count_today += 1
     crisis = await engine.inject_crisis(
         text=text,
         institution_id=req.institution_id,

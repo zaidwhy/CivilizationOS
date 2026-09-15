@@ -21,5 +21,8 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.txt
 
-      - name: Run tests
+      - name: Run API tests
         run: pytest api/tests -q
+
+      - name: Run TCMF benchmark tests
+        run: pytest research/tcmf_paper -q

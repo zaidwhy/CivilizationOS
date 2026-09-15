@@ -1,14 +1,16 @@
 # CivilizationOS
 
 [![CI](https://github.com/zaidwhy/CivilizationOS/actions/workflows/ci.yml/badge.svg)](https://github.com/zaidwhy/CivilizationOS/actions/workflows/ci.yml)
-![Tests](https://img.shields.io/badge/tests-61%20passed-brightgreen)
+![Tests](https://img.shields.io/badge/tests-%20api%20%2B%20%20benchmark%20passed-brightgreen)
 ![Python](https://img.shields.io/badge/python-3.12%2B-blue)
 ![Node](https://img.shields.io/badge/node-18%2B-blue)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
 > A multi-agent society simulation powered by autonomous AI citizens, institutional councils, and a novel RAG architecture - built as a portfolio-grade AI project on a near-zero budget.
 
-**Status: feature-complete (Phases 0-13).** 61 backend tests passing, 0 TypeScript errors.
+**Status: feature-complete (Phases 0-13) and live.** 0 TypeScript errors; test counts in the badge above are refreshed from `pytest -v | grep -c PASSED`.
+
+**Live demo:** [civilization-os-murex.vercel.app](https://civilization-os-murex.vercel.app) (frontend, Vercel) talking to [civilizationos-api.onrender.com](https://civilizationos-api.onrender.com/health) (API, Render free tier: expect a ~25 s cold start after idle). Crisis injection on the live site is public but rate-limited (30 s cooldown, 60 per day); speed and manual resolve are admin-only.
 
 ![CivilizationOS - 3D city with live citizen agents](docs/screenshots/city.png)
 

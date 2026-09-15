@@ -1,0 +1,17 @@
+name: Keep the Render API warm
+# Render's free tier sleeps after ~15 minutes idle and takes ~25 s to wake. A GET every
+# 10 minutes keeps the live demo responsive. Only this one service is kept warm: the free
+# plan allows 750 instance-hours per month per account, which is one always-on service.
+on:
+  schedule:
+    - cron: "*/10 * * * *"
+  workflow_dispatch:
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: GET /health
+        run: |
+          code=$(curl -s -o /dev/null -w "%{http_code}" --max-time 60 https://civilizationos-api.onrender.com/health)
+          echo "health -> $code"
+          test "$code" = "200"

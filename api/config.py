@@ -64,6 +64,12 @@ class Settings(BaseSettings):
     # visitor from spamming the (real-money, when OpenRouter is configured)
     # crisis-injection endpoint and burning the shared spend cap for everyone.
     crisis_cooldown_s: float = 30.0
+    # Hard ceiling on crisis injections per UTC day, on top of the cooldown, so a public
+    # deploy cannot be walked through its whole spend cap one request every 30 seconds.
+    crisis_daily_cap: int = 60
+    # When set, POST /speed and the two /resolve routes require the X-Admin-Token header.
+    # Empty (the local default) leaves them open, which is fine on 127.0.0.1.
+    admin_token: str = ""
 
     # --- CORS ---
     # Comma-separated list of allowed frontend origins. Defaults cover local dev;

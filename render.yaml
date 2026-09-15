@@ -15,6 +15,11 @@ services:
         value: "15.0"
       - key: OPENROUTER_API_KEY
         sync: false
+      # Required on the public deploy: gates POST /speed and the /resolve routes.
+      - key: ADMIN_TOKEN
+        sync: false
+      - key: CRISIS_DAILY_CAP
+        value: "60"
       - key: OPENROUTER_FREE_MODEL
         sync: false
       - key: OPENROUTER_PREMIUM_MODEL
