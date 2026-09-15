@@ -1,6 +1,6 @@
 # CivilizationOS
 
-[![CI](https://github.com/syzayd/CivilizationOS/actions/workflows/ci.yml/badge.svg)](https://github.com/syzayd/CivilizationOS/actions/workflows/ci.yml)
+[![CI](https://github.com/zaidwhy/CivilizationOS/actions/workflows/ci.yml/badge.svg)](https://github.com/zaidwhy/CivilizationOS/actions/workflows/ci.yml)
 ![Tests](https://img.shields.io/badge/tests-61%20passed-brightgreen)
 ![Python](https://img.shields.io/badge/python-3.12%2B-blue)
 ![Node](https://img.shields.io/badge/node-18%2B-blue)
