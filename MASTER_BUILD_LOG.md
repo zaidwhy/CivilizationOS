@@ -1294,3 +1294,25 @@ checked out at `research/tcmf_paper/paper/`.
   run_spurious.py, test_n09-17*.py}` (new/modified), `figures/*`, `NIGHT_QUEUE.md`,
   `REPRODUCE.md`; private `syzayd/tcmf-paper/{main.tex, REVIEW.md}`. Both repos pushed and
   verified in sync throughout.
+
+## 2026-09-16/17 - Fixed a stale docs/tcmf.md, added structured LLM observability (M4)
+
+- **`docs/tcmf.md` was actively wrong, not just stale.** It described the original
+  multiplicative fusion formula as the current, shipped design, with no mention it was
+  ever found broken - even though it's linked from the published GitHub-profile case
+  study as proof of "both versions, the failure and the fix." Rewrote it against the
+  real code (`api/memory/tcmf.py`) and the actual benchmark numbers in
+  `research/tcmf_paper/FINDINGS.md`: `tcmf_mult` (old) recall@5 = 0.02 against an
+  available 1.00; the shipped `TCMFRetriever` (additive fusion + three further bug
+  fixes - inverted depth weighting, the crisis boosting itself, pre-filtering
+  discarding root-cause memories before fusion) lands at recall@5 = 0.76, recall@10 =
+  1.00, root cause at rank 1.
+- **M4 - structured per-call LLM observability**: `api/llm/router.py`'s `complete()`
+  now emits one JSON log line per call on a dedicated `civos.llm.calls` logger - call
+  id, tier requested/used, downgrade flag, model, latency, cost, token counts - on
+  success and on a raised exception alike, so a failed call is visible in the log
+  stream instead of only showing up as a missing success line. Verified both paths
+  manually (mocked success, mocked failure) and against the full `pytest api/tests -q`
+  suite (green, no regressions).
+- `ARCHITECTURE.md`'s Observability section rewritten to describe what's actually
+  shipped now, not "the next step."
