@@ -143,11 +143,15 @@ message reads or mutates that same instance.
 
 ## Observability
 
-Currently: Python `logging` only, no structured per-call log of which LLM tier served a
-request, at what cost, or how long it took. The next step (tracked in
-`zaid-os/roadmap/EXECUTION-MASTER-PLAN.md` item M4) is one structured log line per LLM
-call carrying tier, provider, latency, and estimated cost, so the $0-in-dev / near-$0-
-in-prod claim is something the logs actually demonstrate rather than only the code.
+One structured (JSON) log line per LLM call, on its own `civos.llm.calls` logger so
+it's greppable out of Render's raw log stream with no aggregator wired up:
+`call_id`, `tier_requested`, `tier_used`, `downgraded`, `model`, `latency_ms`,
+`cost_usd`, `input_tokens`/`output_tokens`, and `ok`/`error` - emitted whether the call
+succeeds or raises, so a failed call is visible in the stream rather than showing up
+only as a missing success line (`api/llm/router.py`, `LLMRouter._log_call`). This is
+what lets the $0-in-dev / near-$0-in-prod claim be demonstrated from the logs, not just
+read off the code. `SpendTracker.record()`'s existing human-readable line
+(`Tier-2 call #N ... total=$X/cap`) stays alongside it for at-a-glance budget tracking.
 
 ## Cost
 

@@ -23,7 +23,10 @@ Downgrade rules:
 from __future__ import annotations
 
 import asyncio
+import json
 import logging
+import time
+import uuid
 from dataclasses import dataclass
 from enum import IntEnum
 from functools import lru_cache
@@ -31,6 +34,12 @@ from functools import lru_cache
 from ..config import Settings, get_settings
 
 logger = logging.getLogger("civos.llm")
+
+# One JSON line per LLM call, on its own logger so it's trivially greppable/parseable
+# out of Render's raw log stream even with no log aggregator wired up - the thing that
+# lets the $0-in-dev / near-$0-in-prod claim be demonstrated from the logs, not just
+# from reading the code (zaid-os/roadmap/EXECUTION-MASTER-PLAN.md M4).
+call_logger = logging.getLogger("civos.llm.calls")
 
 
 class Tier(IntEnum):
@@ -153,34 +162,72 @@ class LLMRouter:
         claude_model: str | None = None,
         local_model: str | None = None,   # Phase 4: override local model (e.g. fine-tuned council)
     ) -> LLMResult:
+        call_id = uuid.uuid4().hex[:12]
         used = self.resolve_tier(tier)
-        if used == Tier.PREMIUM:
-            if self.s.has_openrouter_premium:
-                result = await self._complete_openrouter(
-                    prompt, system, max_tokens, temperature, self.s.openrouter_premium_model, Tier.PREMIUM,
-                )
+        started = time.perf_counter()
+        try:
+            if used == Tier.PREMIUM:
+                if self.s.has_openrouter_premium:
+                    result = await self._complete_openrouter(
+                        prompt, system, max_tokens, temperature, self.s.openrouter_premium_model, Tier.PREMIUM,
+                    )
+                else:
+                    result = await self._complete_claude(
+                        prompt, system, max_tokens, temperature,
+                        claude_model or self.s.claude_member_model,
+                    )
+            elif used == Tier.FREE:
+                if self.s.has_openrouter:
+                    result = await self._complete_openrouter(
+                        prompt, system, max_tokens, temperature, self.s.openrouter_free_model, Tier.FREE,
+                    )
+                else:
+                    result = await self._complete_gemini(prompt, system, max_tokens, temperature)
             else:
-                result = await self._complete_claude(
+                result = await self._complete_ollama(
                     prompt, system, max_tokens, temperature,
-                    claude_model or self.s.claude_member_model,
+                    model=local_model or self.s.ollama_chat_model,
                 )
-        elif used == Tier.FREE:
-            if self.s.has_openrouter:
-                result = await self._complete_openrouter(
-                    prompt, system, max_tokens, temperature, self.s.openrouter_free_model, Tier.FREE,
-                )
-            else:
-                result = await self._complete_gemini(prompt, system, max_tokens, temperature)
-        else:
-            result = await self._complete_ollama(
-                prompt, system, max_tokens, temperature,
-                model=local_model or self.s.ollama_chat_model,
-            )
+        except Exception as exc:
+            self._log_call(call_id, tier, used, started, model=None, result=None, error=exc)
+            raise
 
         result.tier_requested = tier
         result.tier_used = used
         result.downgraded = used < tier
+        self._log_call(call_id, tier, used, started, model=result.model, result=result, error=None)
         return result
+
+    def _log_call(
+        self,
+        call_id: str,
+        tier_requested: Tier,
+        tier_used: Tier,
+        started: float,
+        *,
+        model: str | None,
+        result: LLMResult | None,
+        error: Exception | None,
+    ) -> None:
+        """One structured line per LLM call: id, tier, model, latency, cost, tokens.
+
+        Emitted whether the call succeeded or raised, so a failed call is visible in
+        the same log stream instead of only showing up as a missing success line.
+        """
+        payload = {
+            "call_id": call_id,
+            "tier_requested": tier_requested.name,
+            "tier_used": tier_used.name,
+            "downgraded": tier_used < tier_requested,
+            "model": model,
+            "latency_ms": round((time.perf_counter() - started) * 1000),
+            "cost_usd": round(result.cost_usd, 6) if result else None,
+            "input_tokens": result.input_tokens if result else None,
+            "output_tokens": result.output_tokens if result else None,
+            "ok": error is None,
+            "error": f"{type(error).__name__}: {error}" if error else None,
+        }
+        call_logger.info(json.dumps(payload))
 
     async def _complete_ollama(self, prompt, system, max_tokens, temperature, model: str | None = None) -> LLMResult:
         client = self._ollama_client()
