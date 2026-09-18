@@ -561,6 +561,52 @@ CLOUD-OK because they use hand-built vectors), `results_locomo/`.
 the dataset plus Ollama; the 10 unit tests pass without Ollama; the reported figures are the
 session-granularity ones.
 
+### N19 - Does BM25's failure survive removing the topic-id scaffolding?
+**Status:** DONE (2026-09-18) | **Env:** CLOUD-OK | **Answers:** the "benchmark contamination"
+objection an external audit and Zaid's own review of it both raised independently
+
+A relayed AI-generated audit of the manuscript, and Zaid's own critique of that same audit,
+independently flagged the same real gap: Section~sec:more-baselines' BM25 result was explained
+in prose (every memory's text embeds a literal `(topic N)` suffix that a distractor always
+shares with the crisis query, so BM25 deterministically locks onto that token) but never
+actually re-run with the scaffolding removed to confirm the explanation. Zaid's own triage of
+the audit explicitly flagged this as "if it's cheap, I'd do this one" - the audit's other
+"mandatory" items (LLM-induced causal graphs, HippoRAG 2, open-ended decision judging) were
+correctly identified by Zaid as scope changes, not confirmed gaps, and were not chased.
+
+- `tcmfbench/run_bm25_descaffold_n19.py` (new): strips the `(topic N)` suffix from every
+  memory's text and the query text via `dataclasses.replace` (embeddings, gold sets, ids,
+  graph - everything else - untouched, since the benchmark's embeddings are synthesized
+  independently of text), reruns `rank_bm25` at the same tuned `k1=0.5` (loaded from the
+  committed `results_baselines_{pure,mixed}/results_baselines.json`, not re-derived) on the
+  identical TEST-split scenarios (`n=900`, same seeds) already used for Table tab:more-baselines.
+- **Pure regime: confirmed as a real artifact.** recall@5 rises from $0.00$ to $0.06$
+  $[0.05, 0.07]$ - the deterministic last-rank collapse really was the scaffolding, not a
+  property of lexical retrieval on this task. Still far below `tcmf_add`'s $1.00$, so the
+  paper's qualitative verdict is unchanged, only its stated mechanism and magnitude.
+- **Mixed regime: NOT an artifact, and the script's own sanity check caught this before it
+  became a false claim.** causal@5 is bit-for-bit unchanged ($0.046\to0.046$) because that
+  regime's witness/ancestor text templates (`mixed.py`, e.g. `"witness 0"`) never carried the
+  `(topic N)` scaffolding to begin with - confirmed by grepping the actual templates, not
+  inferred from the unchanged score. A built-in runtime assertion (`descaffold_removes_all_topic_overlap`)
+  flagged a residual, unrelated token overlap in the mixed regime (semantic-gold memories'
+  text literally contains the word "surface", matching the crisis query's "crisis surface") -
+  out of scope for this item (it affects semantic@5, already at ceiling for BM25, not the
+  causal@5 claim this item tests) but recorded here rather than silently passed over.
+- `tcmfbench/test_n19_bm25_descaffold.py` (new, 4 tests): confirms `descaffold()` removes every
+  topic suffix and changes nothing else on the `Materialized`, confirms the mixed-regime
+  templates never carried the scaffold (a regression guard against `mixed.py` changing later),
+  and confirms descaffolding never worsens the root cause's BM25 rank on a held-out seed.
+- `main.tex`: Section~sec:more-baselines and the "Additional baselines on placeholder text"
+  Limitations paragraph both updated to report the actual rerun result in place of the prior
+  "should be re-tested" forward-looking language. Rebuilt clean: 29 pages, 0 undefined
+  refs/citations, same 4 pre-existing overfull hboxes (none newly introduced), verified by
+  rasterizing both changed pages and reading them directly, not just trusting the page count.
+
+**Verify:** `pytest tcmfbench/test_n19_bm25_descaffold.py` passes without Ollama; the full
+`tcmfbench` suite stays green; `results_bm25_descaffold/results_bm25_descaffold.json`
+regenerates deterministically from `python -m tcmfbench.run_bm25_descaffold_n19`.
+
 ---
 
 ## Deliberately out of scope for these 14 nights

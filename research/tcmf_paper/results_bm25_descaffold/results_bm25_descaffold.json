@@ -1,0 +1,34 @@
+{
+  "pure": {
+    "regime": "pure",
+    "metric": "recall@5",
+    "n": 900,
+    "bm25_scaffolded": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "bm25_descaffolded": [
+      0.06,
+      0.051481481481481475,
+      0.06925925925925926
+    ],
+    "descaffold_removes_all_topic_overlap": true
+  },
+  "mixed": {
+    "regime": "mixed",
+    "metric": "causal@5",
+    "n": 900,
+    "bm25_scaffolded": [
+      0.04629629629629629,
+      0.03888888888888888,
+      0.05444444444444444
+    ],
+    "bm25_descaffolded": [
+      0.04629629629629629,
+      0.03888888888888888,
+      0.05444444444444444
+    ],
+    "descaffold_removes_all_topic_overlap": false
+  }
+}
