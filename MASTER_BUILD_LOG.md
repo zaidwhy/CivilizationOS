@@ -1316,3 +1316,53 @@ checked out at `research/tcmf_paper/paper/`.
   suite (green, no regressions).
 - `ARCHITECTURE.md`'s Observability section rewritten to describe what's actually
   shipped now, not "the next step."
+
+## 2026-09-18 - TCMF paper: faculty-review finalization audit, then N19 closes a real gap found by triaging a relayed external audit
+
+- **Faculty-review finalization pass.** Zaid asked to finalize/review/audit/polish the TCMF
+  paper into a PDF for his department faculty. Did a fresh full read of `main.tex` and
+  `references.bib` (not from memory of the prior session), rebuilt from scratch, and checked
+  specifically for what a departmental committee would flag: stray TODO/VERIFY markers (none),
+  hardcoded section/table/figure numbers that could drift (zero - every cross-reference uses
+  `\ref`), citation completeness (every entry in `references.bib` carries a verification note).
+  Rasterized and visually inspected the title page and two dense table pages - no layout
+  defects. Result: no new defects found, since the prior session's N08-N17 work had already
+  addressed nearly everything. Copied the clean build to `Downloads/TCMF-Paper-Faculty-Review.pdf`.
+- **Asked directly whether the paper is "ready for publication"** (not asked to reassure) -
+  answered honestly: ready to hand to faculty, not fully ready for a research venue, since no
+  qualified human has ever read it end to end hunting for reasons to reject it - the paid
+  external reviewer pass REVIEW.md has flagged as open since section 5 is still open. Zaid
+  chose to send the as-is PDF to 3-4 faculty and decide next steps from their reviews.
+- **Zaid relayed a full AI-generated external audit plus his own independent critique of it**,
+  asking to refine the paper using both as reference without following either blindly. Read
+  the audit's docx directly (not just Zaid's summary), then checked every specific claim in
+  both documents against the live manuscript. Finding: nearly everything flagged as "must fix"
+  by both was already fixed in the prior session's N08-N17 work - the "oracle ceiling" wording,
+  pool-size overclaims, the causal-graph-assumption limitation, the decision-task caveats, the
+  CombSUM/IR framing. Also caught the audit contradicting itself (its own table says "Oracle
+  (Ceiling)" while its own prose two paragraphs later says "oracle control"), and caught its
+  9.3 claim that F9b's below-floor result is "unaddressed" as simply false against the current
+  text - the paper already gives the exact mechanism.
+- **One real, previously-undone gap survived triage - N19: the BM25 scaffolding-artifact claim
+  was argued in prose but never actually verified by rerunning it.** Checked the generator code
+  first (memory text embeds a literal `(topic N)` suffix a distractor always shares with the
+  crisis query; embeddings are synthesized independently of text) to confirm the rerun was
+  genuinely cheap and isolated to BM25 alone, then built `run_bm25_descaffold_n19.py`. Pure
+  regime: recall@5 rises 0.00 -> 0.06 once the scaffolding is stripped - confirms it really was
+  an artifact, though BM25 stays far below TCMF's 1.00 either way. Mixed regime: causal@5 is
+  bit-for-bit unchanged, since that regime's memory-text templates never carried the
+  scaffolding to begin with - not an artifact, confirmed by reading the actual generator code
+  rather than inferring it from the unchanged number. A built-in runtime sanity check in the
+  script itself caught a second, unrelated, out-of-scope text-overlap property of the mixed
+  regime (semantic-gold memories literally share the word "surface" with the query) and
+  recorded it rather than silently passing over it.
+- **Deliberately not chased, matching Zaid's own judgment against the audit's "mandatory"
+  list:** LLM-induced causal graphs, a full HippoRAG 2 reimplementation, open-ended
+  LLM-as-judge decision scoring. Real future-paper directions, not confirmed gaps in this one.
+- 4 new regression tests (`test_n19_bm25_descaffold.py`), full `tcmfbench` suite green
+  throughout. Paper rebuilt clean after the edit: 29 pages, 0 undefined refs/citations, same 4
+  pre-existing overfull hboxes (none newly introduced), verified by rasterizing and reading
+  both changed pages directly, not just trusting the page-count delta.
+- Files: `research/tcmf_paper/{NIGHT_QUEUE.md, results_bm25_descaffold/,
+  tcmfbench/run_bm25_descaffold_n19.py, tcmfbench/test_n19_bm25_descaffold.py}`; private
+  `zaidwhy/tcmf-paper/{main.tex, REVIEW.md}`. Both repos pushed and verified in sync throughout.
