@@ -24,16 +24,21 @@ services:
         sync: false
       - key: OPENROUTER_PREMIUM_MODEL
         sync: false
-      # Not secrets, just numbers - given real defaults (rather than sync:false)
-      # so an unfilled field can't reach Settings as an empty string and crash
-      # float parsing on startup. Update after picking real model slugs.
+      # Not secrets, just numbers - given real values (rather than sync:false) so an
+      # unfilled field can't reach Settings as an empty string and crash float parsing
+      # on startup. USD per 1M tokens, from openrouter.ai/api/v1/models on 2026-09-21.
+      # These MUST match the two slugs set in the Render dashboard:
+      #   OPENROUTER_FREE_MODEL    = google/gemini-2.5-flash-lite   (debate roles)
+      #   OPENROUTER_PREMIUM_MODEL = anthropic/claude-haiku-4.5     (Synthesizer verdict)
+      # The "free" slot is a cheap paid model on purpose: OpenRouter's :free models cap
+      # at 50 requests/day until $10 of credit is bought, which one busy demo day exceeds.
       - key: OPENROUTER_FREE_PRICE_IN
-        value: "0.0"
+        value: "0.10"
       - key: OPENROUTER_FREE_PRICE_OUT
-        value: "0.0"
+        value: "0.40"
       - key: OPENROUTER_PREMIUM_PRICE_IN
-        value: "0.0"
+        value: "1.00"
       - key: OPENROUTER_PREMIUM_PRICE_OUT
-        value: "0.0"
+        value: "5.00"
       - key: PYTHONIOENCODING
         value: utf-8
