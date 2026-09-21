@@ -16,5 +16,5 @@ anthropic==0.42.0
 # so it carries a compatible range rather than an unverified exact pin.
 openai>=1.50.0,<3
 httpx==0.28.1
-pytest==8.3.4
-pytest-asyncio==0.25.0
+pytest==9.0.3
+pytest-asyncio==1.4.0
