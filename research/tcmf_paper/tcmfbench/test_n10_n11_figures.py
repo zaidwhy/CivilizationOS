@@ -54,13 +54,39 @@ def test_fig3_pairs_generation_is_deterministic():
     assert json.dumps(a, sort_keys=True) == json.dumps(b, sort_keys=True)
 
 
+def _same(a, b, rel_tol=1e-6):
+    """Structural equality where floats match to ``rel_tol`` and everything else (seeds, flags,
+    labels, keys, list lengths) must match exactly. The pair values come from float32 embedding
+    math, whose last digits differ by CPU (FMA/AVX width) - a Linux CI runner and the Windows
+    machine that generated the committed file disagree around the 8th significant digit, which
+    is far below anything a figure or the paper can show."""
+    if isinstance(a, float) or isinstance(b, float):
+        return isinstance(a, (int, float)) and isinstance(b, (int, float)) and math.isclose(
+            a, b, rel_tol=rel_tol, abs_tol=1e-9)
+    if isinstance(a, dict) and isinstance(b, dict):
+        return a.keys() == b.keys() and all(_same(a[k], b[k], rel_tol) for k in a)
+    if isinstance(a, list) and isinstance(b, list):
+        return len(a) == len(b) and all(_same(x, y, rel_tol) for x, y in zip(a, b))
+    return a == b
+
+
 def test_fig3_committed_json_matches_the_generator_exactly():
     committed_path = MF._FIGURES_DIR / "fig3_pairs.json"
     assert committed_path.exists(), "run make_figures.py to generate fig3_pairs.json"
     committed = json.loads(committed_path.read_text())
     fresh = json.loads(json.dumps(_strip_volatile_ids(MF.build_fig3_pairs_json()), sort_keys=True))
     committed_sorted = json.loads(json.dumps(_strip_volatile_ids(committed), sort_keys=True))
-    assert fresh == committed_sorted
+    assert _same(fresh, committed_sorted), "fig3_pairs.json no longer matches what the generator produces"
+
+
+def test_fig3_comparison_tolerates_float_noise_but_not_real_differences():
+    """Guards the helper above: last-digit noise passes, a real change or a non-float mismatch fails."""
+    base = {"seed": 1, "ok": True, "x": 0.10346886789666702, "xs": [1.0, 2.5]}
+    assert _same(base, {**base, "x": 0.10346887003571817})
+    assert not _same(base, {**base, "x": 0.1035})
+    assert not _same(base, {**base, "seed": 2})
+    assert not _same(base, {**base, "ok": False})
+    assert not _same(base, {**base, "xs": [1.0]})
 
 
 def test_fig3_crossovers_are_recomputable_from_theory_py():
