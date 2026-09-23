@@ -635,12 +635,12 @@ survived the fact-check.
   every single \lam\ tested, not better.** At $\lam=8$: $0.66$ normalized vs.\ $0.96$ raw. At
   $\lam=20$ (the top of the grid): still only $0.92$, never reaching the ceiling raw
   multiplicative fusion reaches by $\lam=15$. This is the opposite of what the council's
-  objection worried about - it strengthens the paper's claim rather than threatening it. The
-  mechanism follows directly from the paper's own Proposition 1(c): the multiplicative
-  crossing point depends on the ratio between two memories' episodic scores, and min-max
-  normalization compresses low-lying scores toward $0$ relative to the pool's minimum, driving
-  that ratio further toward the regime where the required $\lam$ diverges - normalization
-  sharpens the operator's actual flaw rather than curing it.
+  objection worried about - it strengthens the paper's claim rather than threatening it. A
+  plausible reading, consistent with the paper's own Proposition 1(c) but NOT separately measured: the
+  multiplicative crossing point depends on the ratio between two memories' episodic scores, and min-max
+  normalization compresses low-lying scores toward $0$ relative to the pool's minimum, which would push that
+  ratio toward the regime where the required $\lam$ diverges. The ratio was not measured directly, so this is
+  an interpretation, not a tested mechanism (softened from an earlier "follows directly" wording, 2026-09-24).
 - `tcmfbench/test_n20_normalized_mult.py` (new, 3 tests): confirms the new function ranks
   identically to a hand-built score using the exact same normalized episodic score additive
   fusion uses; confirms normalized-multiplicative never beats raw-multiplicative on a held-out
