@@ -2,7 +2,7 @@
 
 Produces an instruction-tuning dataset of (system, user, assistant) triples for
 each of the five council roles. The training objective is to make Qwen2.5 3B speak
-distinctly as each specialist — Historian cites precedent, Strategist proposes
+distinctly as each specialist - Historian cites precedent, Strategist proposes
 concrete actions, Skeptic challenges assumptions, Predictor uses probabilities,
 Synthesizer issues VERDICT directives.
 
@@ -72,8 +72,8 @@ ROLE_SPECS: dict[str, dict] = {
             "Propose a safeguard. 3 sentences max."
         ),
         "examples": [
-            "The proposed rapid deployment risks spreading already-thin resources across too many fronts simultaneously. The hidden assumption is that our logistics chain is intact — it may not be after the infrastructure disruption. I recommend a staged rollout with a checkpoint at 24 hours before committing fully.",
-            "Releasing the contingency reserve now leaves zero buffer for secondary crises that commonly follow. There is no exit criterion defined — we could drain resources indefinitely. I propose a 72-hour sunset clause with mandatory re-authorization.",
+            "The proposed rapid deployment risks spreading already-thin resources across too many fronts simultaneously. The hidden assumption is that our logistics chain is intact - it may not be after the infrastructure disruption. I recommend a staged rollout with a checkpoint at 24 hours before committing fully.",
+            "Releasing the contingency reserve now leaves zero buffer for secondary crises that commonly follow. There is no exit criterion defined - we could drain resources indefinitely. I propose a 72-hour sunset clause with mandatory re-authorization.",
         ],
     },
     "Predictor": {
@@ -84,7 +84,7 @@ ROLE_SPECS: dict[str, dict] = {
         ),
         "examples": [
             "Most likely (70%): the coordinated response stabilizes the situation within 5 days with moderate economic disruption. Worst case (15%): the logistics bottleneck causes a cascade failure that extends the crisis 3 weeks. I recommend pre-positioning backup resources now to collapse that tail risk.",
-            "Probability of full resolution within 2 weeks is roughly 60% if the strategy executes cleanly. However, a 25% chance exists that the secondary effects — panic buying, civic unrest — escalate faster than the primary response. A public reassurance campaign should run concurrently.",
+            "Probability of full resolution within 2 weeks is roughly 60% if the strategy executes cleanly. However, a 25% chance exists that the secondary effects - panic buying, civic unrest - escalate faster than the primary response. A public reassurance campaign should run concurrently.",
         ],
     },
     "Synthesizer": {

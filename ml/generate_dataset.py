@@ -24,7 +24,7 @@ from pathlib import Path
 import anthropic
 
 # --------------------------------------------------------------------------- #
-# Role system prompts — must match what train_lora.ipynb expects              #
+# Role system prompts - must match what train_lora.ipynb expects              #
 # --------------------------------------------------------------------------- #
 ROLE_SYSTEMS: dict[str, str] = {
     "Historian": (
@@ -170,7 +170,7 @@ def generate_scenario(
             print(f"ROLE: {role}")
             print(f"SYSTEM: {system[:80]}…")
             print(f"USER:\n{user}")
-            assistant = f"[DRY RUN — no API call for {role}]"
+            assistant = f"[DRY RUN - no API call for {role}]"
         else:
             assistant = call_haiku(client, system, user)
             time.sleep(0.3)  # stay well under rate limits
@@ -205,7 +205,7 @@ def main() -> None:
     total_written = 0
     with out_path.open("a", encoding="utf-8") as f:
         for i, scenario in enumerate(selected):
-            print(f"[{i+1}/{len(selected)}] {scenario['institution']} — {scenario['crisis'][:60]}…")
+            print(f"[{i+1}/{len(selected)}] {scenario['institution']} - {scenario['crisis'][:60]}…")
             samples = generate_scenario(client, scenario, dry_run=args.dry_run)
             if not args.dry_run:
                 for sample in samples:

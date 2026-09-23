@@ -6,9 +6,9 @@ all viewers watch the same city. REST endpoints expose health, an LLM smoke test
 per-agent detail, and PANTHEON council controls.
 
 Phase 5 additions:
-  POST /speed           — change tick interval (0.1–5.0 seconds)
-  POST /crisis/{key}/resolve — manually end an active crisis
-  GET  /timeline        — causal event history for the Timeline panel
+  POST /speed - change tick interval (0.1–5.0 seconds)
+  POST /crisis/{key}/resolve - manually end an active crisis
+  GET  /timeline - causal event history for the Timeline panel
 
 Run:  uvicorn api.main:app --reload --port 8000
 """
@@ -214,7 +214,7 @@ async def resolve_crisis(template_key: str) -> dict:
 
 @app.post("/crisis/id/{crisis_id}/resolve", dependencies=[Depends(require_admin)])
 async def resolve_crisis_by_id(crisis_id: str) -> dict:
-    """Resolve any crisis by its registry ID — works for custom and template crises."""
+    """Resolve any crisis by its registry ID - works for custom and template crises."""
     result = engine.resolve_crisis_by_id(crisis_id)
     if result is None:
         raise HTTPException(
@@ -404,7 +404,7 @@ async def get_chronicle() -> dict:
 
     prompt = (
         "You are the narrator of a city simulation called CivilizationOS. "
-        "Write exactly 2-3 sentences of atmospheric, vivid prose about the city's current state — "
+        "Write exactly 2-3 sentences of atmospheric, vivid prose about the city's current state - "
         "like a field dispatch from inside the city. Vary your opening (do not start with 'The city').\n\n"
         f"CITY STATE:\n"
         f"  Tick: {engine.tick_count}\n"
@@ -428,7 +428,7 @@ async def get_chronicle() -> dict:
         if active_crises:
             text = f"The city braces under the weight of {active_crises[0]}, its citizens navigating each day with quiet dread."
         else:
-            text = "Quiet reigns across the city for now — but beneath the surface, its citizens carry the memory of harder days."
+            text = "Quiet reigns across the city for now - but beneath the surface, its citizens carry the memory of harder days."
 
     _chronicle_cache.update({
         "text": text, "tick_bucket": tick_bucket, "ts": now,
@@ -446,7 +446,7 @@ async def get_track_record() -> dict:
 
 @app.get("/export")
 async def export_session() -> dict:
-    """Full session snapshot for portfolio/sharing — triggers JSON download."""
+    """Full session snapshot for portfolio/sharing - triggers JSON download."""
     from fastapi.responses import JSONResponse
     fears = [c.fear for c in engine.citizens.values()]
     data = {

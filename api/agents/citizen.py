@@ -10,15 +10,15 @@ from ..memory.stream import MemoryStream
 from ..sim.world import DayPhase, World, phase_for_tick
 from .personas import Persona
 
-# Per-occupation crisis memory hooks — injected into citizen memory when a matching
+# Per-occupation crisis memory hooks - injected into citizen memory when a matching
 # crisis template activates, giving each profession a distinct reaction to events.
 OCCUPATION_CRISIS_OBSERVATIONS: dict[str, dict[str, str]] = {
     "doctor": {
-        "pandemic":       "As a doctor I need to prepare triage protocols immediately — we'll be overwhelmed.",
+        "pandemic":       "As a doctor I need to prepare triage protocols immediately - we'll be overwhelmed.",
         "drought":        "Dehydration cases are going to spike. I'm ordering IV fluids now.",
         "cyberattack":    "Our electronic patient records are down. Switching to paper charts.",
         "crime_wave":     "We're treating more assault victims at the clinic. The streets aren't safe.",
-        "housing_crisis": "Patients are missing follow-up appointments — they say they can't afford the bus fare after rent.",
+        "housing_crisis": "Patients are missing follow-up appointments - they say they can't afford the bus fare after rent.",
     },
     "nurse": {
         "pandemic":       "We don't have enough PPE for the whole ward. Someone has to go without.",
@@ -82,7 +82,7 @@ OCCUPATION_CRISIS_OBSERVATIONS: dict[str, dict[str, str]] = {
     },
     "shopkeeper": {
         "pandemic":       "I'm limiting customers to five at a time. Some argue, but I hold the line.",
-        "drought":        "Rationing supplies across the whole neighbourhood — family accounts first.",
+        "drought":        "Rationing supplies across the whole neighbourhood - family accounts first.",
         "cyberattack":    "My inventory system is down. Running on a paper ledger like my grandmother did.",
         "election":       "Half my customers are furious at the other half. I've banned politics at the counter.",
         "crime_wave":     "Two break-ins this week. I've started sleeping in the back with the door bolted.",
@@ -112,7 +112,7 @@ class Citizen:
         self.talk_cooldown = 0
         self.memory = MemoryStream(persona.id)
         self.relationships: dict[str, float] = {}
-        # Phase 3 — crisis reaction state
+        # Phase 3 - crisis reaction state
         self.fear: float = 0.0
         self.active_crisis: str | None = None
 

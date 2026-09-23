@@ -1,4 +1,4 @@
-"""PANTHEON council — five specialists debate a crisis using TCMF context.
+"""PANTHEON council - five specialists debate a crisis using TCMF context.
 
 Each council is tied to an institution (Government, Economy, etc.). When a
 crisis is injected, the council's five roles speak in turn:
@@ -75,7 +75,7 @@ INSTITUTION_LENSES: dict[str, str] = {
     ),
 }
 
-# Role specs — each role has a distinct analytical persona.
+# Role specs - each role has a distinct analytical persona.
 ROLE_SPECS: list[dict] = [
     {
         "role": "Historian",
@@ -86,7 +86,7 @@ ROLE_SPECS: list[dict] = [
             "Surface 1-2 specific historical precedents or past council decisions "
             "that are directly relevant to this crisis. Cite evidence from the "
             "provided memory and causal chain. Be concrete and analytical. "
-            "3 sentences max. Do NOT propose solutions — that's the Strategist's job."
+            "3 sentences max. Do NOT propose solutions - that's the Strategist's job."
         ),
     },
     {
@@ -128,7 +128,7 @@ ROLE_SPECS: list[dict] = [
         "emoji": "⚖️",
         "tier": Tier.PREMIUM,
         "system": (
-            "You are the council Synthesizer — the final decision-maker. "
+            "You are the council Synthesizer - the final decision-maker. "
             "After hearing all four specialists, issue ONE decisive policy directive. "
             "Begin with 'VERDICT:' then state: (1) the specific action, "
             "(2) who executes it, (3) the success metric by which we will know it worked. "

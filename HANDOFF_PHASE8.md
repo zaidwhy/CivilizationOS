@@ -1,4 +1,4 @@
-# CivilizationOS — Phase 8 Handoff
+# CivilizationOS - Phase 8 Handoff
 
 **Date:** 2026-06-21 | **Version:** 0.8.0 | **Tests:** 54 passing | **TS errors:** 0
 
@@ -16,19 +16,19 @@ Three items from the original project plan that were still open entering this se
 
 ---
 
-## A — Speech Bubbles
+## A - Speech Bubbles
 
 ### Problem
 
 The bubble rendering in `CityStage.tsx` had four visual issues:
-1. Raw speech included the speaker name prefix (`"Ava Chen: Hello"`) — the citizen label below already shows the name, so this was redundant text inside the bubble.
+1. Raw speech included the speaker name prefix (`"Ava Chen: Hello"`) - the citizen label below already shows the name, so this was redundant text inside the bubble.
 2. 80-char cap meant bubbles could be too wide.
-3. No downward pointer triangle — nothing visually connected the bubble to the speaker.
-4. TTL was 4 ticks (~4 seconds) — too short to read anything meaningful.
+3. No downward pointer triangle - nothing visually connected the bubble to the speaker.
+4. TTL was 4 ticks (~4 seconds) - too short to read anything meaningful.
 
 ### What changed
 
-**`api/agents/citizen.py`** — `say()` TTL default: `4 → 10`
+**`api/agents/citizen.py`** - `say()` TTL default: `4 → 10`
 
 ```python
 def say(self, text: str, ttl: int = 10) -> None:
@@ -36,17 +36,17 @@ def say(self, text: str, ttl: int = 10) -> None:
     self.speech_ttl = ttl
 ```
 
-**`web/src/city/CityStage.tsx`** — `speechStyle` wordWrapWidth: `150 → 120`
+**`web/src/city/CityStage.tsx`** - `speechStyle` wordWrapWidth: `150 → 120`
 
 ```ts
 const speechStyle = new TextStyle({ fill: 0x0b0e14, fontSize: 11, wordWrap: true, wordWrapWidth: 120 });
 ```
 
-**`web/src/city/CityStage.tsx`** — `sync()` speech block rewritten:
+**`web/src/city/CityStage.tsx`** - `sync()` speech block rewritten:
 
 ```tsx
 if (c.speech) {
-  // Strip "Name: " prefix — name is already shown in the label below
+  // Strip "Name: " prefix - name is already shown in the label below
   const raw = c.speech;
   const colonIdx = raw.indexOf(": ");
   const dialogue = colonIdx !== -1 ? raw.slice(colonIdx + 2) : raw;
@@ -81,7 +81,7 @@ if (c.speech) {
 
 ---
 
-## B — Graph Hover Tooltip
+## B - Graph Hover Tooltip
 
 ### Problem
 
@@ -89,7 +89,7 @@ The force-directed graph only supported click (select citizen). Hovering over a 
 
 ### What changed
 
-**`web/src/panels/RelationshipGraph.tsx`** — full rewrite adding tooltip state and event handlers.
+**`web/src/panels/RelationshipGraph.tsx`** - full rewrite adding tooltip state and event handlers.
 
 #### New types
 
@@ -163,11 +163,11 @@ Tooltip shows: full name (bold), occupation (muted), fear % (coloured by fearCol
 
 ---
 
-## C — Fine-Tuned Council Model Wired
+## C - Fine-Tuned Council Model Wired
 
 ### The Bug
 
-`council.py` was passing `local_model` to `router.complete()` but only when `spec["tier"] == Tier.LOCAL`. All 5 ROLE_SPECS are defined with `Tier.FREE` or `Tier.PREMIUM` — never `Tier.LOCAL`. So `local_model` was always `None` regardless of env var.
+`council.py` was passing `local_model` to `router.complete()` but only when `spec["tier"] == Tier.LOCAL`. All 5 ROLE_SPECS are defined with `Tier.FREE` or `Tier.PREMIUM` - never `Tier.LOCAL`. So `local_model` was always `None` regardless of env var.
 
 ```python
 # BROKEN (before Phase 8):
@@ -181,7 +181,7 @@ result = await router.complete(
 
 ### The Fix
 
-**`api/agents/council.py`** — `Council.deliberate()`:
+**`api/agents/council.py`** - `Council.deliberate()`:
 
 ```python
 is_synth = spec["role"] == "Synthesizer"
@@ -203,11 +203,11 @@ result = await router.complete(
 )
 ```
 
-**Design decision:** Synthesizer is deliberately excluded from the fine-tuned path. The Synthesizer issues the binding VERDICT and benefits most from Claude's reasoning. The four debate roles (Historian, Strategist, Skeptic, Predictor) are where the custom persona voice matters — these use the fine-tuned model when available.
+**Design decision:** Synthesizer is deliberately excluded from the fine-tuned path. The Synthesizer issues the binding VERDICT and benefits most from Claude's reasoning. The four debate roles (Historian, Strategist, Skeptic, Predictor) are where the custom persona voice matters - these use the fine-tuned model when available.
 
 ### /health exposure
 
-**`api/main.py`** — `/health` response now includes:
+**`api/main.py`** - `/health` response now includes:
 ```json
 "brains": {
   "local": "qwen2.5:3b",
@@ -219,14 +219,14 @@ result = await router.complete(
 
 ### Frontend indicator
 
-**`web/src/ws/store.ts`** — `HealthData` type:
+**`web/src/ws/store.ts`** - `HealthData` type:
 ```ts
 council_model: string | null;
 ```
 
 Poll extracts it as: `council_model: d.brains?.council ?? null`
 
-**`web/src/App.tsx`** — `SpendCounter` now renders a purple pill when active:
+**`web/src/App.tsx`** - `SpendCounter` now renders a purple pill when active:
 ```tsx
 {health.council_model && (
   <span className="pill" title={`Fine-tuned council model active: ${health.council_model}`}
@@ -256,7 +256,7 @@ Once set, `has_finetuned_council` returns `True` and all 4 debate roles route to
 | File | Change |
 |---|---|
 | `api/agents/citizen.py` | `say()` TTL default `4 → 10` |
-| `api/agents/council.py` | Fixed fine-tuned model routing logic — `effective_tier` + `local_model` |
+| `api/agents/council.py` | Fixed fine-tuned model routing logic - `effective_tier` + `local_model` |
 | `api/main.py` | `/health` now exposes `brains.council` |
 | `web/src/city/CityStage.tsx` | Bubble: name strip, 50-char cap, pointer tail, dynamic repositioning, narrower wordWrap |
 | `web/src/panels/RelationshipGraph.tsx` | Hover tooltip: `TooltipData` type, `handleMouseMove`, HTML overlay render, left-flip logic |
@@ -278,6 +278,6 @@ Once set, `has_finetuned_council` returns `True` and all 4 debate roles route to
 | Vercel deploy | Frontend ready; backend has Ollama dependency (needs ngrok or self-host for public URL) |
 | "Rewind story" scrubber | Not in any handoff; causal graph exists but no timeline scrubbing UI |
 | Demo video | No recording tooling in repo |
-| Sixth crisis template | Easy win — Housing Crisis (inst_economy) is a good candidate |
+| Sixth crisis template | Easy win - Housing Crisis (inst_economy) is a good candidate |
 | Fine-tuned GGUF export | Notebook exists (`ml/train_lora.ipynb`); run on Colab T4, export, then `ollama create` |
-| CouncilChamber: collapse old debates | UX debt — many debates pile up with no archiving/collapse |
+| CouncilChamber: collapse old debates | UX debt - many debates pile up with no archiving/collapse |

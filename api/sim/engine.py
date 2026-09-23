@@ -1,4 +1,4 @@
-"""The simulation engine — advances the world one tick at a time.
+"""The simulation engine - advances the world one tick at a time.
 
 Each tick is cheap and deterministic: citizens choose a destination by time-of-day,
 step one cell, and record observations when they arrive somewhere new. When two
@@ -6,7 +6,7 @@ compatible citizens share a public location the engine may spark a conversation;
 the *text* of that conversation (and end-of-day reflections) is produced by the
 Tier-0 local model in a background task, so the tick loop never blocks on the LLM
 and the city keeps moving smoothly. With use_llm=False everything is rule-based and
-fully reproducible from the seed — that's the mode the tests run in.
+fully reproducible from the seed - that's the mode the tests run in.
 
 Phase 2: inject_crisis() adds a crisis node to the CausalGraph, activates the
 relevant PANTHEON council, and streams DebateTurns into the CrisisRegistry.
@@ -85,7 +85,7 @@ class Engine:
         self.tcmf = TCMFRetriever(self.causal_graph)
         self.crises = CrisisRegistry()
         self._on_debate_turn: Callable[[DebateTurn], Awaitable[None]] | None = None
-        # Phase 3 — active crisis state
+        # Phase 3 - active crisis state
         self._active_templates: list[tuple[CrisisTemplate, int]] = []  # (template, expiry_tick)
         self._closed_locations: set[str] = set()
         self._verdict_reopened: set[str] = set()  # locations partially reopened by council verdict
@@ -187,7 +187,7 @@ class Engine:
             crisis_text = tmpl.description
 
         logger.info("Emergent crisis: %s at avg_fear=%.2f tick=%d", key, avg_fear, tick)
-        self._log_event(tick, "emergent", f"⚡ {tmpl.name} erupts — {crisis_text[:70]}…")
+        self._log_event(tick, "emergent", f"⚡ {tmpl.name} erupts - {crisis_text[:70]}…")
         await self.inject_crisis(
             text=crisis_text,
             institution_id=tmpl.primary_institution,
@@ -280,7 +280,7 @@ class Engine:
                     break
         if self._prev_faction_member_sets - new_sets:
             self._log_event(tick, "event", "A citizen alliance has dissolved")
-        # Rivalry detection — runs each recompute cycle
+        # Rivalry detection - runs each recompute cycle
         for a in self.citizens.values():
             for bid, aff in a.relationships.items():
                 if bid not in self.citizens or aff >= -0.40:
@@ -662,7 +662,7 @@ class Engine:
         return res_text
 
     def resolve_crisis_by_id(self, crisis_id: str) -> str | None:
-        """Resolve any crisis by its registry ID — works for both template and custom crises."""
+        """Resolve any crisis by its registry ID - works for both template and custom crises."""
         crisis = self.crises.get_crisis(crisis_id)
         if crisis is None or crisis.resolved:
             return None
@@ -674,11 +674,11 @@ class Engine:
             result = self.resolve_crisis(crisis.template_key)
             if result:
                 return result
-            # Template already expired naturally — return resolution text anyway
+            # Template already expired naturally - return resolution text anyway
             tmpl = CRISIS_TEMPLATES.get(crisis.template_key)
             return tmpl.resolution_text if tmpl else "The crisis has concluded."
 
-        # Custom (free-text) crisis — generic resolution
+        # Custom (free-text) crisis - generic resolution
         for c in self.citizens.values():
             c.fear = max(0.0, c.fear - 0.15)
         res_text = "The crisis has been brought under control through institutional action."
@@ -712,8 +712,8 @@ class Engine:
             self._verdict_reopened.add(loc)
             self._closed_locations.discard(loc)
 
-        reopened_note = f" — {', '.join(tmpl.verdict_reopens)} partially reopened" if tmpl.verdict_reopens else ""
-        self._log_event(tick, "decision", f"Council verdict applied — {tmpl.name} fear reduced{reopened_note}")
+        reopened_note = f" - {', '.join(tmpl.verdict_reopens)} partially reopened" if tmpl.verdict_reopens else ""
+        self._log_event(tick, "decision", f"Council verdict applied - {tmpl.name} fear reduced{reopened_note}")
 
     # ---- events / snapshot ----
     def _log_event(self, tick: int, kind: str, text: str) -> None:

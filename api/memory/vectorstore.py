@@ -2,7 +2,7 @@
 
 At CivilizationOS's scale (~10 agents, a few hundred memories each) brute-force
 cosine similarity over an in-memory matrix is fast and exact, with zero native
-build dependencies. It also gives the TCMF retriever full control over scoring —
+build dependencies. It also gives the TCMF retriever full control over scoring -
 we expose raw similarity rather than hiding it behind a black-box index.
 
 Vectors are L2-normalized on insert so similarity is a single matrix-vector dot.

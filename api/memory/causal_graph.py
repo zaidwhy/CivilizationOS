@@ -1,4 +1,4 @@
-"""Society-wide temporal causal graph — one half of the TCMF retriever.
+"""Society-wide temporal causal graph - one half of the TCMF retriever.
 
 The causal graph tracks *what led to what* at the civilizational scale:
     crisis → council decision → policy outcome → downstream crisis
