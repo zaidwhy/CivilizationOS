@@ -1,6 +1,6 @@
 """Crisis injection and debate transcript registry.
 
-A Crisis is an event the user injects into the simulation — it disrupts
+A Crisis is an event the user injects into the simulation - it disrupts
 citizen life and activates the relevant institutional council to deliberate.
 The CrisisRegistry is the single source of truth for active crises and their
 in-progress / completed debate transcripts.

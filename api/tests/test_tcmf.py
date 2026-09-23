@@ -92,7 +92,7 @@ class TestTCMFRetriever:
 
     def _seed_memories(self, citizens: dict[str, Citizen], tick: int = 50) -> None:
         texts = [
-            ("ava", "Plague spreading through the clinic — many patients"),
+            ("ava", "Plague spreading through the clinic - many patients"),
             ("ben", "Mayor dismisses disease warnings at press conference"),
             ("cleo", "Trade routes blocked due to quarantine fears"),
         ]
@@ -135,7 +135,7 @@ class TestTCMFRetriever:
 
         # ava's memory has emb_crisis embedding (near the ancestor)
         citizens["ava"].memory.add(
-            "Clinic flooded — we struggled", 50,
+            "Clinic flooded - we struggled", 50,
             kind="observation", importance=5.0, embedding=emb_crisis
         )
         # ben's memory is unrelated

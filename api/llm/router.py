@@ -1,4 +1,4 @@
-"""The 3-tier cost-aware LLM router — the heart of CivilizationOS's budget strategy.
+"""The 3-tier cost-aware LLM router - the heart of CivilizationOS's budget strategy.
 
 Every LLM call names the *highest* tier it would like. The router then serves it
 with the cheapest brain that is actually available, so the whole simulation can run
@@ -49,7 +49,7 @@ class Tier(IntEnum):
 
 
 # Approximate Claude pricing (USD per 1M tokens) for the budget guardrail ONLY.
-# Update these from https://www.anthropic.com/pricing if rates change — the router's
+# Update these from https://www.anthropic.com/pricing if rates change - the router's
 # spend tracking is an estimate to protect the budget, not an invoice.
 CLAUDE_PRICING: dict[str, tuple[float, float]] = {
     # model: (input_per_1m, output_per_1m)

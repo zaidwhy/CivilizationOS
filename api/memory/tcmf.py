@@ -1,11 +1,11 @@
-"""Temporal-Causal Memory Fusion (TCMF) — the novel RAG at the core of Phase 2.
+"""Temporal-Causal Memory Fusion (TCMF) - the novel RAG at the core of Phase 2.
 
 Standard RAG retrieves documents by semantic similarity. TCMF fuses two
 information streams:
 
-    1. AGORA stream  — per-citizen episodic memories scored by the generative-
+    1. AGORA stream - per-citizen episodic memories scored by the generative-
                        agents formula (relevance × recency × importance).
-    2. PANTHEON stream — society-wide causal graph: which past events causally
+    2. PANTHEON stream - society-wide causal graph: which past events causally
                         preceded the current crisis, and how deep in that chain?
 
 The fused score for a citizen memory m given crisis q is the normalized-additive

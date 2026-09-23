@@ -1,6 +1,6 @@
-# CivilizationOS — 3D Playground Transformation Plan
+# CivilizationOS - 3D Playground Transformation Plan
 
-**Goal:** Replace the PixiJS 2D isometric city canvas with a full Three.js 3D scene —
+**Goal:** Replace the PixiJS 2D isometric city canvas with a full Three.js 3D scene -
 free orbit camera, neon-cyberpunk aesthetic, emissive/bloom materials, animated citizens.
 Inspired by arturitu.github.io/the-delegation.
 
@@ -19,7 +19,7 @@ npm install -D @types/three
 ```
 
 Three.js includes everything needed (OrbitControls, EffectComposer, CSS2DRenderer)
-under `three/examples/jsm/` — no extra packages required.
+under `three/examples/jsm/` - no extra packages required.
 
 ---
 
@@ -29,7 +29,7 @@ under `three/examples/jsm/` — no extra packages required.
 
 This is the ONLY new file. ~420 lines. Full spec below.
 
-### `web/src/App.tsx` — one-line change
+### `web/src/App.tsx` - one-line change
 
 ```tsx
 // Replace:
@@ -233,17 +233,17 @@ return () => {
 
 - `@types/three` is included in `three` package v0.170+
 - Import path for addons: `three/examples/jsm/controls/OrbitControls.js`
-- All geometry/material types are explicit — no `any` except for the world snapshot fields
+- All geometry/material types are explicit - no `any` except for the world snapshot fields
   (which are already typed via the store)
 
 ---
 
 ## 12. Implementation Order (for a clean session)
 
-1. `cd web && npm install three` — confirm output has no errors
-2. Create `web/src/city/CityStage3D.tsx` — full file, ~420 lines
-3. Update `App.tsx` — swap import (1 line change)
-4. `npx tsc --noEmit` — fix any type errors
+1. `cd web && npm install three` - confirm output has no errors
+2. Create `web/src/city/CityStage3D.tsx` - full file, ~420 lines
+3. Update `App.tsx` - swap import (1 line change)
+4. `npx tsc --noEmit` - fix any type errors
 5. Start dev server and verify:
    - City renders in 3D
    - Citizens move and glow

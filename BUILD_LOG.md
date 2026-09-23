@@ -1,10 +1,10 @@
-# CivilizationOS — Master Build Log
+# CivilizationOS - Master Build Log
 
 Cumulative record of every phase, what shipped, and current status.
 
 ---
 
-## Phase 9 — LoRA Fine-Tune + civos-council Model
+## Phase 9 - LoRA Fine-Tune + civos-council Model
 **Date:** 2026-06-22 | **Handoff:** `HANDOFF_PHASE9.md`
 
 ### Shipped
@@ -22,7 +22,7 @@ Cumulative record of every phase, what shipped, and current status.
 
 ---
 
-## Phase 8 — Speech Bubbles, Graph Tooltip, Council Wiring
+## Phase 8 - Speech Bubbles, Graph Tooltip, Council Wiring
 **Date:** 2026-06-21 | **Handoff:** `HANDOFF_PHASE8.md`
 
 ### Shipped
@@ -35,7 +35,7 @@ Cumulative record of every phase, what shipped, and current status.
 
 ---
 
-## Phase 7 — Housing Crisis + Relationship Graph
+## Phase 7 - Housing Crisis + Relationship Graph
 **Date:** ~2026-06-20 | **Handoff:** `HANDOFF_PHASE7.md`
 
 ### Shipped
@@ -46,7 +46,7 @@ Cumulative record of every phase, what shipped, and current status.
 
 ---
 
-## Phase 6 — Crisis System, Fear, Location Closure
+## Phase 6 - Crisis System, Fear, Location Closure
 **Date:** ~2026-06-19 | **Handoff:** `HANDOFF_PHASE6.md`
 
 ### Shipped
@@ -59,7 +59,7 @@ Cumulative record of every phase, what shipped, and current status.
 
 ---
 
-## Phase 5 — PANTHEON Council + Debate System
+## Phase 5 - PANTHEON Council + Debate System
 **Date:** ~2026-06-18 | **Handoff:** `HANDOFF_PHASE5.md`
 
 ### Shipped
@@ -72,7 +72,7 @@ Cumulative record of every phase, what shipped, and current status.
 
 ---
 
-## Phase 4 — Memory, Reflection, Relationships
+## Phase 4 - Memory, Reflection, Relationships
 **Date:** ~2026-06-17
 
 ### Shipped
@@ -83,7 +83,7 @@ Cumulative record of every phase, what shipped, and current status.
 
 ---
 
-## Phase 3 — Simulation Engine + World
+## Phase 3 - Simulation Engine + World
 **Date:** ~2026-06-16
 
 ### Shipped
@@ -95,7 +95,7 @@ Cumulative record of every phase, what shipped, and current status.
 
 ---
 
-## Phase 2 — Frontend Foundation
+## Phase 2 - Frontend Foundation
 **Date:** ~2026-06-15
 
 ### Shipped
@@ -106,7 +106,7 @@ Cumulative record of every phase, what shipped, and current status.
 
 ---
 
-## Phase 1 — Project Bootstrap
+## Phase 1 - Project Bootstrap
 **Date:** ~2026-06-14
 
 ### Shipped
@@ -120,7 +120,7 @@ Cumulative record of every phase, what shipped, and current status.
 
 | Priority | Item | Notes |
 |---|---|---|
-| High | CouncilChamber: collapse old debates | UX debt — debates pile up |
+| High | CouncilChamber: collapse old debates | UX debt - debates pile up |
 | High | Demo recording | 2-min walkthrough video |
 | Medium | 7th crisis template | `power_outage` or `flood` |
 | Medium | Vercel deploy | Frontend deploys instantly; backend needs ngrok or Fly.io |

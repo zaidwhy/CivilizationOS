@@ -1,4 +1,4 @@
-"""Seed cast for the city — 10 citizens with homes, jobs, dispositions, and backstory.
+"""Seed cast for the city - 10 citizens with homes, jobs, dispositions, and backstory.
 
 Homes cluster on the west side; each citizen works at one workplace and favours
 one commons for socializing. Backstory is injected into LLM conversation prompts
@@ -28,7 +28,7 @@ SEED_CITIZENS: list[Persona] = [
     Persona(
         "ava", "Ava Reyes", 34, "doctor",
         "calm, principled, quietly exhausted",
-        "Ran the ER through the last flu season — lost two patients to delayed care. "
+        "Ran the ER through the last flu season - lost two patients to delayed care. "
         "Now runs Mercy Clinic and preaches prevention over reaction.",
         "clinic", "cafe", 2, 3, 0.6,
     ),
@@ -43,7 +43,7 @@ SEED_CITIZENS: list[Persona] = [
         "cleo", "Cleo Tanaka", 29, "trader",
         "ambitious, anxious, ruthlessly sharp",
         "Grew up in the east-side housing blocks and clawed into Trade Exchange by 24. "
-        "Hyper-vigilant about financial risk — one bad quarter could erase everything.",
+        "Hyper-vigilant about financial risk - one bad quarter could erase everything.",
         "exchange", "market", 2, 7, 0.7,
     ),
     Persona(
@@ -92,7 +92,7 @@ SEED_CITIZENS: list[Persona] = [
         "jonah", "Jonah Pike", 44, "editor",
         "cynical, eloquent, fiercely principled",
         "Has edited City Press through two libel suits and one hostile buyout attempt. "
-        "Believes the press is the last honest institution — and is not always sure about that.",
+        "Believes the press is the last honest institution - and is not always sure about that.",
         "press", "plaza", 3, 12, 0.8,
     ),
 ]

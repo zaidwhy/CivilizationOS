@@ -25,7 +25,7 @@ class DayPhase(str, Enum):
 class LocationType(str, Enum):
     HOME = "home"
     WORKPLACE = "workplace"
-    COMMONS = "commons"      # park, market, cafe, plaza — social mixing
+    COMMONS = "commons"      # park, market, cafe, plaza - social mixing
     INSTITUTION = "institution"  # seats of the Phase-2 councils
 
 
@@ -39,7 +39,7 @@ class Location:
 
 
 # A hand-laid city. Homes cluster left, workplaces right, commons in the middle,
-# institutions across the top — so commuting naturally mixes citizens in commons.
+# institutions across the top - so commuting naturally mixes citizens in commons.
 COMMONS: list[Location] = [
     Location("park", "Greenwood Park", LocationType.COMMONS, 11, 4),
     Location("market", "Central Market", LocationType.COMMONS, 12, 8),

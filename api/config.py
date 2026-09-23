@@ -27,7 +27,7 @@ class Settings(BaseSettings):
     ollama_chat_model: str = "qwen2.5:3b-instruct"
     ollama_embed_model: str = "nomic-embed-text"
     # Phase 4: fine-tuned council voice model (set after training + ollama create)
-    ollama_council_model: str = ""  # e.g. "council-voice" — empty = use chat model
+    ollama_council_model: str = ""  # e.g. "council-voice" - empty = use chat model
 
     # --- Tier 1: Gemini free tier ---
     gemini_api_key: str = ""

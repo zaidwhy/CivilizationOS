@@ -1,9 +1,9 @@
 """Persona-consistency eval harness for fine-tuned council voices.
 
 Scores each council role on two dimensions:
-  1. PERSONA_CONSISTENCY — does the response match the role's distinctive
+  1. PERSONA_CONSISTENCY - does the response match the role's distinctive
      vocabulary and framing? (keyword/pattern matching, fast, $0)
-  2. DEBATE_COHERENCE — does the response logically follow from the prior
+  2. DEBATE_COHERENCE - does the response logically follow from the prior
      turns? (embedding cosine similarity of response to context, $0)
 
 Both metrics are deterministic and run locally. A model is promoted from
@@ -168,7 +168,7 @@ def _log_to_mlflow(model: str, results: list[EvalResult], uri: str) -> None:
             mlflow.log_param("promoted", overall_pass >= 0.7)
             print(f"\nMLflow run logged. overall_pass_rate={overall_pass:.2f}, promoted={overall_pass >= 0.7}")
     except ImportError:
-        print("mlflow not installed — skipping MLflow logging")
+        print("mlflow not installed - skipping MLflow logging")
 
 
 def summary(results: list[EvalResult]) -> None:
@@ -184,7 +184,7 @@ def summary(results: list[EvalResult]) -> None:
     overall = sum(r.overall_pass for r in results)
     total = len(results)
     gate = overall / total >= 0.7
-    print(f"\n  OVERALL: {overall}/{total} ({overall/total:.0%}) — {'PROMOTED ✓' if gate else 'REJECTED ✗'}")
+    print(f"\n  OVERALL: {overall}/{total} ({overall/total:.0%}) - {'PROMOTED ✓' if gate else 'REJECTED ✗'}")
 
 
 if __name__ == "__main__":

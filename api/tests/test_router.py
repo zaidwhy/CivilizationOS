@@ -1,6 +1,6 @@
 """Tests for the 3-tier router's downgrade logic and spend guardrail.
 
-These run with no network and no models — they exercise the routing decisions
+These run with no network and no models - they exercise the routing decisions
 and cost accounting that protect the budget.
 """
 from __future__ import annotations

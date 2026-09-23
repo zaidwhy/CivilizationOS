@@ -5,11 +5,11 @@ memory by the generative-agents formula:
 
     score = w_rel * relevance + w_rec * recency + w_imp * importance
 
-  * relevance  — cosine similarity of the query embedding to the memory embedding,
+  * relevance - cosine similarity of the query embedding to the memory embedding,
                  mapped to [0, 1] (0 when no embedding is available)
-  * recency    — exponential decay over ticks since the memory was last accessed
+  * recency - exponential decay over ticks since the memory was last accessed
                  (retrieving a memory refreshes it, so salient memories persist)
-  * importance — an LLM- (or rule-) assigned 1-10 poignancy, normalized to [0, 1]
+  * importance - an LLM- (or rule-) assigned 1-10 poignancy, normalized to [0, 1]
 
 Phase 2's TCMF retriever fuses the output of these streams with the society-wide
 causal graph. Embeddings are optional so the engine and tests can run without a
@@ -137,7 +137,7 @@ class MemoryStream:
         return sorted(self.memories.values(), key=lambda m: m.tick, reverse=True)[:k]
 
     def important_since(self, since_tick: int, k: int = 10) -> list[Memory]:
-        """Most important memories formed since a tick — feeds reflection."""
+        """Most important memories formed since a tick - feeds reflection."""
         pool = [m for m in self.memories.values() if m.tick >= since_tick]
         pool.sort(key=lambda m: m.importance, reverse=True)
         return pool[:k]

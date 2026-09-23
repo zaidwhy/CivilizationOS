@@ -48,7 +48,7 @@ civilizationos/
 │   └── src/
 │       ├── App.tsx             Layout, speed slider, spend counter, crisis header pills
 │       ├── city/
-│       │   ├── CityStage3D.tsx Three.js 3D city — delegation-style, PCF shadows, bloom, orbit cam (v0.12)
+│       │   ├── CityStage3D.tsx Three.js 3D city - delegation-style, PCF shadows, bloom, orbit cam (v0.12)
 │       │   ├── CityStage.tsx   PixiJS isometric city (fallback, kept intact)
 │       │   └── iso.ts          Isometric math, palettes, closedLocationColor()
 │       ├── panels/
@@ -670,8 +670,8 @@ All three Phase 8 items complete: speech bubbles ✅, graph tooltip ✅, fine-tu
 
 ---
 
-### Phase 9 — Emergent Crisis Injection + Council Track Record
-**Duration:** 1 session (2026-06-23) | **Not in original plan — portfolio depth additions**
+### Phase 9 - Emergent Crisis Injection + Council Track Record
+**Duration:** 1 session (2026-06-23) | **Not in original plan - portfolio depth additions**
 
 #### What was built
 
@@ -679,10 +679,10 @@ All three Phase 8 items complete: speech bubbles ✅, graph tooltip ✅, fine-tu
 
 `api/sim/engine.py`:
 - Four module-level constants: `_AUTO_FEAR_THRESHOLD=0.62`, `_AUTO_SUSTAIN_TICKS=180`, `_AUTO_COMPOUND_THRESHOLD=0.78`, `_AUTO_COOLDOWN_TICKS=300`
-- `_fear_high_since: int | None` — tick when avg fear first crossed threshold; resets when fear drops
-- `_auto_crisis_cooldown_until: int` — tick gate preventing back-to-back auto-crises
-- `_track_fear_pressure(tick)` — called every tick; starts counting when avg_fear ≥ 0.62; fires after 180 consecutive ticks; allows compound cascade (second crisis while one is already active) if avg_fear ≥ 0.78; sets 300-tick cooldown after firing
-- `_auto_escalate(tick, avg_fear)` — async method: picks a template not already active, builds a context prompt with distressed citizen names + recent causal events, calls Tier 0 LLM for one vivid situation-specific sentence, falls back to template description on LLM failure, logs as `kind="emergent"` and calls `inject_crisis(..., emergent=True)`
+- `_fear_high_since: int | None` - tick when avg fear first crossed threshold; resets when fear drops
+- `_auto_crisis_cooldown_until: int` - tick gate preventing back-to-back auto-crises
+- `_track_fear_pressure(tick)` - called every tick; starts counting when avg_fear ≥ 0.62; fires after 180 consecutive ticks; allows compound cascade (second crisis while one is already active) if avg_fear ≥ 0.78; sets 300-tick cooldown after firing
+- `_auto_escalate(tick, avg_fear)` - async method: picks a template not already active, builds a context prompt with distressed citizen names + recent causal events, calls Tier 0 LLM for one vivid situation-specific sentence, falls back to template description on LLM failure, logs as `kind="emergent"` and calls `inject_crisis(..., emergent=True)`
 - `_fear_pressure()` → float 0.0–1.0: how far through the countdown we are; 0.0 when calm, 1.0 when about to fire
 - `inject_crisis()` gains `emergent: bool = False` param, forwarded to `crises.create()`
 - `snapshot()` includes `fear_pressure` key
@@ -697,27 +697,27 @@ All three Phase 8 items complete: speech bubbles ✅, graph tooltip ✅, fine-tu
 `web/src/ws/store.ts`:
 - `WorldMessage` type gains `fear_pressure: number`
 
-`web/src/App.tsx` — new `TensionMeter` component:
+`web/src/App.tsx` - new `TensionMeter` component:
 - Shows `⚡ TENSION N%` pill (amber → red) when `fear_pressure > 0.05`
 - Shows `⚡ COMPOUND N%` if a crisis is already active (compound cascade pending)
 - Pulses with `crisis-pulse` animation when pressure ≥ 85%
-- Hidden at 0 pressure — zero clutter during normal operation
+- Hidden at 0 pressure - zero clutter during normal operation
 
 `web/src/panels/EventFeed.tsx`:
 - Added `emergent` kind: ⚡ icon, orange colour
 - Added `decision` kind: ✅ icon, green colour (was missing)
 
-**B. Council track record — per-institution effectiveness measurement**
+**B. Council track record - per-institution effectiveness measurement**
 
 `api/sim/engine.py`:
-- `_track_record: dict[str, dict]` — one entry per institution with `debates`, `verdicts`, `fear_deltas: list[float]`
-- `_verdict_pending: list[dict]` — `{institution_id, tick, fear_before}` queued when each Synthesizer turn fires
+- `_track_record: dict[str, dict]` - one entry per institution with `debates`, `verdicts`, `fear_deltas: list[float]`
+- `_verdict_pending: list[dict]` - `{institution_id, tick, fear_before}` queued when each Synthesizer turn fires
 - In `_run_debate()`: first turn increments `debates`; Synthesizer turn increments `verdicts` + appends a pending snapshot
-- `_resolve_verdict_snapshots(tick)` — called every tick; closes any snapshot 60+ ticks old by measuring current avg fear and recording `fear_before − fear_after` delta
-- `track_record()` — returns list with per-institution `debates`, `verdicts`, `avg_fear_delta`, `effectiveness` (0–100, where 50 = no change, >65 = green, <40 = red), `measured_verdicts`, `pending_snapshots`
+- `_resolve_verdict_snapshots(tick)` - called every tick; closes any snapshot 60+ ticks old by measuring current avg fear and recording `fear_before − fear_after` delta
+- `track_record()` - returns list with per-institution `debates`, `verdicts`, `avg_fear_delta`, `effectiveness` (0–100, where 50 = no change, >65 = green, <40 = red), `measured_verdicts`, `pending_snapshots`
 
 `api/main.py`:
-- `GET /track_record` — returns `{ councils: [...] }`
+- `GET /track_record` - returns `{ councils: [...] }`
 
 `web/src/panels/StatsPanel.tsx`:
 - `CouncilRecord` type
@@ -740,17 +740,17 @@ All three Phase 8 items complete: speech bubbles ✅, graph tooltip ✅, fine-tu
 
 | Decision | Why |
 |---|---|
-| Sustained-tick counter (not random dice roll) | Old `tick % 45 + 14% chance` had no memory — fear could spike and drop without triggering. Sustained tracking is the minimal correct model: fire only when fear persists. |
+| Sustained-tick counter (not random dice roll) | Old `tick % 45 + 14% chance` had no memory - fear could spike and drop without triggering. Sustained tracking is the minimal correct model: fire only when fear persists. |
 | Compound threshold (0.78 > single threshold 0.62) | Compound crises are rare and dramatic; requiring higher fear to trigger one during an active crisis prevents spam while still allowing cascades in genuine emergencies. |
-| 300-tick cooldown after auto-crisis | Prevents rapid-fire auto-injection if fear stays high post-eruption — gives the council time to respond before a second wave. |
+| 300-tick cooldown after auto-crisis | Prevents rapid-fire auto-injection if fear stays high post-eruption - gives the council time to respond before a second wave. |
 | `kind="emergent"` log entry (not `"crisis"`) | Separates auto-generated events from user-injected ones in the EventFeed; lets the frontend style them distinctly without backend/frontend coupling. |
 | Fear delta measured 60 ticks post-verdict (not immediately) | Immediate fear drop from `_apply_verdict_effects` is mechanical; measuring 60 ticks later captures whether the verdict's narrative and memory effect actually changed citizen behaviour. |
 | `effectiveness = 50 + delta × 150` | Baseline 50% = neutral (no change); +20% fear drop → 80% effective; −15% fear rise → 27.5%. Centred on 50 to avoid penalising councils for external shocks. |
 
 ---
 
-### Phase 10 — Citizen Faction System
-**Duration:** 1 session (2026-06-23) | **Not in original plan — emergent social structure layer**
+### Phase 10 - Citizen Faction System
+**Duration:** 1 session (2026-06-23) | **Not in original plan - emergent social structure layer**
 
 #### What was built
 
@@ -760,7 +760,7 @@ All three Phase 8 items complete: speech bubbles ✅, graph tooltip ✅, fine-tu
 - Five module-level constants: `_FACTION_AFFINITY_THRESHOLD=0.60`, `_FACTION_RECOMPUTE_EVERY=60`, `_OCCUPATION_GROUPS` (occupation → group label), `_GROUP_SUFFIXES` (group label → faction suffix)
 - `self._factions: list[dict] = []` in `__init__`
 - `advance()` calls `_compute_factions()` every 60 ticks
-- `_compute_factions()` — union-find with path compression over all citizen pairs; two citizens join the same component when **both** directions of relationship exceed 0.60; components of ≥2 members become named factions; anchor = most socially connected member (highest sum of positive affinities); suffix derived from dominant occupation group:
+- `_compute_factions()` - union-find with path compression over all citizen pairs; two citizens join the same component when **both** directions of relationship exceed 0.60; components of ≥2 members become named factions; anchor = most socially connected member (highest sum of positive affinities); suffix derived from dominant occupation group:
   - doctor/nurse → Care Alliance
   - journalist/analyst → Press Circle
   - police/lawyer → Justice Front
@@ -773,23 +773,23 @@ All three Phase 8 items complete: speech bubbles ✅, graph tooltip ✅, fine-tu
 
 **B. Faction context injected into council debates**
 
-`api/sim/engine.py` — `_run_debate()`:
+`api/sim/engine.py` - `_run_debate()`:
 - After TCMF retrieval, if `self._factions` is non-empty, appends `ACTIVE CITIZEN FACTIONS` block to `ctx.context_text`
 - Format: one line per faction listing name and member first names, plus a note that these alliances may affect how directives land
-- All five specialist roles (including Synthesizer) see this context — councils now reason about real social alliances when deliberating
+- All five specialist roles (including Synthesizer) see this context - councils now reason about real social alliances when deliberating
 
-**C. Frontend — Inspector faction badge**
+**C. Frontend - Inspector faction badge**
 
 `web/src/panels/Inspector.tsx`:
 - Reads `world.factions` from Zustand store
 - Finds the selected citizen's faction by `member_ids.includes(selectedId)`
 - Renders purple `🤝 FactionName · other members` badge between backstory and current action when citizen is in a faction; hidden otherwise
 
-**D. Frontend — RelationshipGraph faction rings + legend**
+**D. Frontend - RelationshipGraph faction rings + legend**
 
 `web/src/panels/RelationshipGraph.tsx`:
 - `FACTION_COLORS` constant: 5-colour palette (purple, pink, green, orange, blue)
-- `factionsRef` updated via `useEffect` — RAG loop reads current faction state without restarting
+- `factionsRef` updated via `useEffect` - RAG loop reads current faction state without restarting
 - Per-frame `factionMap: Map<citizen_id, faction_index>` built inside `draw()`
 - Each citizen node that belongs to a faction gets a coloured outer ring (radius R + 3.5, 2 px stroke) in that faction's colour; yellow selection ring draws on top
 - `TooltipData` gains `faction?: string`; `handleMouseMove` looks up faction and sets it
@@ -815,12 +815,12 @@ All three Phase 8 items complete: speech bubbles ✅, graph tooltip ✅, fine-tu
 
 | Decision | Why |
 |---|---|
-| Union-find (not simple pairwise filter) | Transitivity matters — if Ava trusts Ben and Ben trusts Cara, all three should be one bloc, not isolated pairs. Union-find captures this in O(n α(n)). |
-| Mutual threshold (both directions > 0.60) | One-sided affinity is not a faction — Ava liking Ben without Ben liking Ava is a fan, not an alliance. Both directions required for social solidarity. |
-| Recompute every 60 ticks (not every tick) | Relationships change slowly; O(n²) pair scan every tick is wasteful. 60 ticks ≈ 1 min at default speed — frequent enough to catch forming alliances. |
-| Anchor = most connected member | Produces stable, sensible names — the most socially central person becomes the faction's face, which reflects how real social networks actually organise. |
-| Inject into TCMF context (not a separate prompt) | All five council specialists already read `ctx.context_text`. Appending there means no API changes — factions automatically enter all role prompts (Historian cites precedents involving the bloc; Synthesizer issues directives with faction buy-in in mind). |
-| Canvas ring (not filled halo) | A filled halo would obscure the fear-colour node. A thin ring is additive — faction colour + fear colour both visible simultaneously. |
+| Union-find (not simple pairwise filter) | Transitivity matters - if Ava trusts Ben and Ben trusts Cara, all three should be one bloc, not isolated pairs. Union-find captures this in O(n α(n)). |
+| Mutual threshold (both directions > 0.60) | One-sided affinity is not a faction - Ava liking Ben without Ben liking Ava is a fan, not an alliance. Both directions required for social solidarity. |
+| Recompute every 60 ticks (not every tick) | Relationships change slowly; O(n²) pair scan every tick is wasteful. 60 ticks ≈ 1 min at default speed - frequent enough to catch forming alliances. |
+| Anchor = most connected member | Produces stable, sensible names - the most socially central person becomes the faction's face, which reflects how real social networks actually organise. |
+| Inject into TCMF context (not a separate prompt) | All five council specialists already read `ctx.context_text`. Appending there means no API changes - factions automatically enter all role prompts (Historian cites precedents involving the bloc; Synthesizer issues directives with faction buy-in in mind). |
+| Canvas ring (not filled halo) | A filled halo would obscure the fear-colour node. A thin ring is additive - faction colour + fear colour both visible simultaneously. |
 
 ---
 
@@ -877,15 +877,15 @@ All three Phase 8 items complete: speech bubbles ✅, graph tooltip ✅, fine-tu
 
 ---
 
-### Phase 11 — Citizen Emotion History, Alliance Events, What-If Verdicts, Session Export
-**Duration:** 1 session (2026-06-25) | **Not in original plan — depth + export layer**
+### Phase 11 - Citizen Emotion History, Alliance Events, What-If Verdicts, Session Export
+**Duration:** 1 session (2026-06-25) | **Not in original plan - depth + export layer**
 
 #### What was built
 
 - **FearSparkline** canvas in Inspector: samples citizen `fear` every 5 ticks, draws 80×22px area chart
 - **Alliance/rivalry events** in engine: faction formation → `"⚡ {name} formed"` event; dissolution → `"dissolved"` event; rivalry threshold `< -0.40` → `"💔 rivalry"` logged to EventFeed
 - **Chronicle bloc awareness**: `/chronicle` LLM dispatch now receives list of active faction names
-- **What-if verdict summary** in StatsPanel: `averted_fear` per institution — how much fear a verdict prevented vs baseline
+- **What-if verdict summary** in StatsPanel: `averted_fear` per institution - how much fear a verdict prevented vs baseline
 - **Session export**: `GET /export` returns full JSON snapshot (citizens, events, crises, causal graph, factions, tick, version); frontend download button in StatsPanel
 
 #### Files changed
@@ -893,23 +893,23 @@ All three Phase 8 items complete: speech bubbles ✅, graph tooltip ✅, fine-tu
 
 ---
 
-### Phase 11b — Crisis Pulse, Event Toasts, Stability Sparkline, Scenario Launcher
+### Phase 11b - Crisis Pulse, Event Toasts, Stability Sparkline, Scenario Launcher
 **Duration:** 1 session (2026-06-25) | **Visual polish + QoL layer**
 
 #### What was built
 
 - **PixiJS crisis pulse rings**: pulsing red rings animate over crisis-closed buildings on every tick
-- **Full-screen flash**: red overlay on new crisis injection (1s fade-out) — now ported to Three.js flash div
-- **Toast notifications**: `ToastStack` component bottom-left overlay — new crisis / verdict / social events → 5s toast with colour + icon
+- **Full-screen flash**: red overlay on new crisis injection (1s fade-out) - now ported to Three.js flash div
+- **Toast notifications**: `ToastStack` component bottom-left overlay - new crisis / verdict / social events → 5s toast with colour + icon
 - **Stability sparkline** in topbar: `StabilitySparkline` canvas (80×22px), gradient fill, colour-coded green/amber/red
-- **Scenario quick-launch**: `ScenarioLauncher` overlay (top-right) — 5 preset scenarios (epidemic, crime wave, blackout, drought, cyberattack) fire instantly via `POST /crisis`
+- **Scenario quick-launch**: `ScenarioLauncher` overlay (top-right) - 5 preset scenarios (epidemic, crime wave, blackout, drought, cyberattack) fire instantly via `POST /crisis`
 
 #### Files changed
 `web/src/App.tsx`, `web/src/city/CityStage.tsx`
 
 ---
 
-### Phase 12 — Three.js 3D City (Delegation-Style)
+### Phase 12 - Three.js 3D City (Delegation-Style)
 **Duration:** 1 session (2026-06-25) | **Complete frontend renderer replacement**
 
 #### What was built
@@ -929,14 +929,14 @@ All three Phase 8 items complete: speech bubbles ✅, graph tooltip ✅, fine-tu
 - `FogExp2` for atmospheric depth
 
 **Lighting (delegation-style):**
-- Key: `DirectionalLight(0xd0dcf0, 1.6)` at `(14,28,16)` — casts soft PCF shadows
+- Key: `DirectionalLight(0xd0dcf0, 1.6)` at `(14,28,16)` - casts soft PCF shadows
 - Fill: `DirectionalLight(0x2a1a08, 0.35)` from low-left (bounce)
 - Ambient: `AmbientLight(0x0d1525, 6.0)` very subtle
 
 **Buildings (clean jewel tones, no neon):**
 - `BoxGeometry` per location, matte (roughness 0.72, metalness 0.18), casts + receives shadows
 - Type palette: home `#1c2b3a`/accent `#4b7fa8`, workplace `#2a1f14`/`#b07d3a`, commons `#122318`/`#3a8a5c`, institution `#16122a`/`#6b5db8`
-- Thin roof accent band (emissiveIntensity 0.55) — hint of glow, not neon
+- Thin roof accent band (emissiveIntensity 0.55) - hint of glow, not neon
 - Crisis override: body `0x2a1010`, roof → crisis red, `PointLight` pulses at `2.0 + 0.7 sin(t×2.8)`
 
 **Citizens:**
@@ -955,7 +955,7 @@ All three Phase 8 items complete: speech bubbles ✅, graph tooltip ✅, fine-tu
 **Fixes vs initial implementation:**
 - `ResizeObserver` (not just `window.resize`) for correct canvas size on layout changes
 - Canvas `position:absolute;inset:0` so it fills the city div at all times
-- `OutputPass` added — required for correct color output in Three.js r152+ (was black screen without it)
+- `OutputPass` added - required for correct color output in Three.js r152+ (was black screen without it)
 - `.venv312` identified as correct Python env (`.venv` has Python 3.14 ABI mismatch)
 
 #### Files changed
@@ -963,31 +963,31 @@ All three Phase 8 items complete: speech bubbles ✅, graph tooltip ✅, fine-tu
 
 ---
 
-### Phase 13 — Story Rewind, Chronicle Redesign, UI Polish
+### Phase 13 - Story Rewind, Chronicle Redesign, UI Polish
 **Duration:** 1 session (2026-06-27) | **UX depth + dispatch redesign**
 
 #### What was built
 
 **A. Story Rewind (Timeline enhanced)**
 
-`web/src/panels/Timeline.tsx` — complete upgrade:
+`web/src/panels/Timeline.tsx` - complete upgrade:
 - Renamed to "⏪ STORY REWIND" in header; fetches up to k=200 events (was k=40)
 - **Tick scrubber**: range input from t0 → current tick; drag left to rewind history; events filter to those with `tick ≤ selected`; "↩ return to present" button resets to live
 - **Click-to-expand**: any event card is clickable; collapsed shows 2-line clip, expanded shows full text with `fade-in` animation; clicking again collapses
 - Increased poll interval to 8s (was 6s, fewer requests at larger k)
 
-**B. Chronicle — Newspaper Redesign + Faction Awareness**
+**B. Chronicle - Newspaper Redesign + Faction Awareness**
 
-`web/src/panels/Chronicle.tsx` — full visual redesign:
+`web/src/panels/Chronicle.tsx` - full visual redesign:
 - **Masthead**: "📰 CITY CHRONICLE" header + dateline line "DISPATCH · DAY N · TICK N · CIVOSVILLE BUREAU"
 - **Gradient rule** between masthead and body (left-to-right blue → transparent)
 - **Body text** now `#a8b8cc` at 12.5px / 1.8 line-height with `fade-in` animation on each refresh
 - **Fear bar**: labelled "CITY FEAR LEVEL" + percentage, animated progress bar with green→amber→red gradient
 - **Active crises**: red pill badges below fear bar
-- **Faction blocs**: purple pill badges for each active faction (reads from Zustand `world.factions`) — the backend already injects faction context into the LLM prompt; frontend now surfaces those blocs visually
+- **Faction blocs**: purple pill badges for each active faction (reads from Zustand `world.factions`) - the backend already injects faction context into the LLM prompt; frontend now surfaces those blocs visually
 - Day number computed as `Math.floor(tick / 96) + 1` (96 ticks = 1 in-world day at 4 phases × 24)
 
-**C. CouncilChamber — Institution-Coloured Debate Archive**
+**C. CouncilChamber - Institution-Coloured Debate Archive**
 
 `web/src/panels/CouncilChamber.tsx`:
 - Added `INST_COLORS` dict matching building accent palette from Phase 12: gov=`#6b5db8`, economy=`#b07d3a`, health=`#3a8a5c`, media=`#4b7fa8`, police=`#c96060`
@@ -995,7 +995,7 @@ All three Phase 8 items complete: speech bubbles ✅, graph tooltip ✅, fine-tu
 - `CompletedDebateCard` now has institution-coloured left border strip (`borderLeft: 3px solid instColor`)
 - Card header shows institution name in its colour + tick + "★ verdict" badge (replaces plain "★" + "inst · tick" layout)
 - Card border and background tint changes on expand using the institution colour
-- Consistent with building colours in 3D view — visual coherence across the whole UI
+- Consistent with building colours in 3D view - visual coherence across the whole UI
 
 **D. Global CSS polish**
 
@@ -1090,16 +1090,16 @@ Everything else originally scoped, plus everything added along the way (factions
 | HTML overlay div for graph tooltip (not canvas-drawn) | Phase 8 | Canvas text is hard to style and position; HTML div gives font, border, colour control for free |
 | Tooltip left-flip at `x > W/2` | Phase 8 | Prevents tooltip clipping the canvas right edge without needing to measure DOM width |
 | Name prefix stripped in speech bubble via colon heuristic | Phase 8 | LLM outputs `"Name: dialogue"` format; stripping keeps bubble readable without backend changes |
-| Sustained-tick counter for auto-crisis (not dice roll) | Phase 9 | Old `tick % 45 + 14% chance` had no memory — fear could spike and drop without triggering. Sustained tracking is the minimal correct model. |
+| Sustained-tick counter for auto-crisis (not dice roll) | Phase 9 | Old `tick % 45 + 14% chance` had no memory - fear could spike and drop without triggering. Sustained tracking is the minimal correct model. |
 | Compound threshold 0.78 > base threshold 0.62 | Phase 9 | Compound crises during an existing crisis are rare and dramatic; requiring higher fear prevents spam while still allowing cascades in genuine emergencies. |
-| 300-tick cooldown after auto-crisis | Phase 9 | Gives the council time to respond before a second auto-wave — avoids rapid-fire auto-injection if fear stays elevated post-eruption. |
+| 300-tick cooldown after auto-crisis | Phase 9 | Gives the council time to respond before a second auto-wave - avoids rapid-fire auto-injection if fear stays elevated post-eruption. |
 | Fear delta measured 60 ticks post-verdict (not 0) | Phase 9 | Immediate drop from `_apply_verdict_effects` is mechanical; 60-tick measurement captures whether the narrative/memory effect actually changed citizen behaviour. |
 | `effectiveness = 50 + delta × 150`, centred on 50 | Phase 9 | Baseline 50% = no change. Centred to avoid penalising councils for external fear shocks they didn't cause. |
-| Union-find for faction formation (not pairwise filter) | Phase 10 | Transitivity matters — Ava→Ben→Cara should be one bloc. Union-find captures this in O(n α(n)). |
+| Union-find for faction formation (not pairwise filter) | Phase 10 | Transitivity matters - Ava→Ben→Cara should be one bloc. Union-find captures this in O(n α(n)). |
 | Mutual affinity threshold (both directions > 0.60) | Phase 10 | One-sided affinity is a fan, not an alliance. Both directions required for social solidarity. |
 | Recompute factions every 60 ticks (not every tick) | Phase 10 | Relationships change slowly; O(n²) scan every tick is wasteful. 60 ticks is frequent enough to catch forming alliances. |
-| Faction context appended to TCMF `ctx.context_text` | Phase 10 | All five council specialists already read this field — no API changes needed, and factions automatically inform all role prompts. |
-| Canvas ring for faction membership (not filled halo) | Phase 10 | A filled halo would obscure the fear-colour node; a thin ring is additive — faction colour and fear colour visible simultaneously. |
+| Faction context appended to TCMF `ctx.context_text` | Phase 10 | All five council specialists already read this field - no API changes needed, and factions automatically inform all role prompts. |
+| Canvas ring for faction membership (not filled halo) | Phase 10 | A filled halo would obscure the fear-colour node; a thin ring is additive - faction colour and fear colour visible simultaneously. |
 
 ---
 
@@ -1366,3 +1366,8 @@ checked out at `research/tcmf_paper/paper/`.
 - Files: `research/tcmf_paper/{NIGHT_QUEUE.md, results_bm25_descaffold/,
   tcmfbench/run_bm25_descaffold_n19.py, tcmfbench/test_n19_bm25_descaffold.py}`; private
   `zaidwhy/tcmf-paper/{main.tex, REVIEW.md}`. Both repos pushed and verified in sync throughout.
+
+## 2026-09-24 - Refinement pass (refine-repo)
+
+- Em dash purge: 371 occurrences replaced with " - " across 33 tracked files (docs, handoffs, Python comments and strings, notebook, Modelfile). `ml/dataset/council_voices.jsonl` (314 occurrences) left untouched on purpose: it is training data, changing it alters the dataset.
+- Verified after the purge: `pytest api/tests` 76 passed (CLAUDE.md still says 61, stale count), `web` `npm run build` (tsc -b && vite build) succeeds.
