@@ -607,6 +607,56 @@ correctly identified by Zaid as scope changes, not confirmed gaps, and were not 
 `tcmfbench` suite stays green; `results_bm25_descaffold/results_bm25_descaffold.json`
 regenerates deterministically from `python -m tcmfbench.run_bm25_descaffold_n19`.
 
+### N20 - Does normalizing the episodic score before multiplying rescue the operator?
+**Status:** DONE (2026-09-23) | **Env:** CLOUD-OK | **Answers:** a real confound an llm-council
+paper-quality review caught in the operator ablation
+
+Running the newly-installed `llm-council` skill on the finished manuscript (5 advisors, 5
+anonymized peer reviews, chairman synthesis - Zaid's own test of the skill, not a scheduled
+queue item) surfaced one genuinely new, checkable technical objection that survived two rounds
+of independent peer review even though the original 5 advisors never raised it: the paper's
+operator ablation multiplies the RAW episodic score (`rank_tcmf_multiplicative`) but adds the
+min-max NORMALIZED one (`rank_tcmf_additive`) - two variables change at once, so the $2\%$ vs
+$100\%$ headline gap could in principle be a normalization effect, not an operator effect.
+
+Two other "gaps" the same council session raised were checked and found to be false alarms
+from an incomplete briefing, not real gaps: RRF is already tested as `tcmf_rrf` in every
+table, and weight tuning already uses a proper held-out 40/60 split throughout - both because
+the council was given a condensed summary, not the full paper. This item is the one claim that
+survived the fact-check.
+
+- `tcmfbench/methods.py`: added `rank_tcmf_normalized_multiplicative` - identical to
+  `rank_tcmf_multiplicative` except it multiplies the same `_minmax`-normalized episodic score
+  `rank_tcmf_additive` uses, holding normalization fixed and swapping only the operator.
+- `tcmfbench/run_normalized_mult_n20.py` (new): reuses N10's exact reference protocol
+  (`run_lambda_sweep.py`'s `LAMBDA_GRID`, pure regime, realistic pool, 5 seeds x 300 = 1500),
+  sanity-checked against the committed `results_lambda_sweep.json` to machine precision.
+- **Result: normalizing first does not help - it is worse than raw multiplicative fusion at
+  every single \lam\ tested, not better.** At $\lam=8$: $0.66$ normalized vs.\ $0.96$ raw. At
+  $\lam=20$ (the top of the grid): still only $0.92$, never reaching the ceiling raw
+  multiplicative fusion reaches by $\lam=15$. This is the opposite of what the council's
+  objection worried about - it strengthens the paper's claim rather than threatening it. The
+  mechanism follows directly from the paper's own Proposition 1(c): the multiplicative
+  crossing point depends on the ratio between two memories' episodic scores, and min-max
+  normalization compresses low-lying scores toward $0$ relative to the pool's minimum, driving
+  that ratio further toward the regime where the required $\lam$ diverges - normalization
+  sharpens the operator's actual flaw rather than curing it.
+- `tcmfbench/test_n20_normalized_mult.py` (new, 3 tests): confirms the new function ranks
+  identically to a hand-built score using the exact same normalized episodic score additive
+  fusion uses; confirms normalized-multiplicative never beats raw-multiplicative on a held-out
+  seed's root-cause rank; confirms recall@5 reference points against a fresh small-n run.
+- `main.tex`: new Table tab:normmult and finding F15, placed directly after the existing
+  "Honest caveat on the operator" paragraph and Table tab:operator/Fig 4, the section this
+  result most directly extends. Contributions list item 2 updated with a one-sentence pointer.
+  Rebuilt clean: 30 pages, 0 undefined refs/citations, overfull hboxes unchanged at 2 (none
+  newly introduced), verified by rasterizing and reading the new table/paragraph directly.
+
+**Verify:** `pytest tcmfbench/test_n20_normalized_mult.py` passes; the full `tcmfbench` suite
+stays green; `results_normalized_mult/results_normalized_mult.json` regenerates
+deterministically from `python -m tcmfbench.run_normalized_mult_n20`, and its λ=0.6/λ=8
+raw-multiplicative and λ=4 additive columns match `results_lambda_sweep.json` to machine
+precision (asserted at runtime, not eyeballed).
+
 ---
 
 ## Deliberately out of scope for these 14 nights

@@ -317,6 +317,21 @@ def rank_tcmf_additive(mat: Materialized, lam: float = 4.0, threshold: float = 0
     return sorted(mat.all_ids, key=lambda i: score[i], reverse=True)
 
 
+def rank_tcmf_normalized_multiplicative(mat: Materialized, lam: float = 0.6, threshold: float = 0.45,
+                                        clean: bool = True, favor_root: bool = False) -> list[str]:
+    """N20: isolates operator choice from normalization choice. ``rank_tcmf_multiplicative``
+    multiplies the RAW episodic score; ``rank_tcmf_additive`` adds the min-max NORMALIZED one -
+    two variables change at once, so the paper's own operator contrast could in principle be a
+    normalization effect rather than an additive-vs-multiplicative one. This function holds
+    normalization fixed at "on" (the same ``_minmax`` call additive uses) and only swaps + for
+    x, so a fair recall@5-vs-lambda comparison against ``rank_tcmf_additive`` changes exactly
+    one thing."""
+    epi = _minmax(_episodic_scores(mat))
+    boost = _causal_boosts(mat, threshold, clean=clean, favor_root=favor_root)
+    score = {i: epi.get(i, 0.0) * (1.0 + lam * boost.get(i, 0.0)) for i in mat.all_ids}
+    return sorted(mat.all_ids, key=lambda i: score[i], reverse=True)
+
+
 def _prune_pool(mat: Materialized, epi: dict[str, float], prune_k: int | None) -> tuple[list[str], list[str]]:
     """Reproduce fix #4's OLD defect: a per-citizen top-``prune_k`` cut on RAW episodic score,
     applied BEFORE the causal boost ever sees the rest of the pool - exactly what
