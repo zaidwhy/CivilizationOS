@@ -1371,3 +1371,31 @@ checked out at `research/tcmf_paper/paper/`.
 
 - Em dash purge: 371 occurrences replaced with " - " across 33 tracked files (docs, handoffs, Python comments and strings, notebook, Modelfile). `ml/dataset/council_voices.jsonl` (314 occurrences) left untouched on purpose: it is training data, changing it alters the dataset.
 - Verified after the purge: `pytest api/tests` 76 passed (CLAUDE.md still says 61, stale count), `web` `npm run build` (tsc -b && vite build) succeeds.
+
+## 2026-09-23 to 2026-09-27 - TCMF paper: accessibility rewrite, 4-page SRW cut, N20-N22, two full review rounds, deployed lambda 2.0 -> 4.0
+
+- **Accessibility rewrite (09-23).** 4 of 5 faculty did not follow the paper; rewrote the abstract
+  in plain language, added an intuition-before-notation paragraph to the theory section, glossed
+  jargon. Named CivilizationOS as the self-authored deployed system (intro + Limitations).
+- **N20 (09-23):** multiplying the *normalized* episodic score is worse than multiplying the raw
+  one at every lambda (0.92 at lambda=20), so the operator contrast is not a normalization artifact.
+- **4-page EACL/NAACL SRW cut (09-24/25)** in the official ACL template (`paper/srw/`, private
+  repo), with two figures built from committed data (`srw/make_srw_figs.py`). Fixed internal
+  "verified ..." bibliography notes that were printing in both papers' reference lists.
+- **N21 (09-27):** the shipped retriever's recall@5 0.79 was its deployed lambda=2.0 sitting below
+  the paper's own Corollary bound (3.32-3.64), not a favor-root tradeoff; lambda=4 gives 1.00 with
+  root rank 1.0. Default raised to 4.0 in `api/memory/tcmf.py` (516df95, API suite 76 passed);
+  README showed the old multiplicative formula and now shows the real one.
+- **N22 (09-27):** theory quantities on 1500 pure-regime scenarios: additive bound median 3.50 /
+  p99 3.77, multiplicative requirement median 5.97 (p5-p95 3.49-9.26); F15's mechanism measured
+  (normalization lowers rho 0.38 -> 0.21 in 100% of scenarios). New parity test: the benchmark's
+  reimplemented scoring matches the deployed TCMFRetriever (identical top-10, ties only).
+- **Two review rounds found real errors in the prose (tables were right):** "0.54 tuned" was a
+  recall@10 value (recall@5 is 0.52); "degrades gracefully, never to chance" false at pool 19;
+  "only method recovering both kinds of evidence" false (PPR does too); cyber/cybersecurity
+  conflated; LoCoMo "at chance" false (0.48 vs 0.18); provenance of the fixes contradicted git.
+  All fixed; both papers now use held-out-tuned baselines. Log: private `paper/REVIEW.md` s.13-15.
+- Tests: `tcmfbench` 167 passed, `api/tests` 76 passed. Files: `research/tcmf_paper/{tcmfbench/
+  run_*_n20..n22.py, test_n20..n22*.py, results_normalized_mult/, results_shipped_lambda/,
+  results_theory_pure/, NIGHT_QUEUE.md, REPRODUCE.md, FINDINGS.md}`, `api/memory/tcmf.py`,
+  `README.md`, `docs/tcmf.md`.
