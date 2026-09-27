@@ -1405,3 +1405,22 @@ checked out at `research/tcmf_paper/paper/`.
 - `docs/crisis-loop.svg`: hand-authored hero above the city screenshot: crisis -> causal graph -> TCMF (normalize(episodic) + lambda x causal_boost) -> 5-role council over the 3-tier router -> verdict written back. Bottom line: v1 multiplicative recall@5 0.02 vs causal alone 1.00; normalized additive recovers 1.00 (docs/tcmf.md). Lambda drawn as a symbol, not a number, so the diagram survives retuning.
 - Inserted only after the parallel TCMF session committed (tree was clean at 516df95/3d37722).
 - Noticed, not fixed: README badge says 152 benchmark tests, the TCMF log entry above says tcmfbench 167 passed. Badge and profile need re-counting.
+
+## 2026-09-27 (evening) - TCMF paper: four more audit rounds, thesis narrowed to two regimes (N21-N27)
+
+- **Audit rounds 3-5** (code, stats, data, bibliography, figures): metrics/stats code verified
+  correct; the benchmark graph is a bare 4-event chain (now disclosed); PPR mechanism measured
+  (N23); real-text/decision results were unreproducible after N05 grew DOMAINS to 8 - pinned
+  `RealConfig(n_domains=6)`, both regenerate byte-identically; bibliography checked against the
+  arXiv API and ACL Anthology, six entries moved to their published venues.
+- **Reviewer-role audit found the key flaw:** N03's multiplicative tuning grid stopped at 2.4 (its
+  edge). N24 (widened grid) selects lambda=16 -> recall@5 1.00, identical to additive; N25 shows it
+  transfers across settings. The operator itself decides only under boost leakage: N26/N26b
+  (false edges, loose threshold) - additive beats every multiplicative weight and the
+  lambda->infinity limit in all 12 leaky settings (margin 0.003-0.19), 25-40% of leaked pairs
+  Prop-1(a)-unreachable. N27 decision rerun (qwen2.5:3b re-pulled): published arms reproduce
+  exactly; clean 0.83 = 0.83, leaky 0.68 vs 0.57 (McNemar p=0.016).
+- **Both papers rewritten** (Zaid's decision): new titles, "weight decides on clean graphs,
+  operator decides under leakage". README badge corrected 152 -> 182 benchmark tests; Fig 4 shows
+  both tuned points; `claude-md-vault/sync.ps1` silent-failure bug fixed earlier in the day.
+- Tests: tcmfbench 182 passed; API suite 76 passed (morning, lambda default 4.0, 516df95).
