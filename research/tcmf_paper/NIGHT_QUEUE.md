@@ -705,6 +705,19 @@ pure-regime realistic-pool scenarios the headline results use, against EVERY non
 
 **Verify:** `pytest tcmfbench/test_n22_theory_pure.py` (3 tests).
 
+### N23 - Measure the scenario geometry and PPR's mechanism instead of describing them
+
+**Status: DONE (2026-09-27, third audit round).** The paper described PPR as "diffusing mass off
+the causal path", quoted a root-witness cosine of about -0.05, and never said what the causal graph
+contains. `run_geometry_n23.py` measures: every scenario's graph is the four-event chain alone
+(4 events, 3 edges); mean cosine to the query is 0.015 (root witness), -0.006 (chain witnesses),
+0.811 (distractors); PPR puts 0.60 of its mass on the two intermediate events, 0.28 on the crisis,
+0.11 on the root; its top-5 is one causal witness plus four distractors in all 50 scenarios
+checked. Mean root boost 0.285 and episodic ratio 0.376 give (1-rho)/(rho*b) = 5.8 for the
+b(j)=0 form of Proposition 1, against the measured median requirement 5.97 (N22).
+
+**Verify:** `pytest tcmfbench/test_n23_geometry.py` (2 tests).
+
 ## Deliberately out of scope for these 14 nights
 
 - Wording and prose polish. Lower return than any item above; do it after the evidence base

@@ -145,8 +145,8 @@ against hand-computed known answers.
 `tcmfbench/run_tuned.py` partitions the same 5-seed protocol into a fixed, disjoint TUNE split
 (seeds 0,1 - 40%) and TEST split (seeds 2,3,4 - 60%). `tcmf_add`/`tcmf_mult` lambda, RRF's `c`,
 `causal_only`'s tau, and `graph_ppr`'s alpha are each swept (5 candidate values, an equal
-budget per operator) on TUNE-only data, selected by mean recall@5, then every headline number
-is reported on the disjoint TEST split with the selected values:
+budget per operator) on TUNE-only data, selected by mean recall@5, then every number in that
+run's report is computed on the disjoint TEST split with the selected values:
 
 ```powershell
 & "..\..\.venv\Scripts\python" -m tcmfbench.run_tuned --regime pure  --n 300 --out results_main_tuned

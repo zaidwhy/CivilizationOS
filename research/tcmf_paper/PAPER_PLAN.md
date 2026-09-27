@@ -1,3 +1,6 @@
+> **Superseded planning document.** Kept for history; its claims (e.g. "degrades gracefully",
+> "recovers both") were later corrected. Current record: `FINDINGS.md` (corrections at the top).
+
 # TCMF -> Publishable Paper: Working Plan (grounded in the real implementation)
 
 Status: living document. Owner: Zaid Ali Syed (solo first author). Reviewer-substitute

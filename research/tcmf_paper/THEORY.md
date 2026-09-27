@@ -79,10 +79,16 @@ point. (c) Substitute `e(i) = rho * e(j)` into (b); `e(j)` cancels, and the deno
 
 **Reading.** The episodic score never leaves the comparison. Multiplicative fusion scales the
 causal signal *by* the semantic one rather than adding alongside it, so a memory with a weak
-semantic match carries a proportionally shrunken causal claim. Promotion demands
-`b(i)/b(j) > e(j)/e(i)`, and since `b <= 1` that is unsatisfiable once the episodic ratio is
-large enough. The practical consequence is (c): **the correct `lam` is a property of each
-scenario's episodic landscape, so no single global `lam` is correct across scenarios.**
+semantic match carries a proportionally shrunken causal claim. When the competitor also carries
+a boost (`b(j) > 0`), promotion demands `b(i)/b(j) > e(j)/e(i)`, which fails once the episodic gap
+exceeds the boost ratio. When it does not (`b(j) = 0`, the case for about 99% of competitors in
+the benchmark), promotion is always reachable, but `lam*_mult = (1 - rho) / (rho * b(i))` still
+grows without bound as `rho -> 0`; at the benchmark's mean `rho` (0.376) and root boost (0.285)
+it is 5.8, against a measured median requirement of 5.97 (N22, N23). The practical consequence
+is (c): **the correct `lam` is a property of each scenario's episodic landscape, so no single
+`lam` can be derived in advance from the causal signal.** A large enough `lam` can still happen
+to clear every scenario in a given sample (on the benchmark, recall@5 reaches 1.00 by
+lambda=15), but nothing about the causal margins says so ahead of time.
 
 ---
 

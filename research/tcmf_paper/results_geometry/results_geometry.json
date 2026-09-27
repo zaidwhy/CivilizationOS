@@ -1,0 +1,24 @@
+{
+  "n": 300,
+  "n_ppr": 50,
+  "graph_events": 4,
+  "graph_edges": 3,
+  "mean_cos_to_query": {
+    "gold_root": 0.015272652899924044,
+    "gold_chain": -0.0059491662945098745,
+    "distractor": 0.8110393079022566,
+    "noise": 0.003576193429297718
+  },
+  "b_root_mean": 0.2850833071602716,
+  "rho_mean": 0.3760704338287434,
+  "mult_lambda_at_means_bj0": 5.819619450040001,
+  "ppr_mass_by_event_kind": {
+    "root_cause": 0.1126150590421149,
+    "decision": 0.6044659915932009,
+    "crisis": 0.2829189493646845
+  },
+  "ppr_top5_label_counts": {
+    "gold_chain": 50,
+    "distractor": 200
+  }
+}

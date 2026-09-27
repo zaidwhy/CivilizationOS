@@ -5,6 +5,26 @@ Numbers below are from `results_main/RESULTS.md`. The mechanism under test is th
 `api.memory.tcmf.TCMFRetriever`; baselines and fusion variants share identical episodic scores
 and causal boosts, so differences come only from how the two streams combine.
 
+## Superseded claims (corrections of 2026-09-27)
+
+This file is a chronological research log; entries below keep the wording they were written
+with. These claims in earlier entries were later found wrong or overstated. The paper
+(private `paper/REVIEW.md` sections 13-15) and this list are the current record:
+
+- "Only additive fusion recovers both kinds of evidence" (F6): `graph_ppr` also recovers both,
+  more evenly (causal@5 0.67, semantic@5 1.00 vs additive 1.00 / 0.38).
+- "Degrades gracefully, to the semantic floor rather than to chance" (F7): at pool 19 chance
+  recall@10 is 10/19 = 0.53, so `tcmf_add` at full dropout (0.55) is at chance. What holds at both
+  pool sizes is only that it never falls below `causal_only`.
+- "PPR mass diffuses off the causal path": the graph is the four-event chain alone, so there is no
+  off-path. PPR gives the root cause (an end node) the least mass (0.11) and distractors inherit
+  the crisis node's mass through similarity; its top-5 is one witness plus four distractors (N23).
+- "tcmf_shipped trades top-5 recall for favor-root": the recall loss was its lambda=2 sitting below
+  the Corollary bound; at lambda=4 it gets recall@5 1.00 and root rank 1.0 (N21).
+- "recall@5 0.54 at the tuned lambda=2.4": that is recall@10; tuned recall@5 is 0.52 (N03 test split).
+- "No single global lambda is correct" (theory): overstated. No lambda can be *derived in advance*
+  for multiplication; a large enough one can still clear a given sample (1.00 by lambda=15).
+
 ## The task (by construction, adversarial to similarity)
 
 Each scenario is a crisis at the end of an authored causal chain. Root-cause and chain-witness
@@ -31,13 +51,14 @@ reproducible, the benchmark distinguishes:
 | episodic (real pipeline, l=0) | 0.00 | 13.0 | same failure + importance makes it worse |
 | **tcmf_mult (OLD operator)** | **0.02** | 11.6 | **the old multiplicative fusion exploits none of the causal signal** |
 | causal_only (oracle) | 1.00 | 3.0 | the causal signal alone fully separates gold |
-| graph_ppr (HippoRAG-style) | 0.33 | 9.1 | structured, but PPR mass diffuses off the causal path |
+| graph_ppr (HippoRAG-style) | 0.33 | 9.1 | structured, but the root cause (a chain end node) gets the least PageRank mass |
 | **tcmf_add (additive operator, l=4)** | **1.00** | 3.0 | **additive fusion of the SAME scores recovers all of it** |
 | **tcmf_shipped (fixed real code)** | **0.76** | **1.0** | **root cause at rank 1 (root_mrr 1.00, nDCG 0.95); recall@10 = 1.00** |
 | tcmf_rrf | 0.66 | 7.0 | rank fusion helps, less than additive |
 
-`tcmf_shipped` trades a little top-5 recall for favor-root weighting, which lifts the root
-cause to rank 1 while keeping recall@10 = 1.00.
+`tcmf_shipped` (lambda=2) loses some top-5 recall while favor-root weighting lifts the root
+cause to rank 1. [Corrected 2026-09-27: the loss is the lambda=2 default sitting below the
+derived bound, not favor-root; at lambda=4 it has recall@5 1.00 and root rank 1.0 (N21).]
 
 ## Confirmed findings
 
@@ -94,7 +115,8 @@ near the crisis, cause unlogged so no causal boost). Neither single signal can r
 **F6 - Fusion strictly beats either single signal.** At recall@10 `tcmf_add` (0.98) dominates
 causal_only (0.79), semantic_rag (0.51), graph_ppr (0.80), and shipped tcmf_mult (0.74). The
 subset columns show why: semantic_rag recovers semantic-gold but not causal-gold; causal_only
-the reverse; only the additive fusion recovers both. Note the shipped multiplicative TCMF still
+the reverse; additive fusion recovers all causal-gold and part of the semantic-gold (graph_ppr
+strikes the opposite balance - see the corrections at the top). Note the shipped multiplicative TCMF still
 gets causal@5 = 0.01 - even here it is effectively just semantic retrieval with a decorative
 graph. A causal-vs-semantic tradeoff exists in the weight lambda (low lambda favours
 semantic-gold, high favours causal-gold); lambda=4 maximises overall recall@10.
