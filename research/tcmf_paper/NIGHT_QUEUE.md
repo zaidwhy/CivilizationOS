@@ -677,11 +677,33 @@ pool 78, 5 seeds x 300:
 
 There is no tradeoff: the loss was the weight sitting below the derived bound, which the Corollary
 predicts. Paper F5, Table 1 caption, the defect list, the conclusion, and the SRW cut's Table 1
-now say so. Not yet done: the deployed default in `api/memory/tcmf.py` is still 2.0; raising it to
-4.0 is a product change left for Zaid to approve.
+now say so. Zaid approved raising the deployed default to 4.0 (2026-09-27). The script also
+reports the held-out test split alone and the multiplicative operator at lambda=0.6, so the SRW
+Table 1 and the full paper's new tab:tuned are single-split tables (test: shipped 0.797 at
+lambda=2, 1.000 at lambda=4; mult 0.011 at lambda=0.6).
 
 **Verify:** `pytest tcmfbench/test_n21_shipped_lambda.py` (3 tests) passes; the lambda=2 row
 reproduces the published 0.79 exactly.
+
+### N22 - Measure the theory on the headline setting, not on ten mixed-regime scenarios
+
+**Status: DONE (2026-09-27).** The paper's required-lambda numbers (3.11-9.26 multiplicative,
+3.32-3.64 additive) came from `results_theory`: ONE mixed-regime scenario per seed, 10 seeds, and
+only against distractors. `run_theory_pure_n22.py` measures the same quantities on the 1500
+pure-regime realistic-pool scenarios the headline results use, against EVERY non-gold memory:
+
+- additive bound: median 3.50, p99 3.77; lambda=4 clears it in 98.3% of scenarios; a non-gold
+  memory out-boosts the root in 0.9% (no operator can fix those).
+- multiplicative requirement: median 5.97, p5-p95 3.49-9.26, max 17.4; lambda=4 suffices in 10.4%,
+  lambda=8 in 84.9%.
+- boost misfires: a distractor gets any boost in 0.47% of scenarios, a noise memory in 1.2% (so
+  "distractors get zero boost" is almost, not exactly, true).
+- F15 mechanism, previously "an interpretation, not measured": min-max normalization lowers the
+  root's episodic ratio rho in 100% of scenarios (mean 0.38 -> 0.21), and the multiplicative
+  requirement recomputed on normalized scores rises in 99% (median 5.97 -> 13.8, p95 33).
+  No gold memory ever lands at exactly 0 after normalization, so that simpler story is ruled out.
+
+**Verify:** `pytest tcmfbench/test_n22_theory_pure.py` (3 tests).
 
 ## Deliberately out of scope for these 14 nights
 

@@ -1,0 +1,46 @@
+{
+  "config": {
+    "pool": 78,
+    "seeds": [
+      0,
+      1,
+      2,
+      3,
+      4
+    ],
+    "n_per_seed": 300,
+    "threshold": 0.45,
+    "clean": true,
+    "favor_root": false
+  },
+  "summary": {
+    "n": 1500,
+    "frac_scenarios_any_distractor_boosted": 0.004666666666666667,
+    "mean_frac_distractors_boosted": 0.00023333333333333333,
+    "frac_scenarios_any_noise_boosted": 0.012,
+    "frac_scenarios_nongold_outboosts_root": 0.009333333333333334,
+    "b_root_min": 0.26069138447443646,
+    "b_root_max": 0.3075863718986512,
+    "add_required_finite_frac": 0.9906666666666667,
+    "add_required_p50": 3.502745438433162,
+    "add_required_p99": 3.7681056535978645,
+    "add_required_max": 8.57407379015484,
+    "frac_lambda4_clears_add_bound": 0.9833333333333333,
+    "mult_required_finite_frac": 0.99,
+    "mult_required_p5": 3.4939689868305814,
+    "mult_required_p50": 5.973073265895954,
+    "mult_required_p95": 9.264463714921394,
+    "mult_required_max": 17.399477477094884,
+    "frac_lambda4_clears_mult_requirement": 0.104,
+    "frac_lambda8_clears_mult_requirement": 0.8493333333333334,
+    "frac_root_ehat_zero": 0.0,
+    "frac_any_gold_ehat_zero": 0.0,
+    "ehat_root_mean": 0.20870869031241812,
+    "rho_raw_mean": 0.3783373337841771,
+    "rho_norm_mean": 0.20870869031241812,
+    "frac_rho_norm_below_rho_raw": 1.0,
+    "normmult_required_p50": 13.815929285223614,
+    "normmult_required_p95": 33.02520817208618,
+    "frac_normmult_needs_more_than_mult": 0.99
+  }
+}

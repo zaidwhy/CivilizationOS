@@ -43,6 +43,24 @@ def test_shipped_retriever_loses_recall_at_deployed_lambda_2_but_keeps_root_firs
     assert rr == 1.0
 
 
+def test_reimplemented_scoring_matches_the_deployed_retriever_up_to_ties():
+    # The fusion variants in this benchmark score memories with a reimplementation of the
+    # deployed boost and fusion (methods._causal_boosts / _minmax / _episodic_scores). Configured
+    # like the deployed class (weak-ancestor fallback on, favor-root, no prune), it must reproduce
+    # the real TCMFRetriever's ranking: identical top-10, and never ordering a lower-scored memory
+    # above a higher-scored one (only exactly tied scores may be broken differently).
+    for lam in (2.0, 4.0):
+        for mat in _mats(n=10):
+            real = asyncio.run(M.rank_tcmf(mat, lam=lam))
+            reimpl = M.rank_tcmf_ablation(mat, additive=True, clean=False, favor_root=True,
+                                          prune_k=None, lam=lam, threshold=0.45)
+            assert real[:10] == reimpl[:10]
+            epi = M._minmax(M._episodic_scores(mat))
+            b = M._causal_boosts(mat, 0.45, clean=False, favor_root=True)
+            score = {i: epi[i] + lam * b[i] for i in mat.all_ids}
+            assert all(score[a] >= score[c] - 1e-9 for a, c in zip(real, real[1:]))
+
+
 def test_committed_results_match_the_paper():
     res = json.load(open(RESULTS))["results"]
     assert round(res["shipped_l2"]["recall@5"][0], 2) == 0.79
