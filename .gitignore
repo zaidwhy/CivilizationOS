@@ -33,6 +33,7 @@ web/vite.config.js
 
 # Harness session/plan artifacts
 plans/
+.claude/worktrees/
 
 # OS / editor
 .DS_Store
