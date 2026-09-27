@@ -58,6 +58,8 @@ is the one the paper actually draws from.
 |---|---|---|---|
 | `results_decision` | `python -m tcmfbench.run_decision --n 60 --out results_decision` | first run: a few min (60 x 10 = 600 LLM calls); reruns: seconds | `results_decision/llm_cache.json` (committed) |
 
+**Fixed 2026-09-27:** `RealConfig(n_domains=6)` now pins the pre-N05 domain set in `run_realtext.py` and `run_decision.py`; both regenerate their committed JSON byte-identically from the committed caches with no Ollama (checked). `run_encoder2.py` and `run_n06_domains.py` keep all 8 domains, as they were run. Historical note follows.
+
 **Found while building Fig 6 (N11), not fixed - out of scope for a figures-only item:** the
 documented `results_decision` rerun command above no longer completes from only the committed
 caches on a fresh CLOUD-OK checkout (no Ollama). `run_decision.py` calls

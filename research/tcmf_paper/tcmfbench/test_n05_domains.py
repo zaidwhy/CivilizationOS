@@ -213,3 +213,25 @@ if __name__ == "__main__":
             traceback.print_exc()
     print(f"\n{len(tests) - failed}/{len(tests)} passed")
     sys.exit(1 if failed else 0)
+
+
+def test_n_domains_pins_the_pre_n05_domain_set():
+    # results_realtext and results_decision were produced when DOMAINS had 6 entries; their run
+    # scripts pass n_domains=6 so the same seeds draw the same domains (regenerates exactly).
+    class _Rec:
+        def __init__(self):
+            self.texts = set()
+
+        def embed(self, text):
+            self.texts.add(text)
+            return [1.0] + [0.0] * 7
+
+        def flush(self):
+            pass
+
+    from .realtext import generate_many_realtext
+    first_six = {d["name"] for d in DOMAINS[:6]}
+    pinned = generate_many_realtext(60, RealConfig(n_domains=6), _Rec(), base_seed=0)
+    assert {sc.domain for sc in pinned} <= first_six
+    unpinned = generate_many_realtext(60, RealConfig(), _Rec(), base_seed=0)
+    assert {sc.domain for sc in unpinned} - first_six  # the default still draws the new domains

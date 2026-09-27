@@ -263,6 +263,10 @@ class RealConfig:
     imp_semantic_gold: tuple[float, float] = (4.0, 7.0)
     imp_noise: tuple[float, float] = (2.0, 5.0)
     tick_span: int = 80
+    # Draw each scenario's domain from DOMAINS[:n_domains] (None = all). results_realtext and
+    # results_decision were produced when DOMAINS had 6 entries, before N05 added two; their run
+    # scripts pin n_domains=6 so the committed numbers regenerate exactly.
+    n_domains: int | None = None
 
     def total_gold(self, n_ancestors: int) -> int:
         return n_ancestors + self.n_semantic_gold
@@ -275,7 +279,8 @@ def _fill(text: str, rng) -> str:
 def generate_realtext(scenario_id: str, cfg: RealConfig, seed: int,
                       embedder: EmbedClient, domain_idx: int | None = None) -> Scenario:
     rng = np.random.default_rng(seed)
-    dom = DOMAINS[domain_idx if domain_idx is not None else int(rng.integers(len(DOMAINS)))]
+    pool = DOMAINS[:cfg.n_domains] if cfg.n_domains else DOMAINS
+    dom = DOMAINS[domain_idx] if domain_idx is not None else pool[int(rng.integers(len(pool)))]
     inst = "inst_main"
     ancestors = dom["ancestors"]
     n_anc = len(ancestors)

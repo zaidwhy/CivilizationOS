@@ -64,7 +64,7 @@ async def run(args):
     n, seed, k = args.n, args.seed, args.k
 
     print(f"Embedding {n} scenarios (cache: {len(ec)} vectors so far, path={emb_cache_path})...")
-    scs = generate_many_realtext(n, RealConfig(), ec, base_seed=seed)
+    scs = generate_many_realtext(n, RealConfig(n_domains=6), ec, base_seed=seed)  # pre-N05 domain set
     mats = [M.materialize(sc, RealConfig().max_mem_per_citizen) for sc in scs]
     print(f"Embedded. Cache now {len(ec)} vectors. Building prompts and calling the LLM...")
 

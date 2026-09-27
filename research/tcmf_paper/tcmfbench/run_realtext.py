@@ -26,6 +26,7 @@ from . import metrics as MT
 
 KS = (3, 5, 10)
 THR = 0.60  # raised for anisotropic real embeddings
+ORIGINAL_DOMAINS = 6  # the pre-N05 domain set results_realtext was produced with
 
 
 def _score(ranked, mat):
@@ -98,7 +99,7 @@ async def run(args):
         scs = generate_many_realtext(n, cfg, ec, base_seed=seed)
         return [M.materialize(sc, cfg.max_mem_per_citizen) for sc in scs]
 
-    base = RealConfig()
+    base = RealConfig(n_domains=ORIGINAL_DOMAINS)
     print(f"Embedding {n} scenarios (cache: {len(ec)} vectors so far)...")
     ms = mats(base)
     print(f"Embedded. Cache now {len(ec)} vectors. Scoring...")
@@ -112,7 +113,7 @@ async def run(args):
     dropouts = [0.0, 0.5, 1.0]
     curve = {}
     for p in dropouts:
-        res = await _eval(mats(RealConfig(edge_dropout=p)), drop_methods)
+        res = await _eval(mats(RealConfig(edge_dropout=p, n_domains=ORIGINAL_DOMAINS)), drop_methods)
         curve[p] = {m: res[m]["recall@10"][0] for m in drop_methods}
 
     ctbl = ["### Edge-dropout robustness (real text, overall recall@10)", "",
@@ -125,7 +126,7 @@ async def run(args):
         "# TCMF Benchmark: Real-Text Tier (Ollama nomic-embed-text)",
         "",
         f"Scenarios: {n} | seed: {seed} | encoder: nomic-embed-text (768d) | "
-        f"causal threshold: {THR} | domains: {len(__import__('tcmfbench.realtext', fromlist=['DOMAINS']).DOMAINS)}",
+        f"causal threshold: {THR} | domains: {ORIGINAL_DOMAINS}",
         "",
         "Natural-language scenarios; ground truth by construction, geometry by the encoder. "
         "`causal@5`/`semantic@5` = recall over each gold subset.",
