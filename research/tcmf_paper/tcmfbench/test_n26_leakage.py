@@ -52,17 +52,15 @@ def test_mechanism_share_of_mult_only_unreachable_pairs():
 
 
 def test_no_multiplicative_weight_reaches_additive_under_leakage_even_in_the_limit():
-    # lambda -> infinity ranks by e*b; that supremum still sits below additive at lambda=4
+    # lambda -> infinity ranks by e*b; that supremum still sits below additive at lambda=4 in all
+    # 12 leaky settings (4 false-edge rates + 2 thresholds, x 2 depth weightings)
     m = json.load(open(ROOT / "results_leakage" / "results_leakage_mechanism.json"))
     leak = _leak()
-    add = {("spurious_p0.5", "prox"): leak["spurious"]["0.5"]["arms"]["add_l4_prox"],
-           ("spurious_p0.5", "root"): leak["spurious"]["0.5"]["arms"]["add_l4_root"],
-           ("spurious_p1.0", "prox"): leak["spurious"]["1.0"]["arms"]["add_l4_prox"],
-           ("spurious_p1.0", "root"): leak["spurious"]["1.0"]["arms"]["add_l4_root"],
-           ("realtext_tau0.45", "prox"): leak["realtext"]["0.45"]["arms"]["add_l4_prox"],
-           ("realtext_tau0.45", "root"): leak["realtext"]["0.45"]["arms"]["add_l4_root"]}
-    for (setting, tag), arm in add.items():
-        assert m[setting][tag]["mult_limit_recall5"] < arm["recall@5"][0]
+    settings = [(f"spurious_p{p}", "spurious", p) for p in ("0.1", "0.25", "0.5", "1.0")] +                [(f"realtext_tau{t}", "realtext", t) for t in ("0.45", "0.5")]
+    for mech_key, sect, k in settings:
+        for tag in ("prox", "root"):
+            add = leak[sect][k]["arms"][f"add_l4_{tag}"]["recall@5"][0]
+            assert m[mech_key][tag]["mult_limit_recall5"] < add
 
 
 def test_decision_rerun_reproduces_published_and_shows_the_split():

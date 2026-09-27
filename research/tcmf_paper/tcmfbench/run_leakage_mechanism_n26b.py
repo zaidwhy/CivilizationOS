@@ -65,7 +65,7 @@ def _limit_recall5(mats, thr, fr) -> float:
 
 def main():
     res = {}
-    for p in (0.5, 1.0):
+    for p in (0.1, 0.25, 0.5, 1.0):
         cfg = MixedConfig(n_distractors=20, n_noise=55, spurious_edge_rate=p)
         mats = [M.materialize(sc, cfg.max_mem_per_citizen)
                 for s in range(5) for sc in generate_many_mixed(300, cfg, base_seed=s * SEED_STRIDE)]

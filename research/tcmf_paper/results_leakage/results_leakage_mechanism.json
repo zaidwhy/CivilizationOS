@@ -1,4 +1,36 @@
 {
+ "spurious_p0.1": {
+  "prox": {
+   "leaked_pairs": 9525,
+   "frac_mult_only_unreachable": 0.39359580052493437,
+   "frac_unreachable_for_both": 0.5090813648293964,
+   "frac_reachable_for_both": 0.09732283464566929,
+   "mult_limit_recall5": 0.6482666666666667
+  },
+  "root": {
+   "leaked_pairs": 9525,
+   "frac_mult_only_unreachable": 0.25207349081364827,
+   "frac_unreachable_for_both": 0.0024146981627296586,
+   "frac_reachable_for_both": 0.7455118110236221,
+   "mult_limit_recall5": 0.6894666666666667
+  }
+ },
+ "spurious_p0.25": {
+  "prox": {
+   "leaked_pairs": 22287,
+   "frac_mult_only_unreachable": 0.3880737649750976,
+   "frac_unreachable_for_both": 0.5146049266388477,
+   "frac_reachable_for_both": 0.09732130838605466,
+   "mult_limit_recall5": 0.6076
+  },
+  "root": {
+   "leaked_pairs": 22287,
+   "frac_mult_only_unreachable": 0.24906896397002737,
+   "frac_unreachable_for_both": 0.0010319917440660474,
+   "frac_reachable_for_both": 0.7498990442859066,
+   "mult_limit_recall5": 0.7053333333333334
+  }
+ },
  "spurious_p0.5": {
   "prox": {
    "leaked_pairs": 45021,
