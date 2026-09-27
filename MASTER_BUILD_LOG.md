@@ -1399,3 +1399,9 @@ checked out at `research/tcmf_paper/paper/`.
   run_*_n20..n22.py, test_n20..n22*.py, results_normalized_mult/, results_shipped_lambda/,
   results_theory_pure/, NIGHT_QUEUE.md, REPRODUCE.md, FINDINGS.md}`, `api/memory/tcmf.py`,
   `README.md`, `docs/tcmf.md`.
+
+## 2026-09-27 - One-diagram README hero (crisis loop)
+
+- `docs/crisis-loop.svg`: hand-authored hero above the city screenshot: crisis -> causal graph -> TCMF (normalize(episodic) + lambda x causal_boost) -> 5-role council over the 3-tier router -> verdict written back. Bottom line: v1 multiplicative recall@5 0.02 vs causal alone 1.00; normalized additive recovers 1.00 (docs/tcmf.md). Lambda drawn as a symbol, not a number, so the diagram survives retuning.
+- Inserted only after the parallel TCMF session committed (tree was clean at 516df95/3d37722).
+- Noticed, not fixed: README badge says 152 benchmark tests, the TCMF log entry above says tcmfbench 167 passed. Badge and profile need re-counting.
