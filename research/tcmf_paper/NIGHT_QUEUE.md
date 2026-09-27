@@ -659,6 +659,30 @@ precision (asserted at runtime, not eyeballed).
 
 ---
 
+### N21 - Is the shipped retriever's recall@5 loss the depth weight, or its lambda?
+
+**Status: DONE (2026-09-27).** Found during a full read-through of the paper. The paper said the
+shipped retriever (additive + favor-root) "trades a little top-5 recall for placing the root cause
+first" (F5). But the benchmark's `tcmf_shipped` runs the real `TCMFRetriever` at its deployed
+default `causal_boost=2.0`, which is below the paper's own Corollary bound (1/gamma in
+3.32-3.64). `run_shipped_lambda_n21.py` reruns the real retriever at lambda 2/4/8, pure regime,
+pool 78, 5 seeds x 300:
+
+| method | recall@5 | root_rank |
+|---|---|---|
+| shipped, lambda=2 (deployed) | 0.791 | 1.00 |
+| shipped, lambda=4 | 1.000 | 1.00 |
+| shipped, lambda=8 | 1.000 | 1.00 |
+| plain additive, lambda=4 | 1.000 | 3.01 |
+
+There is no tradeoff: the loss was the weight sitting below the derived bound, which the Corollary
+predicts. Paper F5, Table 1 caption, the defect list, the conclusion, and the SRW cut's Table 1
+now say so. Not yet done: the deployed default in `api/memory/tcmf.py` is still 2.0; raising it to
+4.0 is a product change left for Zaid to approve.
+
+**Verify:** `pytest tcmfbench/test_n21_shipped_lambda.py` (3 tests) passes; the lambda=2 row
+reproduces the published 0.79 exactly.
+
 ## Deliberately out of scope for these 14 nights
 
 - Wording and prose polish. Lower return than any item above; do it after the evidence base
