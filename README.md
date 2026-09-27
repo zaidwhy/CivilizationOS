@@ -12,6 +12,8 @@
 
 **Live demo:** [civilization-os-murex.vercel.app](https://civilization-os-murex.vercel.app) (frontend, Vercel) talking to [civilizationos-api.onrender.com](https://civilizationos-api.onrender.com/health) (API, Render free tier: expect a ~25 s cold start after idle). Crisis injection on the live site is public but rate-limited (30 s cooldown, 60 per day); speed and manual resolve are admin-only.
 
+<img src="docs/crisis-loop.svg" alt="CivilizationOS in one picture. A crisis is injected and becomes a node in a causal graph linked to the prior events that caused it. TCMF retrieval fuses each citizen's episodic memory score with a causal boost from walking the graph back to the crisis's ancestors, as normalized episodic score plus lambda times causal boost. Five council roles, Historian, Strategist, Skeptic, Predictor and Synthesizer, debate with that context through a three-tier model router. The verdict changes fear and factions and is written back into the causal graph. The first, multiplicative version of TCMF scored recall at 5 of 0.02 where the causal signal alone reaches 1.00; the normalized additive form recovers 1.00." width="100%">
+
 ![CivilizationOS - 3D city with live citizen agents](docs/screenshots/city.png)
 
 ---
