@@ -37,12 +37,12 @@ Standard RAG retrieves by semantic similarity. TCMF fuses **two retrieval stream
 
 ```
 AGORA stream    - per-citizen episodic memories scored by:
-                    relevance (embedding cosine) × recency (exp-decay) × importance (LLM-rated)
+                    relevance (embedding cosine) + recency (exp-decay) + importance (LLM-rated)
 
 PANTHEON stream - society-wide causal graph (NetworkX DiGraph):
                     crisis → council decision → policy outcome → downstream event
 
-Fused score = episodic_score(m, q) × (1 + λ × causal_boost(m))
+Fused score = minmax(episodic_score(m, q)) + λ × causal_boost(m)      (λ = 4 by default)
 ```
 
 The `causal_boost` rewards memories that are semantically near the **causal ancestors** of the current crisis. A witness at the scene of a root cause outranks someone who heard about it second-hand. No off-the-shelf RAG system does this.

@@ -124,7 +124,9 @@ full suite passes (66/66):
 1. **Fusion operator** - multiplicative `episodic x (1 + l*boost)` -> normalized-additive
    `minmax(episodic) + l*boost`. `causal_boost` (lambda) is now an additive weight, default
    raised to 2.0 (additive weights are O(1-4), not <1). This is the fix that makes the causal
-   signal usable at all (F3 -> F4).
+   signal usable at all (F3 -> F4). Raised again to 4.0 on 2026-09-27: 2.0 sits below the
+   Corollary bound (3.32-3.64) and cost recall@5 (0.79 vs 1.00 at 4.0, N21). Benchmark results
+   stay pinned to the study-time 2.0 via explicit `lam=2.0` in every run script.
 2. **Crisis self-ancestor leak** - the institution-scoped weak-ancestor fallback no longer adds
    the crisis event itself; `ancestors.pop(crisis_event_id)` guarantees a crisis is never its
    own ancestor. Removes the spurious boost to similar distractors (F-mixed).

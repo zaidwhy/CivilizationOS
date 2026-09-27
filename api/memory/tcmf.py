@@ -4,7 +4,7 @@ Standard RAG retrieves documents by semantic similarity. TCMF fuses two
 information streams:
 
     1. AGORA stream - per-citizen episodic memories scored by the generative-
-                       agents formula (relevance × recency × importance).
+                       agents formula (relevance + recency + importance, a weighted sum).
     2. PANTHEON stream - society-wide causal graph: which past events causally
                         preceded the current crisis, and how deep in that chain?
 
@@ -19,10 +19,13 @@ causal term can compete, and causal_boost(m) = max over causal ancestors a of
 weight rewards ancestors closer to the root cause (deeper in the chain).
 
 Additive (not multiplicative) fusion is deliberate: a root-cause memory is
-semantically far from the crisis, so its episodic score is near zero; the earlier
-multiplicative form `episodic * (1 + lambda*boost)` could never lift it, because a
-near-zero base stays near-zero however large the boost. Additive fusion lets the
-causal signal surface such memories. See research/tcmf_paper/FINDINGS.md (F3-F7).
+semantically far from the crisis, so its episodic score is well below the loud
+symptom memories'. Under the earlier multiplicative form
+`episodic * (1 + lambda*boost)` the lambda needed to lift it depends on that
+episodic gap, which differs from crisis to crisis, so no default is safe (it scored
+recall@5 = 0.02 at its old default of 0.6). Under additive fusion the needed lambda
+is bounded by 1 / (causal margin) whatever the episodic scores are, so one default
+works. See research/tcmf_paper/FINDINGS.md (F3-F7) and NIGHT_QUEUE.md (N21).
 
 This rewards memories that are semantically near the causal ancestors of the
 current crisis: a witness who was at the scene of the root cause outranks one who
@@ -57,7 +60,7 @@ class TCMFRetriever:
     def __init__(
         self,
         causal_graph: CausalGraph,
-        causal_boost: float = 2.0,
+        causal_boost: float = 4.0,
         causal_sim_threshold: float = 0.45,
         *,
         max_depth: int = 4,
@@ -67,7 +70,10 @@ class TCMFRetriever:
         self.graph = causal_graph
         # causal_boost is the additive weight (lambda) on the [0,1] causal term. It is applied
         # ADDITIVELY to a normalized episodic score, so useful values are O(1-4), not <1 as in
-        # the old multiplicative form. See research/tcmf_paper/FINDINGS.md.
+        # the old multiplicative form. The default must clear 1 / (smallest causal margin the
+        # root cause has to beat); on the benchmark that bound is 3.32-3.64, and the earlier
+        # default of 2.0 sat below it and lost recall@5 (0.79 vs 1.00 at 4.0, N21).
+        # See research/tcmf_paper/FINDINGS.md.
         self.causal_boost = causal_boost
         self.causal_sim_threshold = causal_sim_threshold
         self.max_depth = max_depth
