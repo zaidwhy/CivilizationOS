@@ -19,6 +19,7 @@ import numpy as np
 from . import _bootstrap  # noqa: F401
 from . import methods as M
 from .generator import GenConfig, generate_many
+from .mixed import MixedConfig, generate_mixed
 
 OUT = Path(__file__).resolve().parents[1] / "results_geometry"
 
@@ -48,10 +49,18 @@ def main(n=300, n_ppr=50):
                 mass[ev.kind] += ppr[ev.id] / n_ppr
             for i in M.rank_graph_ppr(mat)[:5]:
                 top5[mat.mem[i]["label"]] += 1
+    # mixed regime: semantic-gold vs distractor similarity to the query (design disclosure)
+    mcos = {"gold_semantic": [], "distractor": [], "gold_root": [], "gold_chain": [], "noise": []}
+    mcfg = MixedConfig(n_distractors=20, n_noise=55)
+    for k in range(n):
+        msc = generate_mixed(f"g{k}", mcfg, seed=k)
+        for m in msc.memories:
+            mcos[m.label].append(M._cosine(m.embedding, msc.query_embedding))
     summary = {
         "n": n, "n_ppr": n_ppr,
         "graph_events": len(sc.events), "graph_edges": len(sc.edges),
         "mean_cos_to_query": {k: float(np.mean(v)) for k, v in cos.items()},
+        "mixed_mean_cos_to_query": {k: float(np.mean(v)) for k, v in mcos.items()},
         "b_root_mean": float(np.mean(b_root)), "rho_mean": float(np.mean(rho)),
         "mult_lambda_at_means_bj0": float((1 - np.mean(rho)) / (np.mean(rho) * np.mean(b_root))),
         "ppr_mass_by_event_kind": dict(mass),
@@ -62,6 +71,7 @@ def main(n=300, n_ppr=50):
     lines = [f"# N23: scenario geometry and PPR mechanism (pure regime, pool 78, seed 0)", "",
              f"- causal graph per scenario: {summary['graph_events']} events, {summary['graph_edges']} edges",
              "- mean cosine to query: " + ", ".join(f"{k} {v:.3f}" for k, v in summary["mean_cos_to_query"].items()),
+             "- mixed regime, mean cosine to query: " + ", ".join(f"{k} {v:.3f}" for k, v in summary["mixed_mean_cos_to_query"].items()),
              f"- mean root boost {summary['b_root_mean']:.3f}, mean episodic ratio rho {summary['rho_mean']:.3f}; "
              f"(1-rho)/(rho*b) at the means = {summary['mult_lambda_at_means_bj0']:.2f}",
              "- PPR mass by event kind (mean over %d scenarios): " % n_ppr

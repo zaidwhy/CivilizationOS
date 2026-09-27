@@ -30,6 +30,8 @@ def test_committed_geometry_matches_the_paper():
     m = g["ppr_mass_by_event_kind"]
     assert m["root_cause"] < m["crisis"] < m["decision"]
     assert g["ppr_top5_label_counts"] == {"gold_chain": 50, "distractor": 200}
+    mc = g["mixed_mean_cos_to_query"]
+    assert round(mc["gold_semantic"], 2) == 0.83 and round(mc["distractor"], 2) == 0.54
 
 
 if __name__ == "__main__":

@@ -497,10 +497,8 @@ def draw_fig4(sweep: dict, out_stub: Path) -> None:
                zorder=3)
         ax.fill_between(lambdas, lo, hi, color=color, alpha=0.18, zorder=1, linewidth=0)
 
-    # flat low-lambda region for the multiplicative curve, shaded to make it visually obvious
-    ax.axvspan(0, 1.0, color=COLOR_MULT, alpha=0.08, zorder=0)
-    ax.text(0.5, 0.03, "flat", ha="center", va="bottom", fontsize=6.5, color=COLOR_MULT,
-           transform=ax.get_xaxis_transform())
+    # No "flat region" shading: both operators are near zero below lambda~0.6, so the low-lambda
+    # region does not separate them (corrected 2026-09-27; see paper/REVIEW.md s.14).
 
     tuned = sweep["tuned_mult_lambda_recall5"]
     ax.scatter([sweep["tuned_mult_lambda"]], [tuned["mean"]], s=32, color=COLOR_MULT,
@@ -642,7 +640,7 @@ def draw_fig6(data: dict, out_stub: Path) -> None:
     # never collide with the top method's dot/whiskers.
     ax.text(floor, 1.01, "no_retrieval\nfloor", ha="center", va="bottom", fontsize=5.8,
            color="#555555", transform=ax.get_xaxis_transform())
-    ax.text(ceiling, 1.01, "oracle\nceiling", ha="center", va="bottom", fontsize=5.8,
+    ax.text(ceiling, 1.01, "oracle\ncontrol", ha="center", va="bottom", fontsize=5.8,
            color="#555555", transform=ax.get_xaxis_transform())
 
     for y, name in zip(y_pos, FIG6_ORDER):
