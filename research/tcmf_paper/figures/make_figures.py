@@ -504,12 +504,22 @@ def draw_fig4(sweep: dict, out_stub: Path) -> None:
     ax.scatter([sweep["tuned_mult_lambda"]], [tuned["mean"]], s=32, color=COLOR_MULT,
               edgecolors="black", linewidths=0.6, zorder=4)
     ax.annotate(
-        f"tuned $\\lambda$={sweep['tuned_mult_lambda']:g}\nrecall@5={tuned['mean']:.2f}",
+        f"tuned, grid capped at {sweep['tuned_mult_lambda']:g}\nrecall@5={tuned['mean']:.2f}",
         xy=(sweep["tuned_mult_lambda"], tuned["mean"]),
         xytext=(sweep["tuned_mult_lambda"] + 1.2, tuned["mean"] - 0.22),
         fontsize=6.5, color=COLOR_MULT,
         arrowprops=dict(arrowstyle="-", color=COLOR_MULT, lw=0.6),
     )
+    # N24: the same held-out protocol with a widened grid selects a much larger weight
+    wide_path = _TCMF_PAPER_DIR / "results_main_tuned_wide" / "results_tuned.json"
+    if wide_path.exists():
+        wide = json.loads(wide_path.read_text())
+        wl = wide["selected"]["tcmf_mult_lambda"]
+        wr = wide["test_main"]["tcmf_mult"]["recall@5"]["mean"]
+        ax.scatter([wl], [wr], s=32, color=COLOR_MULT, edgecolors="black", linewidths=0.6, zorder=4)
+        ax.annotate(f"tuned, wide grid: $\\lambda$={wl:g}\nrecall@5={wr:.2f}", xy=(wl, wr),
+                    xytext=(wl - 1.0, wr - 0.25), fontsize=6.5, color=COLOR_MULT,
+                    arrowprops=dict(arrowstyle="-", color=COLOR_MULT, lw=0.6))
 
     ax.set_xlabel(r"$\lambda$", fontsize=8.0)
     ax.set_ylabel("recall@5", fontsize=8.0)

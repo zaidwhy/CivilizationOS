@@ -718,6 +718,30 @@ b(j)=0 form of Proposition 1, against the measured median requirement 5.97 (N22)
 
 **Verify:** `pytest tcmfbench/test_n23_geometry.py` (2 tests).
 
+### N24-N27 - Reviewer-role audit: the thesis narrows to two regimes
+
+**Status: DONE (2026-09-27).** Acting as an EACL reviewer found that N03's held-out tuning offered
+the multiplicative operator only {0.1..2.4}; it selected 2.4 (the edge), so "52% even when tuned"
+was a grid artifact. Four runs followed:
+
+- **N24** (`run_tuned_wide_n24.py`): N03's exact protocol with widened grids. Multiplication
+  selects lambda=16 and reaches recall@5 1.00 on TEST, identical to additive. RRF plateaus at
+  ~0.77 (test 0.763); PPR stays 0.667.
+- **N25** (`run_transfer_n25.py`): lambda=16 (tuned on the pure regime) matches additive within
+  0.01 on the mixed regime and on real text (6 and 8 domains).
+- **N26/N26b** (`run_leakage_n26.py`, `run_leakage_mechanism_n26b.py`): with boost leakage
+  (false edges in a fraction p of scenarios; loose real-text thresholds) additive beats every
+  multiplicative weight (0.6/8/16/32) and the lambda->infinity limit in all 12 leaky settings,
+  under both depth weightings; the gap grows with p. Mechanism: 25-40% of leaked
+  (causal, non-causal) pairs are multiplicative-only unreachable (Proposition 1(a)). The causal
+  score alone often beats both fusions under leakage (partly a false-edge generator artifact).
+- **N27** (`run_decision_n27.py`, qwen2.5:3b-instruct re-pulled): published arms reproduce
+  exactly; clean: additive 0.83 = tuned mult 0.83 (no disagreement); leaky: 0.68 vs 0.57,
+  7/0 discordant, exact McNemar p=0.016.
+
+Both papers were rewritten around the two-regime thesis (Zaid's decision). Tests:
+`test_n24_n25_tuning_transfer.py`, `test_n26_leakage.py` (182 total passing).
+
 ## Deliberately out of scope for these 14 nights
 
 - Wording and prose polish. Lower return than any item above; do it after the evidence base

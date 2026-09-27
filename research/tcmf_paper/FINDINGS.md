@@ -22,6 +22,10 @@ with. These claims in earlier entries were later found wrong or overstated. The 
 - "tcmf_shipped trades top-5 recall for favor-root": the recall loss was its lambda=2 sitting below
   the Corollary bound; at lambda=4 it gets recall@5 1.00 and root rank 1.0 (N21).
 - "recall@5 0.54 at the tuned lambda=2.4": that is recall@10; tuned recall@5 is 0.52 (N03 test split).
+- "Multiplicative fusion reaches only 52% even at a held-out-tuned weight" and "the fusion operator
+  is decisive": the tuning grid stopped at 2.4. With a widened grid (N24) multiplication selects
+  lambda=16 and matches additive (1.00), and that weight transfers (N25). The operator itself
+  decides only under boost leakage (N26, N27). Title and thesis of both papers changed accordingly.
 - "No single global lambda is correct" (theory): overstated. No lambda can be *derived in advance*
   for multiplication; a large enough one can still clear a given sample (1.00 by lambda=15).
 

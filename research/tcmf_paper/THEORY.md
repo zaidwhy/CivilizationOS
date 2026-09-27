@@ -1,4 +1,12 @@
-# Why the fusion operator decides the outcome (formal analysis)
+# When the fusion operator decides the outcome (formal analysis)
+
+> **Two regimes (2026-09-27, N24-N27).** On a clean causal graph (non-causal memories carry no
+> boost) both operators can rank a causal memory first; the difference is that the additive weight
+> is derivable from the causal margins and the multiplicative one is not (held-out tuning finds
+> lambda=16, which then matches additive and transfers). Under boost leakage (0 < b(j) < b(i)),
+> Proposition 1(a) puts 25-40% of leaked pairs out of multiplication's reach at any weight, and
+> additive fusion beats every multiplicative weight including the limit. The analysis below is
+> unchanged; its reading is narrowed accordingly.
 
 Companion to `FINDINGS.md`. That file reports what the benchmark measured; this one proves why
 the measurement had to come out that way, and states precisely how far the proof reaches.

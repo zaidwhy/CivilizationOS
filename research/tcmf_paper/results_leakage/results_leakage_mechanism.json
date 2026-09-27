@@ -1,0 +1,66 @@
+{
+ "spurious_p0.5": {
+  "prox": {
+   "leaked_pairs": 45021,
+   "frac_mult_only_unreachable": 0.3933941938206615,
+   "frac_unreachable_for_both": 0.510695008995802,
+   "frac_reachable_for_both": 0.09591079718353657,
+   "mult_limit_recall5": 0.5369333333333334
+  },
+  "root": {
+   "leaked_pairs": 45021,
+   "frac_mult_only_unreachable": 0.2517491837142667,
+   "frac_unreachable_for_both": 0.0005108727038493148,
+   "frac_reachable_for_both": 0.747739943581884,
+   "mult_limit_recall5": 0.7306666666666667
+  }
+ },
+ "spurious_p1.0": {
+  "prox": {
+   "leaked_pairs": 85584,
+   "frac_mult_only_unreachable": 0.3959034398953075,
+   "frac_unreachable_for_both": 0.5084478407178912,
+   "frac_reachable_for_both": 0.09564871938680126,
+   "mult_limit_recall5": 0.40559999999999996
+  },
+  "root": {
+   "leaked_pairs": 85584,
+   "frac_mult_only_unreachable": 0.25134370910450554,
+   "frac_unreachable_for_both": 0.00026874182090110303,
+   "frac_reachable_for_both": 0.7483875490745934,
+   "mult_limit_recall5": 0.7758666666666666
+  }
+ },
+ "realtext_tau0.45": {
+  "prox": {
+   "leaked_pairs": 1968,
+   "frac_mult_only_unreachable": 0.2926829268292683,
+   "frac_unreachable_for_both": 0.09400406504065041,
+   "frac_reachable_for_both": 0.6133130081300813,
+   "mult_limit_recall5": 0.5466666666666666
+  },
+  "root": {
+   "leaked_pairs": 1968,
+   "frac_mult_only_unreachable": 0.23170731707317074,
+   "frac_unreachable_for_both": 0.03404471544715447,
+   "frac_reachable_for_both": 0.7342479674796748,
+   "mult_limit_recall5": 0.645
+  }
+ },
+ "realtext_tau0.5": {
+  "prox": {
+   "leaked_pairs": 585,
+   "frac_mult_only_unreachable": 0.24615384615384617,
+   "frac_unreachable_for_both": 0.2905982905982906,
+   "frac_reachable_for_both": 0.46324786324786327,
+   "mult_limit_recall5": 0.7116666666666667
+  },
+  "root": {
+   "leaked_pairs": 585,
+   "frac_mult_only_unreachable": 0.26666666666666666,
+   "frac_unreachable_for_both": 0.08717948717948718,
+   "frac_reachable_for_both": 0.6461538461538462,
+   "mult_limit_recall5": 0.7283333333333334
+  }
+ }
+}

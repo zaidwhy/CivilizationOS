@@ -242,7 +242,7 @@ crosses at all, while the additive panel's crossings all sit left of one shared,
 independent bound (3.64) that the shipped lambda=4 clears. Fig 4 plots recall@5 vs lambda for
 both operators on one shared 16-point grid with N02 bootstrap CI bands, from
 `tcmfbench/run_lambda_sweep.py` (new) - the multiplicative curve is genuinely flat through
-lambda~0.3 (shaded) and then rises, reaching 0.52 at the N03 tune-selected value 2.4 (marked),
+lambda~0.3 and then rises, reaching 0.52 at the N03 tune-selected value 2.4 (a grid-edge pick; N24's widened grid selects 16, which reaches 1.00),
 so the figure does not imply multiplicative fusion is flat everywhere, only that a small-lambda
 sweep would never find the fix. `tcmfbench/test_n10_figures.py` (15 tests) checks both against
 the real theory functions and the committed result JSON, not hand-typed numbers.
