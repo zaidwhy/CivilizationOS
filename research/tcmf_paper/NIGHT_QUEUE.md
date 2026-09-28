@@ -795,6 +795,26 @@ domains' decisions and crises plus city events).
 
 **Verify:** `pytest tcmfbench/test_n29_clutter.py` (5 tests; 191 total).
 
+### N30 - Graph families beyond the four-event chain, and the leaked-pair map
+
+**Status: DONE (2026-09-28).** Asked for by two relayed reviews. `structures.py` rewires the
+ancestor edges into seven shapes (chains of 3/4/6, diamond, two roots, tree, side cause), events
+and memories untouched; `run_structures_n30.py` runs each clean / on-topic leak (p=1) / clutter
+(bg16, k=4), both depth weightings, n=600 per cell, BFS cap 8.
+
+- Clean: operators match within 0.01 wherever lambda=4 clears the additive bound (0.011 on
+  chain6 root). chain6 prox: bound median 4.58 (p95 5.35), add@4 0.61 vs mult@16 0.71; add@6
+  0.71. Side cause the same, smaller. Mult needed-weight medians 1.5-9.6, p95 up to 14.7.
+- On-topic leak: addition wins in all 7 shapes by 0.14-0.34 (prox); root: leads or ties within
+  0.002.
+- Clutter: every shape loses >= 0.21; mult@16 > add@4 in 7/7 shapes (root) but 4/7 (prox;
+  diamond favours addition by 0.016). The off-topic direction is real but small and shape-dependent.
+- Pair map (chain4, prox): on-topic leak puts 99.9% of 34,251 pairs at rho<1, 40% in the
+  mult-only-fails region, 0.006% add-only; clutter centres on rho~1 (13% / 7% / 62% both right).
+  Figure: `figures/make_fig7_phase.py`.
+
+**Verify:** `pytest tcmfbench/test_n30_structures.py` (5 tests; 196 total).
+
 ## Deliberately out of scope for these 14 nights
 
 - Wording and prose polish. Lower return than any item above; do it after the evidence base

@@ -1443,3 +1443,14 @@ checked out at `research/tcmf_paper/paper/`.
   review's fixes applied; three verified 2026 references added. `docs/tcmf.md` stale
   "near-zero base" explanation and lambda=2 numbers corrected.
 - Tests: tcmfbench 191 passed; README badge 186 -> 191.
+
+## 2026-09-28 (later) - TCMF N30: seven graph shapes, leaked-pair phase map
+
+- `structures.py` + `run_structures_n30.py` (5 tests; 196 total): chains of 3/4/6, diamond, two
+  roots, tree, side cause; clean / on-topic leak / clutter; both depth weightings; n=600 per cell.
+  Regimes hold across shapes; the additive bound predicted the one place lambda=4 falls short
+  (six-event chain, proximate weights: needs ~6). Off-topic advantage for multiplication is 7/7
+  shapes with root weights, 4/7 with proximate ones - reported as small and shape-dependent.
+- `figures/make_fig7_phase.py`: leaked pairs in the (rho, beta) plane against the propositions'
+  boundaries. `clutter.add_clutter_synthetic` factored out (N29 results unchanged, tests pass).
+- Papers: taxonomy table as the spine, phase figure, shape results, reviewer wording fixes.

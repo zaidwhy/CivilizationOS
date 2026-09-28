@@ -966,3 +966,19 @@ above boosted off-topic memories because it scales the boost by episodic relevan
 the tuned threshold (0.60) the operators are within 2 points; at a loose threshold (0.50), where
 leaked boost lands on on-topic memories, additive keeps more causal evidence (0.64 vs 0.54 at
 k = 4) and leads recall@5 by 0 to 2 points, CIs mostly including zero.
+
+## N30 - Seven graph shapes and the leaked-pair map
+
+Run: `python -m tcmfbench.run_structures_n30` (results in `results_structures_n30/`).
+
+**F22 - Where the leak lands decides the direction.** Placing each leaked pair at
+rho = e_i/e_j, beta = b_j/b_i: multiplication orders it correctly in the limit iff rho > beta,
+addition iff beta < 1. The on-topic leak puts 99.9% of its pairs at rho < 1 (40% only-mult-fails,
+0.006% only-add-fails); clutter centres on rho ~ 1 (13% / 7%, 62% both right).
+
+**F23 - The regimes hold across chains of 3/4/6, a diamond, two roots, a tree and a side cause.**
+Clean: equal within 0.01 where lambda = 4 clears the additive bound; on the six-event chain
+(proximate) the bound rises to a median of 4.58 and lambda = 6 restores parity, so the bound
+predicted the needed weight on an unseen shape. On-topic leaks favour addition in every shape.
+Clutter costs every shape >= 0.21; multiplication wins it in 7/7 shapes with root weights, 4/7
+with proximate ones.

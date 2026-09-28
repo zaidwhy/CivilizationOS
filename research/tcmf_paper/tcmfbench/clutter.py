@@ -61,7 +61,12 @@ def _wire(sc: Scenario, bg: list[EventSpec], ccfg: ClutterConfig, rng) -> Scenar
 def generate_clutter_mixed(scenario_id: str, mcfg: MixedConfig, ccfg: ClutterConfig,
                            seed: int) -> Scenario:
     assert mcfg.spurious_edge_rate == 0.0, "clutter replaces the single surface-topic false edge"
-    sc = generate_mixed(scenario_id, mcfg, seed)
+    return add_clutter_synthetic(generate_mixed(scenario_id, mcfg, seed), mcfg, ccfg, seed)
+
+
+def add_clutter_synthetic(sc: Scenario, mcfg: MixedConfig, ccfg: ClutterConfig, seed: int) -> Scenario:
+    """Clutter an existing synthetic scenario built from ``seed`` (any graph shape, N30)."""
+    scenario_id = sc.scenario_id
     # Re-derive the topic geometry the base scenario used (same seed, same first draws).
     rng0 = np.random.default_rng(seed)
     topics = _unit_topics(rng0, mcfg.n_topics, mcfg.dim)
