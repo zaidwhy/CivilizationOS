@@ -26,6 +26,12 @@ with. These claims in earlier entries were later found wrong or overstated. The 
   is decisive": the tuning grid stopped at 2.4. With a widened grid (N24) multiplication selects
   lambda=16 and matches additive (1.00), and that weight transfers (N25). The operator itself
   decides only under boost leakage (N26, N27). Title and thesis of both papers changed accordingly.
+- "Under leakage additive fusion leads" as a general statement (N26/N28): true only when the
+  leaked boost lands on memories that look relevant to the crisis (a false cause on the crisis
+  topic, a loose threshold). With cluttered graphs, where false edges pull in off-topic events,
+  multiplication does slightly better (N29). The operators are non-equivalent under leakage, and
+  the direction depends on where the leak lands. Also: "b(j) >= b(i) is unreachable for both
+  operators" (N26b) needs e(j) >= e(i) too.
 - "No single global lambda is correct" (theory): overstated. No lambda can be *derived in advance*
   for multiplication; a large enough one can still clear a given sample (1.00 by lambda=15).
 
@@ -939,3 +945,24 @@ tests + 13 new N11 tests), all green.
   and a deeper-targeted (not just direct-into-crisis) false-edge variant, to settle the two
   caveats N04 raised rather than answered.
 </content>
+
+## N29 - Cluttered causal graphs: graph precision matters more than the operator
+
+Run: `python -m tcmfbench.run_clutter_n29` (results in `results_clutter_n29/`).
+
+**F20 - Unconnected clutter is free; false edges into the chain are not.** Sixteen unrelated
+background events with their own links change nothing (recall@5 0.679 = clean), because the
+backward BFS never reaches them. Each false edge from that background into the true chain costs
+recall for every operator: 0.68 -> 0.52 -> 0.44 -> 0.35 -> 0.28 at k = 0, 1, 2, 4, 8 with
+proximate depth weights, and 0.68 -> 0.40 -> 0.25 -> 0.16 -> 0.13 with root-favouring ones, which
+is below similarity alone (0.40) from k = 2. Root weighting is the fragile one: false ancestors
+raise the deepest depth D (3.0 -> 3.8) and take the root's weight.
+
+**F21 - Under off-topic leakage the operator effect reverses.** Multiplication at the transferred
+lambda = 16 beats additive lambda = 4 in all ten cluttered synthetic settings (+0.4 to +5.7
+points; the oracle-best multiplicative weight by +0.7 to +12, CIs exclude zero). Causal@5 is
+within 3 points between the two; the difference is semantic evidence, which multiplication keeps
+above boosted off-topic memories because it scales the boost by episodic relevance. On real text at
+the tuned threshold (0.60) the operators are within 2 points; at a loose threshold (0.50), where
+leaked boost lands on on-topic memories, additive keeps more causal evidence (0.64 vs 0.54 at
+k = 4) and leads recall@5 by 0 to 2 points, CIs mostly including zero.

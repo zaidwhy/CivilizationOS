@@ -54,7 +54,7 @@ tcmf_score(m) = episodic_score(m, q) x (1 + lambda x causal_boost(m))
 
 It looked reasonable - the causal term scales the episodic score up when a memory is causally relevant. It also scored **recall@5 of 0.02** on the exact task it was designed for: a 300-scenario benchmark, run against six baselines, where root-cause memories are constructed to be semantically *distant* from the crisis they caused (cosine similarity to the query around -0.05) while "loud" but causally-irrelevant distractor memories share the crisis's surface topic (cosine around 0.81). The causal signal alone, unfused, reaches recall@5 = 1.00 on this task - it is fully sufficient. The multiplicative fusion exploited essentially none of it.
 
-The reason is arithmetic, not subtle: a root-cause memory's episodic score is near zero, because it doesn't read like the crisis. Multiplying a near-zero base by any boost, however large, stays near zero. The fusion could never lift the memory that mattered most, no matter how strongly the causal graph pointed at it.
+My first explanation was that a root-cause memory's episodic score is near zero, so no boost could lift it. That turned out to be wrong. The root cause's episodic score is low but not zero (about 0.96 against a distractor's 2.48), and a much larger multiplicative weight does work: held-out tuning picks lambda = 16, which reaches recall@5 1.00 and transfers to settings it was not tuned on. The real problem was the weight. The weight multiplication needs depends on how weak each root cause looks, so it can't be set in advance and has to be tuned. The weight addition needs can be set from the causal signal alone.
 
 **The fix was additive, not multiplicative:**
 
@@ -64,7 +64,7 @@ tcmf_score(m) = normalize(episodic_score(m, q)) + lambda * causal_boost(m)
 
 Episodic scores are min-max normalized across the candidate pool first, so the causal term can compete on equal footing instead of being crushed by whatever the episodic score happens to be. In isolation (the additive operator alone, same scores as the multiplicative version), this recovers recall@5 = 1.00 - the full signal.
 
-The version actually shipped in `TCMFRetriever` today makes one further, deliberate tradeoff on top of that: it also fixes a second, independent bug (below) that reweights which causal ancestor gets favored. That combination lands at **recall@5 = 0.76, recall@10 = 1.00, with the root-cause memory at rank 1** (root MRR 1.00) - a small amount of top-5 recall traded for making sure the single most important memory, the actual root cause, is the one the LLM sees first in a limited context window, not just present somewhere in the top ten.
+The version shipped in `TCMFRetriever` today also fixes a second, independent bug (below) that changes which causal ancestor gets favored. At its default weight (lambda = 4.0) it reaches **recall@5 = 1.00 with the root-cause memory at rank 1**. An earlier default of lambda = 2 lost some top-5 recall; that was the weight sitting below the bound the theory predicts, not a real tradeoff.
 
 There were three other real bugs the same benchmarking pass caught, each documented as its own fix in `api/memory/tcmf.py`:
 
@@ -161,6 +161,6 @@ There are three tunable parameters (`causal_boost`/lambda, `causal_sim_threshold
 
 ## Source
 
-`api/memory/tcmf.py` (`TCMFRetriever`, `TCMFContext`), `api/memory/causal_graph.py` (`CausalGraph`), `api/memory/stream.py` (`MemoryStream`). The full benchmark - 300 scenarios, six baselines, the multiplicative-vs-additive comparison, and eleven further ablations (real embeddings, decision-quality effects, spurious-edge robustness, a second domain corpus) - lives in `research/tcmf_paper/` (186 tests, running in CI).
+`api/memory/tcmf.py` (`TCMFRetriever`, `TCMFContext`), `api/memory/causal_graph.py` (`CausalGraph`), `api/memory/stream.py` (`MemoryStream`). The full benchmark - 300 scenarios, six baselines, the multiplicative-vs-additive comparison, and eleven further ablations (real embeddings, decision-quality effects, spurious-edge robustness, a second domain corpus) - lives in `research/tcmf_paper/` (191 tests, running in CI).
 
-If you're building multi-agent systems where decisions have downstream effects: semantic similarity and causal relevance are not the same signal, and fusing them wrong is easy to do without a benchmark that specifically tries to catch it.
+If you're building multi-agent systems where decisions have downstream effects: semantic similarity and causal relevance are not the same signal. On a clean causal graph, addition and a well-tuned multiplication end up in the same place; addition just doesn't need the tuning. When the graph has false edges, the choice matters in both directions (multiplication is safer when the false edges point at unrelated events), but the false edges themselves cost far more than either choice. Keep the graph precise first.

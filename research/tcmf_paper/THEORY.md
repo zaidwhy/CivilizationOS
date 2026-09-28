@@ -7,6 +7,16 @@
 > Proposition 1(a) puts 25-40% of leaked pairs out of multiplication's reach at any weight, and
 > additive fusion beats every multiplicative weight including the limit. The analysis below is
 > unchanged; its reading is narrowed accordingly.
+>
+> **Correction and mirror case (2026-09-28, N29).** Proposition 2's last sentence ("if
+> b(i) <= b(j), no lam suffices") holds only under the regime premise e(i) <= e(j). When the
+> competitor looks LESS relevant (e(i) > e(j)) but carries more boost (b(j) > b(i)), the roles swap:
+> if e(i)b(i) > e(j)b(j), every multiplicative weight ranks i first (D_mult is positive at 0 and
+> its slope is positive), while additive ranks i first only for
+> lam < [ehat(i) - ehat(j)] / [b(j) - b(i)]. Multiplication gates the boost by episodic relevance:
+> that gate hurts when leaked boost lands on memories that look relevant (N26, N28) and protects
+> when it lands on memories that do not (cluttered graphs, N29). Neither operator dominates under
+> leakage; which one wins depends on where the leak lands.
 
 Companion to `FINDINGS.md`. That file reports what the benchmark measured; this one proves why
 the measurement had to come out that way, and states precisely how far the proof reaches.

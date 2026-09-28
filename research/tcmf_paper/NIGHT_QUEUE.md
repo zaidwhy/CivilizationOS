@@ -762,6 +762,39 @@ against the data; four requests were real and were run in `run_reviewer_n28.py`:
 
 **Verify:** `pytest tcmfbench/test_n28_reviewer.py` (4 tests).
 
+### N29 - Cluttered causal graphs
+
+**Status: DONE (2026-09-28).** Every reviewer named the same weakness: each graph is one clean
+four-event chain. `clutter.py` puts each scenario inside a cluttered event log: 16 (or 32)
+unrelated background events on topics drawn without favouring the crisis, links among them
+(p=0.10 per ordered pair), and k false edges per graph from that background into a random node
+of the true chain. Memories, chain and query are byte-identical across clutter levels (paired).
+`run_clutter_n29.py`, mixed regime n=1500 and real text n=120 (six domains, background = other
+domains' decisions and crises plus city events).
+
+- **Unconnected clutter changes nothing** (bg16, k=0 equals clean exactly): the backward BFS never
+  reaches it.
+- **False edges are the dominant failure, for every operator.** Synthetic recall@5 falls
+  0.68 -> 0.52 (k=1) -> 0.35 (k=4) -> 0.28 (k=8) with proximate weights, and 0.40 -> 0.16 -> 0.13
+  with root-favouring weights, below similarity alone (0.40) from k=2 (root) / k=4 (prox). Root
+  weighting is fragile: false ancestors become the deepest nodes and take the root's weight.
+- **Under off-topic clutter multiplication does slightly better**, the reverse of N26/N28:
+  mult at the transferred lambda=16 beats additive lambda=4 in all 10 cluttered synthetic
+  settings (+0.4 to +5.7 points), oracle best mult by 0.7 to 12 points (CIs exclude 0). The gain is
+  mostly semantic evidence: causal@5 is within 3 points between the two. Multiplication gates the
+  boost by episodic relevance, so boosted off-topic memories cannot outrank relevant ones.
+- **Real text:** at the tuned threshold tau=0.60 the operators are within 2 points; at the loose
+  tau=0.50 additive keeps more causal evidence (causal@5 0.64 vs 0.54 at k=4) and leads recall@5
+  by 0 to 2 points (CIs mostly include 0).
+- **Theory fix found on the way:** Proposition 2's "if b_i <= b_j no lambda suffices" needs the
+  premise e_i <= e_j. The mirror case (e_i > e_j, b_j > b_i, e_i b_i > e_j b_j) is safe for
+  multiplication at every weight and safe for addition only below (e^_i - e^_j)/(b_j - b_i). This
+  is the case clutter produces. N26b's "unreachable for both" bucket (b_j >= b_i) is therefore
+  "additive fails at large lambda", not "no operator": only pairs with also e_j >= e_i are
+  unreachable for both.
+
+**Verify:** `pytest tcmfbench/test_n29_clutter.py` (5 tests; 191 total).
+
 ## Deliberately out of scope for these 14 nights
 
 - Wording and prose polish. Lower return than any item above; do it after the evidence base

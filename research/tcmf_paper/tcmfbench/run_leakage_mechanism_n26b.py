@@ -6,7 +6,10 @@ memories, so this counts (causal-gold i, non-gold j) pairs where j carries a lea
 
   - mult-only unreachable: 0 < b_j < b_i and e_i/e_j <= b_j/b_i  (Proposition 1(a): no
     multiplicative weight ranks i above j, but additive does once lambda > 1/(b_i - b_j));
-  - unreachable for both:  b_j >= b_i                            (no operator can fix);
+  - "unreachable for both": b_j >= b_i. Correction (N29): this bucket is really "additive fails
+    at large lambda". When also e_j >= e_i no operator can fix it; when e_i > e_j and
+    e_i b_i > e_j b_j every multiplicative weight ranks i first. The JSON key keeps its old name
+    so committed results still load;
   - reachable for both:    every other leaked pair.
 
     python -m tcmfbench.run_leakage_mechanism_n26b

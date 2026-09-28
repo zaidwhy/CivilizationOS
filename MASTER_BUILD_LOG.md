@@ -1424,3 +1424,22 @@ checked out at `research/tcmf_paper/paper/`.
   operator decides under leakage". README badge corrected 152 -> 182 benchmark tests; Fig 4 shows
   both tuned points; `claude-md-vault/sync.ps1` silent-failure bug fixed earlier in the day.
 - Tests: tcmfbench 182 passed; API suite 76 passed (morning, lambda default 4.0, 516df95).
+
+## 2026-09-28 - TCMF N29: cluttered causal graphs; thesis now three regimes
+
+- **N29** (`tcmfbench/clutter.py`, `run_clutter_n29.py`, 5 tests): each scenario placed in a
+  cluttered event log - 16/32 unrelated background events with their own links, and k false
+  edges per graph from that background into random nodes of the true chain. Memories are
+  byte-identical across levels (paired). Caught and fixed one bug on the way: background events
+  appended after the crisis moved the scorer's "now" tick; the crisis must stay the last event.
+- **Results:** unconnected clutter is free (0.679 = clean). Each false edge costs every operator
+  (0.68 -> 0.52 -> 0.35 -> 0.28 at k=1,4,8; root weighting below similarity alone from k=2).
+  Under this off-topic leak multiplication beats addition in all 10 synthetic settings (+0.4 to
+  +5.7 at lambda=16) - the reverse of N26/N28. Real text: within 2 points at tau=0.60; addition
+  keeps more causal evidence at tau=0.50.
+- **Theory:** Proposition 2 needed the premise e(i) <= e(j); added Proposition 3 (mirror case).
+  N26b's "unreachable for both" label corrected in its docstring.
+- **Papers** (private repo): both rewritten around three regimes in plain language; fourth
+  review's fixes applied; three verified 2026 references added. `docs/tcmf.md` stale
+  "near-zero base" explanation and lambda=2 numbers corrected.
+- Tests: tcmfbench 191 passed; README badge 186 -> 191.
