@@ -143,8 +143,9 @@ def make_client(model: str):
     if "/" in model:
         from .openrouter_client import Ledger, OpenRouterClient
         return OpenRouterClient(model, OUT / f"or_cache_{model.replace('/', '_')}.json",
-                                Ledger(LEDGER, TCMF_BUDGET_USD))
-    return _Retry(LLMClient(model=model, host=HOST, cache_path=OUT / "llm_cache.json", timeout=600.0))
+                                Ledger(LEDGER, TCMF_BUDGET_USD), max_tokens=1500)
+    return _Retry(LLMClient(model=model, host=HOST, cache_path=OUT / "llm_cache.json", timeout=300.0,
+                            num_predict=1500))  # above every cached answer; same cap as OpenRouter
 
 
 def main(models=None):
@@ -214,6 +215,12 @@ def main(models=None):
         (OUT / f"graphs_{model.replace(':', '_').replace('/', '_')}.json").write_text(
             json.dumps([{"scenario": sc.scenario_id, "edges": g.edges, "calls": g.calls} for sc, g in zip(scs, graphs)]),
             encoding="utf-8")
+        # one file per model, so runs of different models can proceed in parallel without
+        # overwriting each other; the combined file is rebuilt from all of them
+        safe = model.replace(":", "_").replace("/", "_")
+        (OUT / f"model_{safe}.json").write_text(json.dumps({model: m}, indent=1), encoding="utf-8")
+        for f in sorted(OUT.glob("model_*.json")):
+            res["models"].update(json.loads(f.read_text(encoding="utf-8")))
         (OUT / "results_llmgraph_n31.json").write_text(json.dumps(res, indent=1), encoding="utf-8")
         print(model, json.dumps({k: v for k, v in m.items() if not k.startswith("retrieval")}), flush=True)
     lines = ["# N31: causal graphs built by an LLM (real text, 6 domains, n=120, tau=0.60)", "",

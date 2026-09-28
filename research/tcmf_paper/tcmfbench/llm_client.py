@@ -18,8 +18,11 @@ class LLMClient:
     def __init__(self, model: str = "qwen2.5:3b-instruct",
                  host: str = "http://localhost:11434",
                  cache_path: str | Path = "results_decision/llm_cache.json",
-                 timeout: float = 120.0) -> None:
+                 timeout: float = 120.0, num_predict: int | None = None) -> None:
         self.model = model
+        # Optional output-token cap. None keeps the historical behaviour (and the committed caches
+        # of earlier runs valid); N31 sets it so a degenerate answer cannot run forever.
+        self.num_predict = num_predict
         self.host = host.rstrip("/")
         self.timeout = timeout
         self.cache_path = Path(cache_path)
@@ -35,7 +38,8 @@ class LLMClient:
             "model": self.model,
             "messages": [{"role": "user", "content": prompt}],
             "stream": False,
-            "options": {"temperature": 0, "seed": 0},
+            "options": {"temperature": 0, "seed": 0,
+                        **({"num_predict": self.num_predict} if self.num_predict else {})},
         }).encode("utf-8")
         req = urllib.request.Request(
             f"{self.host}/api/chat", data=body,
