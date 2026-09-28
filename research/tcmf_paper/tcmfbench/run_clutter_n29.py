@@ -141,6 +141,10 @@ def _summarize(mats, thr, fr):
              f"mult_norm_l{ln:g}": mean[f"mult_norm_l{ln:g}"], "mult_norm_limit": mean["mult_norm_limit"]}
     best_mult_arm = max(cands, key=cands.get)
     diff = [r["add_l4"] - r[best_mult_arm] for r in rows]
+    # The confirmatory comparison: both weights fixed in advance (additive derived, multiplicative
+    # tuned on clean data). The best-of-grid arm above is picked on the test data, so its interval
+    # is descriptive only (an exploratory upper envelope), not a test.
+    diff16 = [r["add_l4"] - r["mult_raw_l16"] for r in rows]
     ds = [_depth_stats(m) for m in mats]
     return {
         "n": len(mats),
@@ -154,6 +158,7 @@ def _summarize(mats, thr, fr):
         "causal@5_add_l4": mean["causal@5_add_l4"], "causal@5_mult_raw_l16": mean["causal@5_mult_raw_l16"],
         "best_mult_arm": best_mult_arm, "best_mult": cands[best_mult_arm],
         "add_l4_minus_best_mult_ci": list(bootstrap_ci(diff)),
+        "add_l4_minus_mult16_ci": list(bootstrap_ci(diff16)),
         "wins_losses_ties_vs_best_mult": [int(sum(d > 0 for d in diff)), int(sum(d < 0 for d in diff)),
                                           int(sum(d == 0 for d in diff))],
         "leaked_pairs": int(tot),
@@ -212,16 +217,16 @@ def main():
     for key, fn in (("synthetic", part_synth), ("realtext", part_text)):
         res[key] = fn()
         (OUT / "results_clutter_n29.json").write_text(json.dumps(res, indent=1), encoding="utf-8")
-    hdr = ("| setting | add (l=4) | mult raw (l=16, transferred) | best mult (oracle) | add - best mult [95% CI] "
+    hdr = ("| setting | add (l=4) | mult raw (l=16, transferred) | best mult (oracle) | add - mult16 [95% CI] "
            "| causal alone | semantic alone | leaked pairs | mult-only unreachable | add-capped | misordered add4 / mult16 | deepest ancestor |")
     lines = ["# N29: cluttered causal graphs (recall@5, all gold)", ""]
     for key, title in (("synthetic", "Mixed regime, pool 80, n=1500, tau=0.45"),
                        ("realtext", "Real text, six domains, n=120")):
         lines += [f"## {title}", "", hdr, "|---|---|---|---|---|---|---|---|---|---|---|---|"]
         for k, v in res[key].items():
-            lo, hi = v["add_l4_minus_best_mult_ci"][1:]
+            lo, hi = v["add_l4_minus_mult16_ci"][1:]
             lines.append(f"| {k} | {v['add_l4']:.3f} | {v['mult_raw_l16']:.3f} | {v['best_mult']:.3f} "
-                         f"({v['best_mult_arm']}) | {v['add_l4_minus_best_mult_ci'][0]:+.3f} [{lo:+.3f}, {hi:+.3f}] "
+                         f"({v['best_mult_arm']}) | {v['add_l4_minus_mult16_ci'][0]:+.3f} [{lo:+.3f}, {hi:+.3f}] "
                          f"| {v['causal']:.3f} | {v['semantic']:.3f} | {v['leaked_pairs']} | {v['frac_mult_only_unreachable']:.2f} "
                          f"| {v['frac_add_capped']:.2f} | {v['frac_misordered_add_l4']:.2f} / {v['frac_misordered_mult_l16']:.2f} "
                          f"| {v['mean_deepest_ancestor']:.2f} |")

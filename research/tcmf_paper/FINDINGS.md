@@ -959,7 +959,7 @@ is below similarity alone (0.40) from k = 2. Root weighting is the fragile one: 
 raise the deepest depth D (3.0 -> 3.8) and take the root's weight.
 
 **F21 - Under off-topic leakage the operator effect reverses.** Multiplication at the transferred
-lambda = 16 beats additive lambda = 4 in all ten cluttered synthetic settings (+0.4 to +5.7
+lambda = 16 beats additive lambda = 4 in all ten cluttered synthetic settings (+0.4 to +5.6
 points; the oracle-best multiplicative weight by +0.7 to +12, CIs exclude zero). Causal@5 is
 within 3 points between the two; the difference is semantic evidence, which multiplication keeps
 above boosted off-topic memories because it scales the boost by episodic relevance. On real text at

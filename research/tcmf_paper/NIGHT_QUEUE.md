@@ -780,12 +780,13 @@ domains' decisions and crises plus city events).
   weighting is fragile: false ancestors become the deepest nodes and take the root's weight.
 - **Under off-topic clutter multiplication does slightly better**, the reverse of N26/N28:
   mult at the transferred lambda=16 beats additive lambda=4 in all 10 cluttered synthetic
-  settings (+0.4 to +5.7 points), oracle best mult by 0.7 to 12 points (CIs exclude 0). The gain is
+  settings (+0.4 to +5.6 points; paired CIs at this fixed weight exclude 0 in all ten, added
+  2026-09-28 later), oracle best mult by 0.7 to 12 points (descriptive only: picked on test). The gain is
   mostly semantic evidence: causal@5 is within 3 points between the two. Multiplication gates the
   boost by episodic relevance, so boosted off-topic memories cannot outrank relevant ones.
 - **Real text:** at the tuned threshold tau=0.60 the operators are within 2 points; at the loose
   tau=0.50 additive keeps more causal evidence (causal@5 0.64 vs 0.54 at k=4) and leads recall@5
-  by 0 to 2 points (CIs mostly include 0).
+  by 0 to 2 points over the best mult; over mult lambda=16 by 1.2 to 3.5, CIs excluding 0 in 7/8.
 - **Theory fix found on the way:** Proposition 2's "if b_i <= b_j no lambda suffices" needs the
   premise e_i <= e_j. The mirror case (e_i > e_j, b_j > b_i, e_i b_i > e_j b_j) is safe for
   multiplication at every weight and safe for addition only below (e^_i - e^_j)/(b_j - b_i). This
