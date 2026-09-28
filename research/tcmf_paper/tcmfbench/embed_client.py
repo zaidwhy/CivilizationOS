@@ -56,6 +56,7 @@ class EmbedClient:
                 f"Start Ollama and `ollama pull {self.model}`. Original: {e}"
             ) from e
         self._cache[k] = vec
+        self._dirty = True
         return vec
 
     def embed_many(self, texts: list[str]) -> list[list[float]]:
@@ -64,8 +65,13 @@ class EmbedClient:
         return out
 
     def flush(self) -> None:
+        # Write only when something new was embedded: a fully cached, read-only run must not
+        # rewrite a committed cache file (a Windows file lock once crashed N28 doing exactly that).
+        if not getattr(self, "_dirty", False):
+            return
         self.cache_path.parent.mkdir(parents=True, exist_ok=True)
         self.cache_path.write_text(json.dumps(self._cache), encoding="utf-8")
+        self._dirty = False
 
     def __len__(self) -> int:
         return len(self._cache)
@@ -100,6 +106,7 @@ class SentenceEmbedClient:
             return self._cache[k]
         vec = self._load_model().encode(text, normalize_embeddings=False).tolist()
         self._cache[k] = vec
+        self._dirty = True
         return vec
 
     def embed_many(self, texts: list[str]) -> list[list[float]]:
@@ -108,8 +115,13 @@ class SentenceEmbedClient:
         return out
 
     def flush(self) -> None:
+        # Write only when something new was embedded: a fully cached, read-only run must not
+        # rewrite a committed cache file (a Windows file lock once crashed N28 doing exactly that).
+        if not getattr(self, "_dirty", False):
+            return
         self.cache_path.parent.mkdir(parents=True, exist_ok=True)
         self.cache_path.write_text(json.dumps(self._cache), encoding="utf-8")
+        self._dirty = False
 
     def __len__(self) -> int:
         return len(self._cache)

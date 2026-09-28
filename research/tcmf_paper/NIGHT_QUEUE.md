@@ -742,6 +742,26 @@ was a grid artifact. Four runs followed:
 Both papers were rewritten around the two-regime thesis (Zaid's decision). Tests:
 `test_n24_n25_tuning_transfer.py`, `test_n26_leakage.py` (182 total passing).
 
+### N28 - Three checks from external reviewer reports
+
+**Status: DONE (2026-09-28).** Three relayed reviews of the two-regime papers were triaged
+against the data; four requests were real and were run in `run_reviewer_n28.py`:
+
+- **Operator isolation under leakage:** N26 compared normalized additive vs RAW multiplicative.
+  With normalization held fixed (multiplying the same min-max score), multiplication is WORSE,
+  e.g. p=0.5 root: additive 0.744, best raw mult 0.731, best normalized mult 0.612. Additive leads
+  in all 12 leaky settings against the best of a dense 12-weight grid (0.25-512, oracle-chosen on
+  test) and both limits. Clean signal: all tie at 0.679.
+- **Scaling vs tuned PPR:** PPR at alpha=0.95 is a flat 0.667 at every pool 17-1503; the margin
+  is +0.32 to +0.33, not +0.67 (which was against untuned PPR).
+- **Eight domains at the tuned weight:** mult lambda=16 reaches causal@5 1.00 in all 8 domains
+  (housing 1.00 vs additive 0.98); the 0.6 columns reproduce the published table exactly. F11 now
+  supports clean-graph equivalence, not an additive advantage.
+- Also fixed: `EmbedClient.flush()` rewrote the cache file even when nothing was new, which
+  crashed the first N28 run on a Windows file lock; it now writes only when dirty.
+
+**Verify:** `pytest tcmfbench/test_n28_reviewer.py` (4 tests).
+
 ## Deliberately out of scope for these 14 nights
 
 - Wording and prose polish. Lower return than any item above; do it after the evidence base

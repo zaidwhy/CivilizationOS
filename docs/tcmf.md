@@ -161,6 +161,6 @@ There are three tunable parameters (`causal_boost`/lambda, `causal_sim_threshold
 
 ## Source
 
-`api/memory/tcmf.py` (`TCMFRetriever`, `TCMFContext`), `api/memory/causal_graph.py` (`CausalGraph`), `api/memory/stream.py` (`MemoryStream`). The full benchmark - 300 scenarios, six baselines, the multiplicative-vs-additive comparison, and eleven further ablations (real embeddings, decision-quality effects, spurious-edge robustness, a second domain corpus) - lives in `research/tcmf_paper/` (182 tests, running in CI).
+`api/memory/tcmf.py` (`TCMFRetriever`, `TCMFContext`), `api/memory/causal_graph.py` (`CausalGraph`), `api/memory/stream.py` (`MemoryStream`). The full benchmark - 300 scenarios, six baselines, the multiplicative-vs-additive comparison, and eleven further ablations (real embeddings, decision-quality effects, spurious-edge robustness, a second domain corpus) - lives in `research/tcmf_paper/` (186 tests, running in CI).
 
 If you're building multi-agent systems where decisions have downstream effects: semantic similarity and causal relevance are not the same signal, and fusing them wrong is easy to do without a benchmark that specifically tries to catch it.
