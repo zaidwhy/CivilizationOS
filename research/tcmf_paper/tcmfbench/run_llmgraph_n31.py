@@ -175,13 +175,13 @@ def main(models=None):
                 llm.flush()
                 print(f"{model} {i + 1}/120 {time.time() - t0:.0f}s", flush=True)
         llm.flush()
-        prec, rec, false_n, kinds, root_found, edge_kinds = [], [], [], [], {}, 0, {"chain": 0, "shortcut": 0, "reversed_or_bad": 0, "false": 0}
+        prec, rec, false_n, kinds, root_found, edge_kinds = [], [], [], {}, 0, {"chain": 0, "shortcut": 0, "reversed_or_bad": 0, "false": 0}
         mats = []
         for sc, ig in zip(scs, graphs):
             chain = [e.id for e in sc.events if "_bg" not in e.id]
             pos = {c: k for k, c in enumerate(chain)}
             for a, b in ig.edges:
-                if "_bg" in a:
+                if "_bg" in a or "_bg" in b:  # any edge touching the background is false
                     edge_kinds["false"] += 1
                 elif pos[b] - pos[a] == 1:
                     edge_kinds["chain"] += 1

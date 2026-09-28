@@ -1,0 +1,76 @@
+{
+ "google/gemini-2.5-flash": {
+  "calls": 902,
+  "unparsed": 3,
+  "capped": 0,
+  "edges": {
+   "chain": 289,
+   "shortcut": 298,
+   "reversed_or_bad": 0,
+   "false": 1368
+  },
+  "ancestor_precision": 0.44255258630258626,
+  "ancestor_recall": 0.9666666666666667,
+  "frac_empty_graph": 0.0,
+  "false_ancestors_mean": 4.508333333333334,
+  "false_ancestor_kinds": {
+   "crisis": 163,
+   "decision": 375,
+   "city": 3
+  },
+  "root_in_ancestors": 1.0,
+  "seconds": 1353.5863282680511,
+  "retrieval_prox": {
+   "add_l4": 0.6383333333333333,
+   "mult_l16": 0.6366666666666665,
+   "causal": 0.6833333333333332,
+   "causal@5_add_l4": 0.9666666666666667,
+   "causal@5_mult_l16": 0.9638888888888888,
+   "best_mult_exploratory": 0.6366666666666663,
+   "add_l4_minus_mult_l16_ci": [
+    0.0016666666666666668,
+    0.0,
+    0.005000000000000001
+   ],
+   "wins_losses_ties_add_vs_mult16": [
+    1,
+    0,
+    119
+   ],
+   "pairs": {
+    "n": 97,
+    "frac_rho_lt_1": 0.9896907216494846,
+    "mult_only_wrong": 0.38144329896907214,
+    "add_only_wrong": 0.0,
+    "both_wrong": 0.0,
+    "both_right": 0.6185567010309279
+   }
+  },
+  "retrieval_root": {
+   "add_l4": 0.6216666666666666,
+   "mult_l16": 0.6316666666666665,
+   "causal": 0.6733333333333332,
+   "causal@5_add_l4": 0.9305555555555555,
+   "causal@5_mult_l16": 0.9472222222222222,
+   "best_mult_exploratory": 0.6316666666666663,
+   "add_l4_minus_mult_l16_ci": [
+    -0.009999999999999998,
+    -0.021666666666666664,
+    -0.0016666666666666663
+   ],
+   "wins_losses_ties_add_vs_mult16": [
+    0,
+    4,
+    116
+   ],
+   "pairs": {
+    "n": 97,
+    "frac_rho_lt_1": 0.9896907216494846,
+    "mult_only_wrong": 0.29896907216494845,
+    "add_only_wrong": 0.0,
+    "both_wrong": 0.6597938144329897,
+    "both_right": 0.041237113402061855
+   }
+  }
+ }
+}
