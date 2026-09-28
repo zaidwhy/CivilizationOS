@@ -1454,3 +1454,13 @@ checked out at `research/tcmf_paper/paper/`.
 - `figures/make_fig7_phase.py`: leaked pairs in the (rho, beta) plane against the propositions'
   boundaries. `clutter.add_clutter_synthetic` factored out (N29 results unchanged, tests pass).
 - Papers: taxonomy table as the spine, phase figure, shape results, reviewer wording fixes.
+
+## 2026-09-28 - Security bumps and keep-warm retry (ecosystem pass)
+
+- `.github/workflows/keepalive.yml`: the ping retries 3x, 30 s apart, before failing; a single 429 from Render's edge
+  had turned runs red on 09-27 and 09-28 while /health was fine. Comment now states that GitHub runs the `*/10` cron
+  only every 3-5 h, so cold starts (22 s measured) still happen.
+- Root `requirements.txt` (CI freeze): anyio 4.14.2, cryptography 50.0.0, httplib2 0.32.0, pyasn1 0.6.4, pytest 9.0.3,
+  then pytest-asyncio 0.25.0 -> 1.4.0 after the pytest bump broke CI resolution for ~3 h (0.25.0 needs pytest<9).
+  `web/`: npm audit fix. Dependabot 23 -> 0 open. api/requirements.txt (the Docker image) pins none of these.
+- Verified: 262 tests collected (api + tcmfbench at the time), all pass; `npm run build` clean; CI green (latest run on `13ac2a7`, after the history rewrite).
