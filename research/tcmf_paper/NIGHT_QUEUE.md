@@ -816,6 +816,31 @@ and memories untouched; `run_structures_n30.py` runs each clean / on-topic leak 
 
 **Verify:** `pytest tcmfbench/test_n30_structures.py` (5 tests; 196 total).
 
+### N31/N31b/N32 - Graphs built by LLMs, and stronger decision judges (paid, capped)
+
+**Status: DONE for the paid models (2026-09-28); local qwen2.5:3b / mistral:7b rows pending.**
+Zaid's OpenRouter key, TCMF budget $1.50; spent $0.33 (ledger `results_openrouter/ledger.json`).
+
+- N31 (`llm_graph.py`, `run_llmgraph_n31.py`): the model reads each real-text event log (true
+  chain + 16 background events) and names, from the crisis backward, which earlier events caused
+  each one. Prompt picked on 20 separate scenarios (seeds 50000+) by mean F1 over two local
+  models. Llama-3.3-70B / Gemini-2.5-Flash: ancestor recall 0.97, root found 100%, precision
+  0.50 / 0.44 (3.6 / 4.5 false ancestors per scenario, nearly all other domains' decisions and
+  crises). Original pool: retrieval within 0.02 of the true chain, because the false ancestors
+  had no memories to boost.
+- N31b (`run_llmgraph_n31b.py`, no LLM calls): one memory per background event. Proximate
+  weights lose ~4.5 points, root weights 25-33 (false ancestors deeper than the root); operators
+  within 2 points (addition +1.2 / +2.0 with proximate weights). The measured case is the
+  cluttered regime.
+- N32 (`run_decision_n32.py`): decision test, same protocol, judges Llama-3.3-70B and
+  Gemini-2.5-Flash. Clean: operators within 0.02 for all judges. Leaky: Gemini 0.75 vs 0.63
+  (8/1, p=0.039); Llama 0.73 vs 0.72 (ties). Causal-only best under leakage for all judges.
+- Bugs found on the way: two in the never-run N31 scoring path (tuple unpacking, edges INTO a
+  background event); an unbounded local generation that hit the timeout (fixed with a 1500-token
+  cap, above every cached answer).
+
+**Verify:** `pytest tcmfbench/test_n31_n32.py tcmfbench/test_openrouter_client.py` (8 tests; 204 total).
+
 ## Deliberately out of scope for these 14 nights
 
 - Wording and prose polish. Lower return than any item above; do it after the evidence base

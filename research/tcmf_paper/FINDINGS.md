@@ -982,3 +982,19 @@ Clean: equal within 0.01 where lambda = 4 clears the additive bound; on the six-
 predicted the needed weight on an unseen shape. On-topic leaks favour addition in every shape.
 Clutter costs every shape >= 0.21; multiplication wins it in 7/7 shapes with root weights, 4/7
 with proximate ones.
+
+## N31/N31b/N32 - Graphs built by language models; stronger decision judges
+
+**F24 - LLM-built causal graphs are complete but imprecise.** Llama-3.3-70B and Gemini-2.5-Flash
+find 97% of true ancestors and every root, but only 50% / 44% of the ancestors they name are real
+(3.6 / 4.5 false per scenario), nearly all other domains' decisions and crises.
+
+**F25 - With memories of the false ancestors in the pool, the graph lands in the cluttered
+regime.** Without such memories the false ancestors cost nothing (the similarity match finds
+nothing to boost). With one memory per background event: proximate weights lose ~4.5 points,
+root weights 25-33; the operators stay within 2 points. For builders: with an LLM-built graph,
+use proximate depth weights.
+
+**F26 - Stronger judges: clean equivalence holds; the leaky gap holds for two of three.** Clean:
+additive and multiplicative (lambda 16) within 0.02 for Qwen-3B, Llama-70B, Gemini-Flash. Leaky:
+Gemini 0.75 vs 0.63 (p=0.039), Qwen 0.68 vs 0.57 (p=0.016), Llama 0.73 vs 0.72.
