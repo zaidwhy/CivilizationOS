@@ -11,8 +11,11 @@ services:
         value: "true"
       - key: CRISIS_COOLDOWN_S
         value: "30.0"
+      # In-process spend cap, set just under the OpenRouter key's own $0.40 credit limit (2026-09-28) so the
+      # app degrades to scripted replies before the key hard-stops. It resets when Render restarts the
+      # service, so the per-key limit on openrouter.ai is the real ceiling.
       - key: TIER2_BUDGET_USD
-        value: "15.0"
+        value: "0.35"
       - key: OPENROUTER_API_KEY
         sync: false
       # Required on the public deploy: gates POST /speed and the /resolve routes.
