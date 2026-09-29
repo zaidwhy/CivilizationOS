@@ -1478,3 +1478,13 @@ checked out at `research/tcmf_paper/paper/`.
 - Bugs fixed: two in the N31 scoring path, an unbounded local generation (1500-token cap),
   memory-reaper kills (Zaid disabled the reaper). Anonymized code bundle zipped for OpenReview.
 - Tests: tcmfbench 205 passed.
+
+## 2026-09-29 (later) - TCMF: 8-page long SRW version, N33 decisions from LLM-built graphs
+
+- `paper/srw/main_srw_long.tex` (private repo): 8-page long version restoring what the short
+  version cut; content ends on page 6 with room to spare; builds clean.
+- N33 (`run_decision_n33.py`, 206 tests): root-favoring weights on an LLM-built graph cost three
+  judges 3-25 decision points (3 of 6 pairs significant); proximate within 9 (none significant);
+  add vs mult never significant (p >= 0.14). Paid total $0.402 of $1.50.
+- Fixed on the way: a merged header row in the full paper's three-judge table and a stray
+  carriage return from shell escaping (scanned all sources; none left).
