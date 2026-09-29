@@ -1464,3 +1464,17 @@ checked out at `research/tcmf_paper/paper/`.
   then pytest-asyncio 0.25.0 -> 1.4.0 after the pytest bump broke CI resolution for ~3 h (0.25.0 needs pytest<9).
   `web/`: npm audit fix. Dependabot 23 -> 0 open. api/requirements.txt (the Docker image) pins none of these.
 - Verified: 262 tests collected (api + tcmfbench at the time), all pass; `npm run build` clean; CI green (latest run on `13ac2a7`, after the history rewrite).
+
+## 2026-09-28/29 - TCMF: statistics fix, N31 LLM-built graphs, N32 stronger judges, paid runs
+
+- Clutter result now rests on the fixed lambda=16 comparison (paired CIs exclude 0 in all 10);
+  best-of-grid kept as an exploratory envelope; 5.7 -> 5.6 points.
+- OpenRouter key (TCMF budget $1.50): capped client with a persistent ledger; $0.327 spent.
+- N31: four models build each real-text scenario's causal graph from the event log. Llama-70B /
+  Gemini-Flash recall 0.97, precision 0.50 / 0.44; Mistral-7B / Qwen-3B recall 0.63, precision
+  0.47 / 0.38. N31b (memory per background event): graph quality decides, operators within 2.
+- N32: decision test with Llama-70B and Gemini-Flash judges; clean equal for all three judges,
+  leaky additive gap for two of three.
+- Bugs fixed: two in the N31 scoring path, an unbounded local generation (1500-token cap),
+  memory-reaper kills (Zaid disabled the reaper). Anonymized code bundle zipped for OpenReview.
+- Tests: tcmfbench 205 passed.
