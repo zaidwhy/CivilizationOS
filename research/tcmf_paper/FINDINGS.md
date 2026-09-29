@@ -1003,3 +1003,9 @@ Gemini 0.75 vs 0.63 (p=0.039), Qwen 0.68 vs 0.57 (p=0.016), Llama 0.73 vs 0.72.
 true ancestors (root in 82% / 69%) at precision 0.47 / 0.38. Model size buys recall, not precision:
 every builder adds 2.5-4.5 false ancestors per scenario. Their missing ancestors cost retrieval even
 in the original pool (recall@5 0.44 / 0.46 vs 0.64), with the operators tied.
+
+**F27 - Decisions follow the LLM-built graphs (N33).** With root-favoring weights an LLM-built graph
+costs the three judges 3-25 decision points against the true chain (significant for 3 of 6
+judge-graph pairs); proximate weights keep every judge within 9 points (none significant); add vs
+mult never differs significantly (all p >= 0.14). With an automatic graph, the depth weighting
+matters and the operator does not, downstream too.

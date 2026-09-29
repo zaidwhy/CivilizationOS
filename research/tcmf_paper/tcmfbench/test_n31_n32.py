@@ -69,3 +69,15 @@ def test_small_models_buy_less_recall_and_cost_more_retrieval():
         assert v["ancestor_recall"] < 0.7 and v["ancestor_precision"] < 0.5, m
         r = v["retrieval_prox"]
         assert r["add_l4"] < 0.5 and abs(r["add_l4"] - r["mult_l16"]) < 0.01, m
+
+
+def test_n33_decisions_follow_llm_graphs():
+    d = _j("results_decision_n33", "results_decision_n33.json")
+    g = d["google/gemini-2.5-flash"]["mcnemar"]
+    assert g["true_vs_llama-70b|add|root"][2] < 0.01 and g["true_vs_gemini-flash|add|root"][2] < 0.01
+    for judge, r in d.items():
+        for k, (_, _, p) in r["mcnemar"].items():
+            if "add_vs_mult" in k:
+                assert p > 0.1, (judge, k)          # the operator never matters significantly
+            if k.startswith("true_vs") and k.endswith("prox"):
+                assert p > 0.05, (judge, k)         # proximate weights protect the decision

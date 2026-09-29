@@ -843,6 +843,17 @@ Zaid's OpenRouter key, TCMF budget $1.50; spent $0.33 (ledger `results_openroute
 
 **Verify:** `pytest tcmfbench/test_n31_n32.py tcmfbench/test_openrouter_client.py` (9 tests; 205 total).
 
+### N33 - Decisions from LLM-built graphs
+
+**Status: DONE (2026-09-29).** `run_decision_n33.py`: first 60 N31 scenarios (same seeds as the
+decision set) with a memory per background event; retrieval from the true chain / Llama graph /
+Gemini graph, add and mult, both depth weightings; judges Qwen-3B (local), Llama-70B, Gemini-Flash
+(paid, capped). Root weights on an LLM graph cost 3-25 decision points (significant for 3 of 6
+judge-graph pairs; Gemini judge p<=0.001, Qwen p=0.035); proximate weights within 9, none
+significant; add vs mult never significant (all p>=0.14). Paid total now $0.402 of $1.50.
+
+**Verify:** `pytest tcmfbench/test_n31_n32.py` (206 total).
+
 ## Deliberately out of scope for these 14 nights
 
 - Wording and prose polish. Lower return than any item above; do it after the evidence base
