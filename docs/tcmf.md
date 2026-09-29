@@ -161,6 +161,6 @@ There are three tunable parameters (`causal_boost`/lambda, `causal_sim_threshold
 
 ## Source
 
-`api/memory/tcmf.py` (`TCMFRetriever`, `TCMFContext`), `api/memory/causal_graph.py` (`CausalGraph`), `api/memory/stream.py` (`MemoryStream`). The full benchmark - 300 scenarios, six baselines, the multiplicative-vs-additive comparison, and eleven further ablations (real embeddings, decision-quality effects, spurious-edge robustness, a second domain corpus) - lives in `research/tcmf_paper/` (204 tests, running in CI).
+`api/memory/tcmf.py` (`TCMFRetriever`, `TCMFContext`), `api/memory/causal_graph.py` (`CausalGraph`), `api/memory/stream.py` (`MemoryStream`). The full benchmark - 300 scenarios, six baselines, the multiplicative-vs-additive comparison, and eleven further ablations (real embeddings, decision-quality effects, spurious-edge robustness, a second domain corpus) - lives in `research/tcmf_paper/` (205 tests, running in CI).
 
 If you're building multi-agent systems where decisions have downstream effects: semantic similarity and causal relevance are not the same signal. On a clean causal graph, addition and a well-tuned multiplication end up in the same place; addition just doesn't need the tuning. When the graph has false edges, the choice matters in both directions (multiplication is safer when the false edges point at unrelated events), but the false edges themselves cost far more than either choice. Keep the graph precise first.

@@ -818,7 +818,9 @@ and memories untouched; `run_structures_n30.py` runs each clean / on-topic leak 
 
 ### N31/N31b/N32 - Graphs built by LLMs, and stronger decision judges (paid, capped)
 
-**Status: DONE for the paid models (2026-09-28); local qwen2.5:3b / mistral:7b rows pending.**
+**Status: DONE (2026-09-28/29), four graph builders.** Local: Qwen2.5-3B recall 0.63 / precision
+0.38 / root 69%; Mistral-7B 0.63 / 0.47 / 82%; both cost retrieval even in the original pool (0.46,
+0.44), operators tie. Size buys recall, not precision.
 Zaid's OpenRouter key, TCMF budget $1.50; spent $0.33 (ledger `results_openrouter/ledger.json`).
 
 - N31 (`llm_graph.py`, `run_llmgraph_n31.py`): the model reads each real-text event log (true
@@ -839,7 +841,7 @@ Zaid's OpenRouter key, TCMF budget $1.50; spent $0.33 (ledger `results_openroute
   background event); an unbounded local generation that hit the timeout (fixed with a 1500-token
   cap, above every cached answer).
 
-**Verify:** `pytest tcmfbench/test_n31_n32.py tcmfbench/test_openrouter_client.py` (8 tests; 204 total).
+**Verify:** `pytest tcmfbench/test_n31_n32.py tcmfbench/test_openrouter_client.py` (9 tests; 205 total).
 
 ## Deliberately out of scope for these 14 nights
 

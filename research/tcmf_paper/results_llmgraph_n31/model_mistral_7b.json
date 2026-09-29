@@ -1,0 +1,76 @@
+{
+ "mistral:7b": {
+  "calls": 529,
+  "unparsed": 0,
+  "capped": 0,
+  "edges": {
+   "chain": 118,
+   "shortcut": 141,
+   "reversed_or_bad": 0,
+   "false": 455
+  },
+  "ancestor_precision": 0.466984126984127,
+  "ancestor_recall": 0.625,
+  "frac_empty_graph": 0.0,
+  "false_ancestors_mean": 2.45,
+  "false_ancestor_kinds": {
+   "decision": 212,
+   "crisis": 71,
+   "city": 11
+  },
+  "root_in_ancestors": 0.8166666666666667,
+  "seconds": 2257.00643658638,
+  "retrieval_prox": {
+   "add_l4": 0.44166666666666665,
+   "mult_l16": 0.44166666666666665,
+   "causal": 0.545,
+   "causal@5_add_l4": 0.6444444444444443,
+   "causal@5_mult_l16": 0.6444444444444444,
+   "best_mult_exploratory": 0.4416666666666665,
+   "add_l4_minus_mult_l16_ci": [
+    0.0,
+    -0.004999999999999999,
+    0.004999999999999999
+   ],
+   "wins_losses_ties_add_vs_mult16": [
+    1,
+    1,
+    118
+   ],
+   "pairs": {
+    "n": 20,
+    "frac_rho_lt_1": 0.75,
+    "mult_only_wrong": 0.15,
+    "add_only_wrong": 0.0,
+    "both_wrong": 0.2,
+    "both_right": 0.65
+   }
+  },
+  "retrieval_root": {
+   "add_l4": 0.44166666666666665,
+   "mult_l16": 0.44166666666666665,
+   "causal": 0.5433333333333332,
+   "causal@5_add_l4": 0.6444444444444444,
+   "causal@5_mult_l16": 0.6444444444444444,
+   "best_mult_exploratory": 0.4416666666666665,
+   "add_l4_minus_mult_l16_ci": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "wins_losses_ties_add_vs_mult16": [
+    0,
+    0,
+    120
+   ],
+   "pairs": {
+    "n": 20,
+    "frac_rho_lt_1": 0.75,
+    "mult_only_wrong": 0.0,
+    "add_only_wrong": 0.0,
+    "both_wrong": 0.8,
+    "both_right": 0.2
+   }
+  }
+ }
+}

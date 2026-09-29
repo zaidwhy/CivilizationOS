@@ -1,0 +1,50 @@
+{
+ "qwen2.5:3b-instruct|v0_base": {
+  "precision": 0.0,
+  "recall": 0.0,
+  "f1": 0.0,
+  "tp": 0,
+  "fp": 3,
+  "fn": 60
+ },
+ "qwen2.5:3b-instruct|v1_contrib": {
+  "precision": 0.154,
+  "recall": 0.033,
+  "f1": 0.055,
+  "tp": 2,
+  "fp": 11,
+  "fn": 58
+ },
+ "qwen2.5:3b-instruct|v2_reason": {
+  "precision": 0.479,
+  "recall": 0.383,
+  "f1": 0.426,
+  "tp": 23,
+  "fp": 25,
+  "fn": 37
+ },
+ "mistral:7b|v0_base": {
+  "precision": 0.562,
+  "recall": 0.45,
+  "f1": 0.5,
+  "tp": 27,
+  "fp": 21,
+  "fn": 33
+ },
+ "mistral:7b|v1_contrib": {
+  "precision": 0.434,
+  "recall": 0.717,
+  "f1": 0.541,
+  "tp": 43,
+  "fp": 56,
+  "fn": 17
+ },
+ "mistral:7b|v2_reason": {
+  "precision": 0.675,
+  "recall": 0.45,
+  "f1": 0.54,
+  "tp": 27,
+  "fp": 13,
+  "fn": 33
+ }
+}

@@ -998,3 +998,8 @@ use proximate depth weights.
 **F26 - Stronger judges: clean equivalence holds; the leaky gap holds for two of three.** Clean:
 additive and multiplicative (lambda 16) within 0.02 for Qwen-3B, Llama-70B, Gemini-Flash. Leaky:
 Gemini 0.75 vs 0.63 (p=0.039), Qwen 0.68 vs 0.57 (p=0.016), Llama 0.73 vs 0.72.
+
+**F24 addendum (2026-09-29) - two small local builders.** Mistral-7B and Qwen2.5-3B find only 63% of
+true ancestors (root in 82% / 69%) at precision 0.47 / 0.38. Model size buys recall, not precision:
+every builder adds 2.5-4.5 false ancestors per scenario. Their missing ancestors cost retrieval even
+in the original pool (recall@5 0.44 / 0.46 vs 0.64), with the operators tied.

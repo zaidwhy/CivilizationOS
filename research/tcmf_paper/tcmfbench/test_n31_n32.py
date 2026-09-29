@@ -60,3 +60,12 @@ def test_stronger_judges_clean_equivalence_and_leaky_split():
 def test_paid_spend_stayed_under_the_cap():
     led = _j("results_openrouter", "ledger.json")
     assert led["total_usd"] < 1.50
+
+
+def test_small_models_buy_less_recall_and_cost_more_retrieval():
+    d = _j("results_llmgraph_n31", "results_llmgraph_n31.json")["models"]
+    for m in ("qwen2.5:3b-instruct", "mistral:7b"):
+        v = d[m]
+        assert v["ancestor_recall"] < 0.7 and v["ancestor_precision"] < 0.5, m
+        r = v["retrieval_prox"]
+        assert r["add_l4"] < 0.5 and abs(r["add_l4"] - r["mult_l16"]) < 0.01, m
