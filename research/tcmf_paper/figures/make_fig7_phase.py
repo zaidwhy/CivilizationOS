@@ -18,6 +18,9 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
 
+# TrueType (Type 42) fonts: the default Type 3 fonts trip ACL's font checks.
+plt.rcParams.update({"pdf.fonttype": 42, "ps.fonttype": 42})
+
 ROOT = Path(__file__).resolve().parents[1]
 
 
@@ -47,7 +50,7 @@ def main():
     ax.set_xlabel(r"$\rho = e_i/e_j$  (causal vs. leaked memory, episodic)")
     ax.set_ylabel(r"$\beta = b_j/b_i$  (leaked vs. causal boost)")
     kw = dict(fontsize=7, ha="center", va="center")
-    ax.text(0.16, 0.45, "only $\\times$ fails\n(Prop. 1a)", **kw)
+    ax.text(0.16, 0.45, "only $\\times$ fails\n(Prop. 1)", **kw)
     ax.text(2.6, 0.16, "both succeed", **kw)
     ax.text(0.2, 3.3, "both fail", **kw)
     ax.text(3.4, 1.9, "only $+$ fails\n(Prop. 3)", **kw)
