@@ -954,8 +954,8 @@ Run: `python -m tcmfbench.run_clutter_n29` (results in `results_clutter_n29/`).
 background events with their own links change nothing (recall@5 0.679 = clean), because the
 backward BFS never reaches them. Each false edge from that background into the true chain costs
 recall for every operator: 0.68 -> 0.52 -> 0.44 -> 0.35 -> 0.28 at k = 0, 1, 2, 4, 8 with
-proximate depth weights, and 0.68 -> 0.40 -> 0.25 -> 0.16 -> 0.13 with root-favouring ones, which
-is below similarity alone (0.40) from k = 2. Root weighting is the fragile one: false ancestors
+proximate depth weights, and 0.68 -> 0.40 -> 0.25 -> 0.16 -> 0.12 with root-favouring ones: level
+with similarity alone (0.40) at k = 1 (0.398) and below it from k = 2. Root weighting is the fragile one: false ancestors
 raise the deepest depth D (3.0 -> 3.8) and take the root's weight.
 
 **F21 - Under off-topic leakage the operator effect reverses.** Multiplication at the transferred
@@ -965,7 +965,9 @@ within 3 points between the two; the difference is semantic evidence, which mult
 above boosted off-topic memories because it scales the boost by episodic relevance. On real text at
 the tuned threshold (0.60) the operators are within 2 points; at a loose threshold (0.50), where
 leaked boost lands on on-topic memories, additive keeps more causal evidence (0.64 vs 0.54 at
-k = 4) and leads recall@5 by 0 to 2 points, CIs mostly including zero.
+k = 4) and leads multiplication at lambda = 16 by 1.2 to 3.5 points of recall@5, paired CIs
+excluding zero in seven of the eight settings (corrected 2026-10-01; this line used to say "0 to 2
+points, CIs mostly including zero", which the results file does not support).
 
 ## N30 - Seven graph shapes and the leaked-pair map
 
@@ -979,7 +981,11 @@ addition iff beta < 1. The on-topic leak puts 99.9% of its pairs at rho < 1 (40%
 **F23 - The regimes hold across chains of 3/4/6, a diamond, two roots, a tree and a side cause.**
 Clean: equal within 0.01 where lambda = 4 clears the additive bound; on the six-event chain
 (proximate) the bound rises to a median of 4.58 and lambda = 6 restores parity, so the bound
-predicted the needed weight on an unseen shape. On-topic leaks favour addition in every shape.
+predicted the needed weight on an unseen shape (the side cause, where lambda = 4 suffices in 78% of
+scenarios, behaves the same way; lambda = 6 numbers in
+`results_structures_n30/results_structures_n30_lambda6.json`, from
+`python -m tcmfbench.run_structures_n30_lambda6`). With proximate weights on-topic leaks favour
+addition in every shape (14-34 points); with root weights addition leads or ties within 0.002.
 Clutter costs every shape >= 0.21; multiplication wins it in 7/7 shapes with root weights, 4/7
 with proximate ones.
 
@@ -991,8 +997,8 @@ find 97% of true ancestors and every root, but only 50% / 44% of the ancestors t
 
 **F25 - With memories of the false ancestors in the pool, the graph lands in the cluttered
 regime.** Without such memories the false ancestors cost nothing (the similarity match finds
-nothing to boost). With one memory per background event: proximate weights lose ~4.5 points,
-root weights 25-33; the operators stay within 2 points. For builders: with an LLM-built graph,
+nothing to boost). With one memory per background event: proximate weights lose 4.5 points
+(additive) to 7 (multiplicative), root weights 25-33; the operators stay within 2 points. For builders: with an LLM-built graph,
 use proximate depth weights.
 
 **F26 - Stronger judges: clean equivalence holds; the leaky gap holds for two of three.** Clean:
@@ -1004,8 +1010,9 @@ true ancestors (root in 82% / 69%) at precision 0.47 / 0.38. Model size buys rec
 every builder adds 2.5-4.5 false ancestors per scenario. Their missing ancestors cost retrieval even
 in the original pool (recall@5 0.44 / 0.46 vs 0.64), with the operators tied.
 
-**F27 - Decisions follow the LLM-built graphs (N33).** With root-favoring weights an LLM-built graph
-costs the three judges 3-25 decision points against the true chain (significant for 3 of 6
-judge-graph pairs); proximate weights keep every judge within 9 points (none significant); add vs
-mult never differs significantly (all p >= 0.14). With an automatic graph, the depth weighting
+**F27 - Decisions follow the LLM-built graphs (N33).** Under additive fusion, with root-favoring
+weights an LLM-built graph costs the three judges 3-25 decision points against the true chain
+(significant for 3 of 6 judge-graph pairs); proximate weights keep every judge within 9 points
+(none significant). Under multiplicative fusion the proximate losses reach 13 points (not tested
+for significance). Add vs mult never differs significantly (all p >= 0.14). With an automatic graph, the depth weighting
 matters and the operator does not, downstream too.
