@@ -852,7 +852,23 @@ Gemini graph, add and mult, both depth weightings; judges Qwen-3B (local), Llama
 judge-graph pairs; Gemini judge p<=0.001, Qwen p=0.035); proximate weights within 9, none
 significant; add vs mult never significant (all p>=0.14). Paid total now $0.402 of $1.50.
 
-**Verify:** `pytest tcmfbench/test_n31_n32.py` (206 total).
+**Verify:** `pytest tcmfbench/test_n31_n32.py` (206 total at the time; 211 after N34 and the lambda=6 test).
+
+### N34 - The decision tests at n=120, with multiple-comparison correction
+
+**Status: DONE (2026-10-02).** `run_decision_n34.py` (`--part A`: the N27/N32 retrieval arms for
+three judges; `--part B`: the N33 LLM-graph protocol for three judges) and
+`analyze_decision_n34.py` (Holm-corrected exact McNemar). All 120 real-text scenarios instead of
+the first 60; caches seeded from N27/N32/N33 so the first 60 reproduce the published numbers
+exactly (asserted). Paid: $0.165 for 5,705 total paid calls, ledger now $0.567 of $1.50 (this run
+capped at +$0.45). **Result weakens one claim and strengthens another.** Leaky retrieval: addition
+is ahead or level for all three judges (+6.7, +0.8, +5.8 points) but raw p = 0.039 / 1.0 / 0.092,
+Holm 0.116 / 1.0 / 0.185, so the earlier "addition leads for two judges (p = 0.016, 0.039)" does not
+survive. LLM-built graphs: root-favoring weights cost 14-31 points, significant in all six
+judge-graph pairs (Holm p <= 0.003); proximate 0.8-9.2 points, significant only for Gemini with
+the Llama graph (Holm p = 0.044); add vs mult never significant (smallest Holm p = 0.69).
+
+**Verify:** `pytest tcmfbench/test_n31_n32.py` (4 new tests), 211 total.
 
 ## Deliberately out of scope for these 14 nights
 

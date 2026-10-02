@@ -1001,18 +1001,26 @@ nothing to boost). With one memory per background event: proximate weights lose 
 (additive) to 7 (multiplicative), root weights 25-33; the operators stay within 2 points. For builders: with an LLM-built graph,
 use proximate depth weights.
 
-**F26 - Stronger judges: clean equivalence holds; the leaky gap holds for two of three.** Clean:
-additive and multiplicative (lambda 16) within 0.02 for Qwen-3B, Llama-70B, Gemini-Flash. Leaky:
-Gemini 0.75 vs 0.63 (p=0.039), Qwen 0.68 vs 0.57 (p=0.016), Llama 0.73 vs 0.72.
+**F26 - Stronger judges: clean equivalence holds; the leaky direction is consistent but NOT
+significant (revised 2026-10-02 at n=120).** First run, n=60: Gemini 0.75 vs 0.63 (p=0.039), Qwen
+0.68 vs 0.57 (p=0.016), Llama 0.73 vs 0.72. Extended to all 120 scenarios (N34; the first 60
+unchanged) with Holm correction over the three judges: clean within 0.01 for all three; leaky
+addition ahead or level for all three (Qwen 0.66 vs 0.59, raw p=0.039, Holm 0.116; Llama 0.68 vs
+0.68, p=1.0; Gemini 0.66 vs 0.60, p=0.092, Holm 0.185). The n=60 "significant for two judges" does
+not survive the larger sample and the correction; the decision test agrees in direction with the
+1500-scenario retrieval result but cannot confirm it.
 
 **F24 addendum (2026-09-29) - two small local builders.** Mistral-7B and Qwen2.5-3B find only 63% of
 true ancestors (root in 82% / 69%) at precision 0.47 / 0.38. Model size buys recall, not precision:
 every builder adds 2.5-4.5 false ancestors per scenario. Their missing ancestors cost retrieval even
 in the original pool (recall@5 0.44 / 0.46 vs 0.64), with the operators tied.
 
-**F27 - Decisions follow the LLM-built graphs (N33).** Under additive fusion, with root-favoring
-weights an LLM-built graph costs the three judges 3-25 decision points against the true chain
-(significant for 3 of 6 judge-graph pairs); proximate weights keep every judge within 9 points
-(none significant). Under multiplicative fusion the proximate losses reach 13 points (not tested
-for significance). Add vs mult never differs significantly (all p >= 0.14). With an automatic graph, the depth weighting
+**F27 - Decisions follow the LLM-built graphs (N33, extended to n=120 by N34; revised
+2026-10-02).** Under additive fusion, with root-favoring weights an LLM-built graph costs the three
+judges 14-31 decision points against the true chain, significant in ALL six judge-graph pairs
+(Holm p <= 0.003; at n=60 it was 3 of 6). Proximate weights: losses 0.8-9.2 points, significant after
+correction only for Gemini with the Llama graph (9.2 points, Holm p=0.044); the n=60 line "within 9
+points, none significant" is superseded. Under multiplicative fusion the proximate losses are
+5.8-10.8 points (not tested for significance). Add vs mult never differs significantly (smallest raw
+p=0.057, smallest Holm p=0.69 over 12 tests). With an automatic graph, the depth weighting
 matters and the operator does not, downstream too.

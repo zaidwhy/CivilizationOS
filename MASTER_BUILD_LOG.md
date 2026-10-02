@@ -1488,3 +1488,20 @@ checked out at `research/tcmf_paper/paper/`.
   add vs mult never significant (p >= 0.14). Paid total $0.402 of $1.50.
 - Fixed on the way: a merged header row in the full paper's three-judge table and a stray
   carriage return from shell escaping (scanned all sources; none left).
+
+## 2026-10-02 - TCMF: EACL cross-verification, N34 (decision tests at n=120), checklist
+
+- Every number in the submission paper traced to its results file at full precision. Fixed three
+  double-rounded table cells, about a dozen over-general claims, a missing results file (the
+  lambda=6 parity claim, now `results_structures_n30_lambda6.json` + a regression test) and stale
+  FINDINGS lines (F20, F21).
+- N34 (`run_decision_n34.py`, `analyze_decision_n34.py`): the decision tests rerun on all 120
+  scenarios for three judges, with Holm-corrected exact McNemar; first 60 reproduce N27/N32/N33
+  exactly (asserted). Paid $0.165 (ledger $0.567 of $1.50). Result: the n=60 "addition significant
+  for two judges" does NOT survive (Holm p 0.12 / 1.0 / 0.18; direction unchanged, addition ahead
+  or level for all three). LLM-built graphs: root-weight loss significant in all six pairs
+  (14-31 points, Holm p <= 0.003); proximate 0.8-9.2 points, one of six significant.
+- Papers (private repo) rewritten to the n=120 numbers; 4-page version kept inside its limit; the
+  submission PDF passes aclpubcheck on a final-mode copy. Model/encoder citations and an
+  artifacts-and-licenses appendix added for the Responsible NLP checklist.
+- Tests: tcmfbench 211 passed (206 + lambda=6 + four N34).

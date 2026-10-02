@@ -81,3 +81,41 @@ def test_n33_decisions_follow_llm_graphs():
                 assert p > 0.1, (judge, k)          # the operator never matters significantly
             if k.startswith("true_vs") and k.endswith("prox"):
                 assert p > 0.05, (judge, k)         # proximate weights protect the decision
+
+
+def test_n34_extends_the_published_first_60_unchanged():
+    n34 = _j("results_decision_n34", "results_decision_n34.json")
+    n27 = _j("results_decision_n27", "results_decision_n27.json")
+    n32 = _j("results_decision_n32", "results_decision_n32.json")
+    for judge, r in n34.items():
+        ref = n32[judge] if "/" in judge else n27
+        for cond in ("clean", "leaky"):
+            for arm, v in r[cond]["correct"].items():
+                assert len(v) == 120 and v[:60] == ref[cond]["correct"][arm], (judge, cond, arm)
+
+
+def test_n34_clean_equivalent_and_leaky_not_significant_after_holm():
+    n34 = _j("results_decision_n34", "results_decision_n34.json")
+    s = _j("results_decision_n34", "results_decision_n34_summary.json")["retrieval"]
+    for judge, r in n34.items():
+        a = r["clean"]["acc"]
+        assert abs(a["add_l4"][0] - a["mult_l16"][0]) < 0.011, judge
+        lk = r["leaky"]["acc"]
+        assert lk["add_l4"][0] >= lk["mult_l16"][0], judge          # direction: addition ahead or level
+        assert lk["causal_only"][0] > lk["add_l4"][0], judge        # causal score alone best under leakage
+        assert min(lk, key=lambda k: lk[k][0]) == "mult_l0.6", judge
+        assert s[judge]["p_holm"] > 0.05, judge                     # but not significant after correction
+
+
+def test_n34_llm_graph_decisions_root_weights_cost_significant_points():
+    g = _j("results_decision_n34", "results_decision_n34_summary.json")["graphs"]
+    root = {k: v for k, v in g.items() if k.endswith("|root")}
+    prox = {k: v for k, v in g.items() if k.endswith("|prox")}
+    assert len(root) == 6 and all(v["p_holm"] < 0.01 and 14 <= v["loss_points"] <= 31 for v in root.values())
+    assert max(v["loss_points"] for v in prox.values()) < 10
+    assert sum(v["p_holm"] < 0.05 for v in prox.values()) == 1
+
+
+def test_paid_spend_after_n34_stayed_under_the_cap():
+    led = _j("results_openrouter", "ledger.json")
+    assert led["total_usd"] < 1.50

@@ -64,3 +64,14 @@ def test_pair_map_places_leaks_where_the_theory_says():
     assert on["frac_rho_lt_1"] > 0.99 and on["add_only_wrong"] < 0.001
     assert 0.3 < cl["frac_rho_lt_1"] < 0.7 and cl["add_only_wrong"] > 0.0
     assert on["mult_only_wrong"] > 2 * cl["mult_only_wrong"]
+
+
+def test_lambda6_restores_parity_where_lambda4_falls_short():
+    """N30 addendum: on the clean six-event chain and side cause (proximate), lambda=4 falls short
+    of multiplication at 16, and the bound-predicted lambda=6 closes the gap."""
+    d = json.load(open(ROOT / "results_structures_n30" / "results_structures_n30_lambda6.json"))
+    for shape in ("chain6", "side_cause"):
+        v = d[f"{shape}_clean_prox"]
+        assert v["mult_l16"] - v["add_l4"] > 0.02, shape
+        assert abs(v["add_l6"] - v["mult_l16"]) < 0.005, shape
+        assert v["need_add_p95"] < 6, shape

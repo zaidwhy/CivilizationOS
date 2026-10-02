@@ -1,19 +1,19 @@
 {
- "total_usd": 0.40219117500000134,
- "calls": 3715,
+ "total_usd": 0.5674522899999987,
+ "calls": 5705,
  "by_model": {
   "meta-llama/llama-3.3-70b-instruct": {
-   "usd": 0.10749737499999998,
-   "calls": 1826,
-   "tokens_in": 450197,
-   "tokens_out": 91256,
+   "usd": 0.15924299000000025,
+   "calls": 2821,
+   "tokens_in": 696100,
+   "tokens_out": 98424,
    "max_call_usd": 0.00047424
   },
   "google/gemini-2.5-flash": {
-   "usd": 0.2946938000000018,
-   "calls": 1889,
-   "tokens_in": 460146,
-   "tokens_out": 62660,
+   "usd": 0.4082093000000024,
+   "calls": 2884,
+   "tokens_in": 705631,
+   "tokens_out": 78608,
    "max_call_usd": 0.0014048
   }
  }
