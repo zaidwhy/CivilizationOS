@@ -92,7 +92,9 @@ export default function Inspector() {
   if (!selectedId) {
     return (
       <div className="panel hint">
-        <p>Click a citizen on the city map to inspect their mind - memories, relationships, and current state.</p>
+        <p style={{ margin: "0 0 8px", color: "var(--text)", fontWeight: 600 }}>Nobody selected</p>
+        <p style={{ margin: 0 }}>Click a person on the city map to read their mind: what they remember, who they trust, and how afraid they are right now.</p>
+        <p style={{ margin: "8px 0 0", fontSize: 12 }}>Below: the social graph, the city feed, and the PANTHEON council where you can inject a crisis and watch five AI advisers debate it.</p>
       </div>
     );
   }

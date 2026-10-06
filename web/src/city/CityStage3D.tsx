@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import { EffectComposer } from "three/examples/jsm/postprocessing/EffectComposer.js";
@@ -9,26 +9,47 @@ import { CSS2DRenderer, CSS2DObject } from "three/examples/jsm/renderers/CSS2DRe
 import { useWorld } from "../ws/store";
 import type { LocationT, Citizen } from "../ws/store";
 
-// ── Palette - delegation-inspired: rich, muted jewel tones, clean geometry ──
-const BG   = 0x080c14;
+// ── Palette: readable by day, moody by night ────────────────────────────────
 const CELL = 2.4;
 
-type BuildingDef = { color: number; accent: number; height: number; label: string };
+type BuildingDef = {
+  wall: number; accent: number; height: number; label: string; kind: string; blurb: string;
+};
 const BUILDING_DEF: Record<string, BuildingDef> = {
-  home:        { color: 0x1c2b3a, accent: 0x4b7fa8, height: 1.5,  label: "#4b7fa8" },
-  workplace:   { color: 0x2a1f14, accent: 0xb07d3a, height: 2.6,  label: "#b07d3a" },
-  commons:     { color: 0x122318, accent: 0x3a8a5c, height: 1.3,  label: "#3a8a5c" },
-  institution: { color: 0x16122a, accent: 0x6b5db8, height: 4.0,  label: "#6b5db8" },
+  home:        { wall: 0x6f8fb0, accent: 0x7fb0dc, height: 1.5, label: "#8cc0ea", kind: "Home",        blurb: "where citizens live" },
+  workplace:   { wall: 0xa88458, accent: 0xe0a448, height: 2.7, label: "#e8b560", kind: "Workplace",   blurb: "daytime jobs" },
+  commons:     { wall: 0x4f8f6c, accent: 0x58c488, height: 1.2, label: "#76d6a0", kind: "Public space", blurb: "where people meet" },
+  institution: { wall: 0x7a6fc4, accent: 0xa597ff, height: 4.2, label: "#b4a8ff", kind: "Council",     blurb: "debates crises" },
 };
 
-// ── fear → clean pastel gradient ─────────────────────────────────────────────
+// ── helpers ──────────────────────────────────────────────────────────────────
+const clamp01 = (v: number) => Math.min(1, Math.max(0, v));
+const smooth = (a: number, b: number, v: number) => {
+  const t = clamp01((v - a) / (b - a));
+  return t * t * (3 - 2 * t);
+};
+
+/** 0 = deep night, 1 = full day, from the sim's 0..1 day progress (0 = midnight). */
+function daylightAt(dayProgress: number) {
+  const h = (((dayProgress % 1) + 1) % 1) * 24;
+  const day = smooth(5.5, 8, h) * (1 - smooth(17, 19.5, h));
+  const warm = Math.exp(-Math.pow(h - 6.8, 2) / 1.6) + Math.exp(-Math.pow(h - 18.4, 2) / 1.8);
+  return { day, warm: clamp01(warm) };
+}
+
 function fearColor(fear: number): THREE.Color {
   const c = new THREE.Color();
   if (fear < 0.4)
-    c.lerpColors(new THREE.Color(0x7cb4e0), new THREE.Color(0xe0c47c), fear / 0.4);
+    c.lerpColors(new THREE.Color(0x7cc4f0), new THREE.Color(0xf0cc7c), fear / 0.4);
   else
-    c.lerpColors(new THREE.Color(0xe0c47c), new THREE.Color(0xe07c7c), (fear - 0.4) / 0.6);
+    c.lerpColors(new THREE.Color(0xf0cc7c), new THREE.Color(0xf07c7c), (fear - 0.4) / 0.6);
   return c;
+}
+
+function hashHue(id: string): number {
+  let h = 0;
+  for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) >>> 0;
+  return (h % 360) / 360;
 }
 
 function gridToWorld(gx: number, gy: number, gw: number, gh: number) {
@@ -37,87 +58,104 @@ function gridToWorld(gx: number, gy: number, gw: number, gh: number) {
 
 // ── Citizen runtime state ─────────────────────────────────────────────────────
 type CitizenObj = {
-  body: THREE.Mesh; head: THREE.Mesh; shadow: THREE.Mesh;
-  label: CSS2DObject; bubble: CSS2DObject; bubbleEl: HTMLDivElement;
-  dispX: number; dispZ: number; tgtX: number; tgtZ: number;
+  id: string; name: string; occupation: string; action: string; fear: number;
+  body: THREE.Mesh; head: THREE.Mesh; shadow: THREE.Mesh; ring: THREE.Mesh;
+  selRing: THREE.Mesh; hit: THREE.Mesh; speech: string;
+  label: CSS2DObject; bubble: CSS2DObject; bubbleEl: HTMLDivElement; nameEl: HTMLDivElement;
+  dispX: number; dispZ: number; tgtX: number; tgtZ: number; moving: number;
 };
 
-// ── Sky gradient via large sphere ─────────────────────────────────────────────
-function makeSkyDome(): THREE.Mesh {
-  const geo = new THREE.SphereGeometry(90, 32, 16);
-  geo.scale(-1, 1, 1); // invert normals
-  const canvas = document.createElement("canvas");
-  canvas.width = 2; canvas.height = 256;
-  const ctx = canvas.getContext("2d")!;
-  const grad = ctx.createLinearGradient(0, 0, 0, 256);
-  grad.addColorStop(0,    "#0b1428"); // zenith  - deep midnight blue
-  grad.addColorStop(0.55, "#0d1520"); // mid
-  grad.addColorStop(1,    "#060a10"); // horizon - almost black
-  ctx.fillStyle = grad;
-  ctx.fillRect(0, 0, 2, 256);
-  const tex = new THREE.CanvasTexture(canvas);
-  tex.needsUpdate = true;
-  const mat = new THREE.MeshBasicMaterial({ map: tex, depthWrite: false, fog: false });
-  return new THREE.Mesh(geo, mat);
+// ── Sky dome with a day-night gradient driven by uniforms ────────────────────
+function makeSkyDome() {
+  const geo = new THREE.SphereGeometry(120, 32, 16);
+  const mat = new THREE.ShaderMaterial({
+    side: THREE.BackSide, depthWrite: false, fog: false,
+    uniforms: {
+      top:    { value: new THREE.Color(0x0b1630) },
+      bottom: { value: new THREE.Color(0x1a2a48) },
+    },
+    vertexShader: `varying float vY; void main(){ vY = normalize(position).y; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }`,
+    fragmentShader: `uniform vec3 top; uniform vec3 bottom; varying float vY;
+      void main(){ float t = smoothstep(-0.05, 0.75, vY); gl_FragColor = vec4(mix(bottom, top, t), 1.0); }`,
+  });
+  return { mesh: new THREE.Mesh(geo, mat), mat };
 }
 
-// ── Scattered star points ────────────────────────────────────────────────────
-function makeStars(): THREE.Points {
-  const N = 1400;
+function makeStars() {
+  const N = 900;
   const pos = new Float32Array(N * 3);
   for (let i = 0; i < N; i++) {
     const theta = Math.random() * Math.PI * 2;
-    const phi   = Math.acos(2 * Math.random() - 1) * 0.48; // upper hemisphere only
-    const r     = 82 + Math.random() * 6;
-    pos[i*3]   = r * Math.sin(phi) * Math.cos(theta);
-    pos[i*3+1] = r * Math.sin(phi) * Math.sin(theta);
-    pos[i*3+2] = r * Math.cos(phi);
+    const phi = Math.acos(1 - Math.random() * 0.9);
+    const r = 110;
+    pos[i * 3] = r * Math.sin(phi) * Math.cos(theta);
+    pos[i * 3 + 1] = r * Math.cos(phi);
+    pos[i * 3 + 2] = r * Math.sin(phi) * Math.sin(theta);
   }
   const geo = new THREE.BufferGeometry();
   geo.setAttribute("position", new THREE.BufferAttribute(pos, 3));
   const mat = new THREE.PointsMaterial({
-    color: 0xe8eeff, size: 0.18, sizeAttenuation: true,
-    transparent: true, opacity: 0.55, depthWrite: false,
+    color: 0xe8eeff, size: 0.5, sizeAttenuation: true, transparent: true, opacity: 0.7,
+    depthWrite: false, fog: false,
   });
-  return new THREE.Points(geo, mat);
+  return { points: new THREE.Points(geo, mat), mat };
 }
 
-// ── Extended reflective ground plane ────────────────────────────────────────
-function makeBasePlane(): THREE.Mesh {
-  const geo = new THREE.PlaneGeometry(140, 140);
-  const mat = new THREE.MeshStandardMaterial({
-    color: 0x06090f, roughness: 0.08, metalness: 0.85,
-  });
-  const m = new THREE.Mesh(geo, mat);
-  m.rotation.x = -Math.PI / 2;
-  m.position.y = -0.015;
-  m.receiveShadow = true;
-  return m;
+// Window grid used as an emissive map so towers read as buildings, and glow at night.
+function makeWindowTexture(): THREE.CanvasTexture {
+  const c = document.createElement("canvas");
+  c.width = 64; c.height = 64;
+  const g = c.getContext("2d")!;
+  g.fillStyle = "#000";
+  g.fillRect(0, 0, 64, 64);
+  for (let y = 0; y < 2; y++) {
+    for (let x = 0; x < 2; x++) {
+      const lit = Math.random() > 0.25;
+      g.fillStyle = lit ? "#ffd9a0" : "#40342a";
+      g.fillRect(8 + x * 28, 10 + y * 28, 14, 16);
+    }
+  }
+  const tex = new THREE.CanvasTexture(c);
+  tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.anisotropy = 4;
+  return tex;
 }
 
-// ── Grid lines on ground (thin emissive lines) ───────────────────────────────
 function makeGridLines(gw: number, gh: number): THREE.LineSegments {
   const pts: number[] = [];
-  const cx = ((gw - 1) / 2) * CELL, cz = ((gh - 1) / 2) * CELL;
-  const pad = CELL / 2;
+  const hw = (gw * CELL) / 2, hh = (gh * CELL) / 2;
   for (let gx = 0; gx <= gw; gx++) {
-    const x = (gx - (gw - 1) / 2) * CELL - pad + CELL / 2;
-    pts.push(x, 0.005, -cz - pad, x, 0.005, cz + pad);
+    const x = gx * CELL - hw;
+    pts.push(x, 0.012, -hh, x, 0.012, hh);
   }
   for (let gz = 0; gz <= gh; gz++) {
-    const z = (gz - (gh - 1) / 2) * CELL - pad + CELL / 2;
-    pts.push(-cx - pad, 0.005, z, cx + pad, 0.005, z);
+    const z = gz * CELL - hh;
+    pts.push(-hw, 0.012, z, hw, 0.012, z);
   }
   const geo = new THREE.BufferGeometry();
   geo.setAttribute("position", new THREE.BufferAttribute(new Float32Array(pts), 3));
-  const mat = new THREE.LineBasicMaterial({ color: 0x1a2535, transparent: true, opacity: 0.6 });
-  return new THREE.LineSegments(geo, mat);
+  return new THREE.LineSegments(geo, new THREE.LineBasicMaterial({ color: 0x5a6f8c, transparent: true, opacity: 0.16 }));
 }
 
 // ── Component ────────────────────────────────────────────────────────────────
+type Hover = { x: number; y: number; title: string; sub: string; accent: string } | null;
+
 export default function CityStage3D() {
   const containerRef = useRef<HTMLDivElement>(null);
   const flashRef     = useRef<HTMLDivElement>(null);
+  const resetViewRef = useRef<() => void>(() => {});
+  const [hover, setHover] = useState<Hover>(null);
+  const [legendOpen, setLegendOpen] = useState(() => {
+    try { return !localStorage.getItem("civOS_legend_seen_v1"); } catch { return true; }
+  });
+  useEffect(() => {
+    if (!legendOpen) return;
+    try { localStorage.setItem("civOS_legend_seen_v1", "1"); } catch { /* ignore */ }
+  }, [legendOpen]);
+  const [ready, setReady] = useState(false);
+
+  const resetView = useCallback(() => resetViewRef.current(), []);
 
   useEffect(() => {
     const el      = containerRef.current;
@@ -125,18 +163,17 @@ export default function CityStage3D() {
     if (!el) return;
 
     // ── Renderer ────────────────────────────────────────────────────────────
-    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-    renderer.toneMapping          = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure  = 1.18;
-    renderer.setClearColor(BG, 1);
-    renderer.shadowMap.enabled    = true;
-    renderer.shadowMap.type       = THREE.PCFSoftShadowMap;
-    renderer.domElement.style.cssText = "position:absolute;inset:0;width:100%;height:100%";
+    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false, powerPreference: "high-performance" });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.75));
+    renderer.toneMapping         = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.05;
+    renderer.setClearColor(0x0b1020, 1);
+    renderer.shadowMap.enabled   = true;
+    renderer.shadowMap.type      = THREE.PCFShadowMap;
+    renderer.domElement.style.cssText = "position:absolute;inset:0;width:100%;height:100%;touch-action:none";
     renderer.setSize(el.offsetWidth || 800, el.offsetHeight || 600);
     el.appendChild(renderer.domElement);
 
-    // ── CSS2D overlay ────────────────────────────────────────────────────────
     const labelRenderer = new CSS2DRenderer();
     labelRenderer.setSize(el.offsetWidth || 800, el.offsetHeight || 600);
     labelRenderer.domElement.style.cssText = "position:absolute;inset:0;pointer-events:none";
@@ -144,55 +181,92 @@ export default function CityStage3D() {
 
     // ── Scene ────────────────────────────────────────────────────────────────
     const scene = new THREE.Scene();
-    scene.fog   = new THREE.FogExp2(BG, 0.014);
+    const fog = new THREE.FogExp2(0x1a2a48, 0.006);
+    scene.fog = fog;
 
-    // Sky + stars (behind everything)
-    scene.add(makeSkyDome());
-    scene.add(makeStars());
-    scene.add(makeBasePlane());
+    const sky = makeSkyDome();
+    scene.add(sky.mesh);
+    const stars = makeStars();
+    scene.add(stars.points);
 
-    // ── Lighting (delegation-style: strong key + subtle fill) ────────────────
-    // Key light: cool-white from upper-right, casts soft shadows
-    const keyLight = new THREE.DirectionalLight(0xd0dcf0, 1.6);
-    keyLight.position.set(14, 28, 16);
-    keyLight.castShadow           = true;
-    keyLight.shadow.camera.near   = 1;
-    keyLight.shadow.camera.far    = 80;
-    keyLight.shadow.camera.left   = -20;
-    keyLight.shadow.camera.right  = 20;
-    keyLight.shadow.camera.top    = 20;
-    keyLight.shadow.camera.bottom = -20;
-    keyLight.shadow.mapSize.set(2048, 2048);
-    keyLight.shadow.radius        = 3;
-    scene.add(keyLight);
+    // Ground: matte, no metalness (a metallic surface with no environment map renders black)
+    const baseMat = new THREE.MeshStandardMaterial({ color: 0x27354a, roughness: 0.95, metalness: 0 });
+    const base = new THREE.Mesh(new THREE.PlaneGeometry(220, 220), baseMat);
+    base.rotation.x = -Math.PI / 2;
+    base.position.y = -0.03;
+    base.receiveShadow = true;
+    scene.add(base);
 
-    // Warm fill from low-left (bounce light off ground)
-    const fillLight = new THREE.DirectionalLight(0x2a1a08, 0.35);
-    fillLight.position.set(-10, 4, -12);
-    scene.add(fillLight);
-
-    // Subtle ambient (slightly lifted so building walls read on any monitor,
-    // not just calibrated ones; the noir mood comes from the key/fill ratio)
-    scene.add(new THREE.AmbientLight(0x131d30, 7.5));
+    // ── Lighting ─────────────────────────────────────────────────────────────
+    const hemi = new THREE.HemisphereLight(0x9db8e0, 0x2a3140, 0.8);
+    scene.add(hemi);
+    const key = new THREE.DirectionalLight(0xffffff, 2);
+    key.position.set(16, 30, 14);
+    key.castShadow = true;
+    key.shadow.camera.near = 1;
+    key.shadow.camera.far = 90;
+    key.shadow.camera.left = -40;
+    key.shadow.camera.right = 40;
+    key.shadow.camera.top = 28;
+    key.shadow.camera.bottom = -28;
+    key.shadow.mapSize.set(2048, 2048);
+    key.shadow.bias = -0.0004;
+    key.shadow.normalBias = 0.03;
+    scene.add(key);
 
     // ── Camera ────────────────────────────────────────────────────────────────
     const W0 = el.offsetWidth || 800, H0 = el.offsetHeight || 600;
-    const camera = new THREE.PerspectiveCamera(40, W0 / H0, 0.1, 200);
-    camera.position.set(0, 22, 26);
-    camera.lookAt(0, 0, 0);
+    const camera = new THREE.PerspectiveCamera(40, W0 / H0, 0.1, 400);
+    const viewDir = new THREE.Vector3(0, 0.62, 0.78).normalize();
+    const target = new THREE.Vector3(0, 0.6, 1);
 
     const controls = new OrbitControls(camera, renderer.domElement);
-    controls.enableDamping  = true;
-    controls.dampingFactor  = 0.06;
-    controls.minPolarAngle  = 0.18;
-    controls.maxPolarAngle  = Math.PI / 2.15;
-    controls.minDistance    = 6;
-    controls.maxDistance    = 55;
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.08;
+    controls.minPolarAngle = 0.2;
+    controls.maxPolarAngle = Math.PI / 2.12;
+    controls.minDistance   = 7;
+    controls.target.copy(target);
+    controls.zoomSpeed = 0.8;
 
-    // ── Post-processing - very subtle bloom only for accent glows ────────────
+    let gridW = 0, gridH = 0, built = false;
+    let fitDist = 50;
+    let flyT = 0, flyActive = true;          // intro / reset fly-in progress (seconds)
+    let flyFrom = 1.5;
+    let userMoved = false;
+
+    function computeFit() {
+      const aspect = camera.aspect || 1.5;
+      const tanV = Math.tan(THREE.MathUtils.degToRad(camera.fov / 2));
+      const W = (gridW || 24) * CELL, D = (gridH || 16) * CELL;
+      const needW = (W / 2) * 1.2 / (tanV * aspect);
+      const needH = (D / 2 * 0.66 + 4.2) / tanV;
+      fitDist = Math.max(needW, needH);
+      controls.maxDistance = fitDist * 1.5;
+    }
+
+    function placeCamera(distMul: number, elevBoost: number) {
+      const dir = viewDir.clone();
+      dir.y += elevBoost;
+      dir.normalize();
+      camera.position.copy(target).addScaledVector(dir, fitDist * distMul);
+      controls.update();
+    }
+
+    function startFly(from: number) {
+      flyFrom = from; flyT = 0; flyActive = true; userMoved = false;
+      controls.enabled = false;
+    }
+    resetViewRef.current = () => {
+      controls.target.copy(target);
+      startFly(1.12);
+    };
+    controls.addEventListener("start", () => { userMoved = true; flyActive = false; controls.enabled = true; });
+
+    // ── Post-processing ───────────────────────────────────────────────────────
     const composer = new EffectComposer(renderer);
     composer.addPass(new RenderPass(scene, camera));
-    const bloom = new UnrealBloomPass(new THREE.Vector2(W0, H0), 0.28, 0.6, 0.55);
+    const bloom = new UnrealBloomPass(new THREE.Vector2(W0, H0), 0.32, 0.55, 0.78);
     composer.addPass(bloom);
     composer.addPass(new OutputPass());
 
@@ -201,53 +275,100 @@ export default function CityStage3D() {
     const buildingGroup = new THREE.Group();
     const crisisGroup   = new THREE.Group();
     const citizenGroup  = new THREE.Group();
-    scene.add(groundGroup, buildingGroup, crisisGroup, citizenGroup);
+    const labelGroup    = new THREE.Group();
+    scene.add(groundGroup, buildingGroup, crisisGroup, citizenGroup, labelGroup);
 
     // ── Shared geo ───────────────────────────────────────────────────────────
-    const bodyGeo   = new THREE.CapsuleGeometry(0.21, 0.46, 4, 8);
-    const headGeo   = new THREE.SphereGeometry(0.175, 10, 8);
-    const shadowGeo = new THREE.CircleGeometry(0.32, 16);
+    const bodyGeo   = new THREE.CapsuleGeometry(0.27, 0.55, 4, 10);
+    const headGeo   = new THREE.SphereGeometry(0.23, 14, 10);
+    const shadowGeo = new THREE.CircleGeometry(0.4, 20);
+    const ringGeo   = new THREE.RingGeometry(0.46, 0.56, 32);
+    const selGeo    = new THREE.RingGeometry(0.82, 0.92, 40);
+    const hitGeo    = new THREE.CylinderGeometry(0.6, 0.6, 2.1, 10);
+    const hitMat    = new THREE.MeshBasicMaterial({ visible: false });
+    const windowTex = makeWindowTexture();
 
     // ── Runtime maps ─────────────────────────────────────────────────────────
     const citizens    = new Map<string, CitizenObj>();
-    const buildings   = new Map<string, { body: THREE.Mesh; roof: THREE.Mesh; light: THREE.PointLight }>();
+    const buildings   = new Map<string, {
+      loc: LocationT; body: THREE.Mesh; roof: THREE.Mesh; light: THREE.PointLight;
+      beacon: THREE.Mesh; windows: THREE.MeshStandardMaterial[]; px: number; pz: number;
+    }>();
     const groundTiles = new Map<string, THREE.Mesh>();
-    const clickable   : THREE.Mesh[] = [];
-    let gridW = 0, gridH = 0, built = false;
+    const clickable   : THREE.Object3D[] = [];
+    const buildingMeshes: THREE.Object3D[] = [];
     let prevCrises = 0, flashUntil = 0;
+    let daylight = { day: 0, warm: 0 };
+    let hoverId: string | null = null;
 
-    // ── Raycaster ────────────────────────────────────────────────────────────
+    // ── Pointer: select + hover ─────────────────────────────────────────────
     const raycaster = new THREE.Raycaster();
-    renderer.domElement.addEventListener("pointerdown", (e: PointerEvent) => {
+    const ndc = new THREE.Vector2();
+    function pick(e: PointerEvent) {
       const rect = renderer.domElement.getBoundingClientRect();
-      raycaster.setFromCamera(
-        new THREE.Vector2(
-          ((e.clientX - rect.left) / rect.width)  * 2 - 1,
-          -((e.clientY - rect.top)  / rect.height) * 2 + 1,
-        ), camera,
-      );
-      const hit = raycaster.intersectObjects(clickable)[0];
-      if (hit) {
-        const id = hit.object.userData.citizenId as string | undefined;
-        if (id) useWorld.getState().select(id);
-      }
+      ndc.set(((e.clientX - rect.left) / rect.width) * 2 - 1, -((e.clientY - rect.top) / rect.height) * 2 + 1);
+      raycaster.setFromCamera(ndc, camera);
+      return { hits: raycaster.intersectObjects([...clickable, ...buildingMeshes], false), rect };
+    }
+    let downX = 0, downY = 0;
+    renderer.domElement.addEventListener("pointerdown", (e: PointerEvent) => { downX = e.clientX; downY = e.clientY; });
+    renderer.domElement.addEventListener("pointerup", (e: PointerEvent) => {
+      // a drag is an orbit, not a click
+      if (Math.hypot(e.clientX - downX, e.clientY - downY) > 5) return;
+      const hit = pick(e).hits.find(h => h.object.userData.citizenId);
+      if (hit) useWorld.getState().select(hit.object.userData.citizenId as string);
     });
+    let hoverRaf = 0;
+    renderer.domElement.addEventListener("pointermove", (e: PointerEvent) => {
+      if (e.buttons) return;
+      if (hoverRaf) return;
+      hoverRaf = requestAnimationFrame(() => {
+        hoverRaf = 0;
+        const { hits, rect } = pick(e);
+        const h = hits[0];
+        const cid = h?.object.userData.citizenId as string | undefined;
+        const bid = h?.object.userData.buildingId as string | undefined;
+        hoverId = cid ?? null;
+        renderer.domElement.style.cursor = cid ? "pointer" : "grab";
+        const px = e.clientX - rect.left, py = e.clientY - rect.top;
+        if (cid) {
+          const c = citizens.get(cid);
+          if (c) {
+            setHover({ x: px, y: py, title: c.name, sub: `${c.occupation} - ${c.action}`, accent: "#" + fearColor(c.fear).getHexString() });
+            return;
+          }
+        }
+        if (bid) {
+          const b = buildings.get(bid);
+          if (b) {
+            const def = BUILDING_DEF[b.loc.type] ?? BUILDING_DEF.home;
+            const w = useWorld.getState().world;
+            const n = w?.citizens.filter(c => c.location_id === bid).length ?? 0;
+            const down = w?.closed_locations?.includes(bid);
+            const sub = down ? "CLOSED by a crisis" : `${def.kind} - ${n} ${n === 1 ? "person" : "people"} here`;
+            setHover({ x: px, y: py, title: b.loc.name, sub, accent: def.label });
+            return;
+          }
+        }
+        setHover(null);
+      });
+    });
+    renderer.domElement.addEventListener("pointerleave", () => { hoverId = null; setHover(null); });
 
     // ── Build ground tiles ───────────────────────────────────────────────────
     function buildGround(gw: number, gh: number) {
       groundGroup.clear();
       groundTiles.clear();
-      const geo = new THREE.PlaneGeometry(CELL - 0.12, CELL - 0.12);
+      const geo = new THREE.PlaneGeometry(CELL - 0.1, CELL - 0.1);
       for (let gx = 0; gx < gw; gx++) {
         for (let gy = 0; gy < gh; gy++) {
-          const col = (gx + gy) % 2 === 0 ? 0x0c1520 : 0x091019;
-          const mat = new THREE.MeshStandardMaterial({ color: col, roughness: 0.25, metalness: 0.6, emissive: 0x000000, emissiveIntensity: 0 });
+          const col = (gx + gy) % 2 === 0 ? 0x33445c : 0x2c3b52;
+          const mat = new THREE.MeshStandardMaterial({ color: col, roughness: 0.9, metalness: 0, emissive: 0x000000, emissiveIntensity: 0 });
           const m = new THREE.Mesh(geo, mat);
           m.rotation.x = -Math.PI / 2;
-          m.position.y = 0.001;
-          m.receiveShadow = true;
           const p = gridToWorld(gx, gy, gw, gh);
-          m.position.set(p.x, 0.001, p.z);
+          m.position.set(p.x, 0.002, p.z);
+          m.receiveShadow = true;
           groundGroup.add(m);
           groundTiles.set(`${gx},${gy}`, m);
         }
@@ -256,89 +377,152 @@ export default function CityStage3D() {
     }
 
     // ── Build buildings ──────────────────────────────────────────────────────
+    function windowMat(def: BuildingDef, w: number, h: number) {
+      const t = windowTex.clone();
+      t.needsUpdate = true;
+      t.repeat.set(Math.max(1, Math.round(w / 0.45)), Math.max(1, Math.round(h / 0.55)));
+      return new THREE.MeshStandardMaterial({
+        color: def.wall, roughness: 0.78, metalness: 0.05,
+        emissive: new THREE.Color(0xffc880), emissiveMap: t, emissiveIntensity: 0.1,
+      });
+    }
+
     function buildBuildings(locs: LocationT[], gw: number, gh: number) {
-      buildingGroup.clear(); crisisGroup.clear(); buildings.clear(); clickable.length = 0;
+      buildingGroup.clear(); crisisGroup.clear(); labelGroup.clear();
+      buildings.clear(); buildingMeshes.length = 0;
 
       for (const loc of locs) {
         const def = BUILDING_DEF[loc.type] ?? BUILDING_DEF.home;
         const p   = gridToWorld(loc.x, loc.y, gw, gh);
-        const bw  = CELL * 0.50;
+        const bw  = CELL * 0.56;
+        const windows: THREE.MeshStandardMaterial[] = [];
+        const tag = (m: THREE.Mesh) => { m.userData.buildingId = loc.id; buildingMeshes.push(m); };
 
-        // Body - clean matte, casts + receives shadow
-        const bodyGeo = new THREE.BoxGeometry(bw, def.height, bw);
-        const bodyMat = new THREE.MeshStandardMaterial({
-          color: def.color, roughness: 0.72, metalness: 0.18,
-        });
-        const body = new THREE.Mesh(bodyGeo, bodyMat);
-        body.position.set(p.x, def.height / 2, p.z);
+        // District pad under every building: tells you what kind of place it is even from far away
+        const pad = new THREE.Mesh(
+          new THREE.BoxGeometry(CELL * 0.94, 0.06, CELL * 0.94),
+          new THREE.MeshStandardMaterial({ color: def.accent, emissive: def.accent, emissiveIntensity: 0.1, roughness: 0.85, transparent: true, opacity: 0.38 }),
+        );
+        pad.position.set(p.x, 0.03, p.z);
+        pad.receiveShadow = true;
+        buildingGroup.add(pad);
+
+        // Main body
+        const wm = windowMat(def, bw, def.height);
+        windows.push(wm);
+        const body = new THREE.Mesh(new THREE.BoxGeometry(bw, def.height, bw), wm);
+        body.position.set(p.x, def.height / 2 + 0.06, p.z);
         body.castShadow = body.receiveShadow = true;
+        tag(body);
         buildingGroup.add(body);
 
-        // Thin roof accent - slight emissive glow (not neon, just a hint)
-        const roofGeo = new THREE.BoxGeometry(bw + 0.07, 0.045, bw + 0.07);
-        const roofMat = new THREE.MeshStandardMaterial({
-          color: def.accent, emissive: new THREE.Color(def.accent),
-          emissiveIntensity: 0.55, roughness: 0.4,
-        });
-        const roof = new THREE.Mesh(roofGeo, roofMat);
-        roof.position.set(p.x, def.height + 0.022, p.z);
+        // Roof cap (emissive accent strip - turns red when the building is closed)
+        const roof = new THREE.Mesh(
+          new THREE.BoxGeometry(bw + 0.1, 0.07, bw + 0.1),
+          new THREE.MeshStandardMaterial({ color: def.accent, emissive: def.accent, emissiveIntensity: 0.7, roughness: 0.4 }),
+        );
+        roof.position.set(p.x, def.height + 0.1, p.z);
+        roof.castShadow = true;
         buildingGroup.add(roof);
 
-        // Name label - minimal, appears above building
+        // Per-type silhouette so the map is readable without labels
+        const trim = new THREE.MeshStandardMaterial({ color: def.accent, roughness: 0.6, metalness: 0.1 });
+        if (loc.type === "home") {
+          const pitched = new THREE.Mesh(new THREE.ConeGeometry(bw * 0.78, 0.55, 4), new THREE.MeshStandardMaterial({ color: 0x8a5a4a, roughness: 0.85 }));
+          pitched.rotation.y = Math.PI / 4;
+          pitched.position.set(p.x, def.height + 0.06 + 0.3, p.z);
+          pitched.castShadow = true;
+          buildingGroup.add(pitched);
+        } else if (loc.type === "workplace") {
+          const tower = new THREE.Mesh(new THREE.BoxGeometry(bw * 0.45, 0.6, bw * 0.45), wm);
+          tower.position.set(p.x - bw * 0.15, def.height + 0.4, p.z - bw * 0.1);
+          tower.castShadow = true;
+          buildingGroup.add(tower);
+          const mast = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.015, 0.9, 6), trim);
+          mast.position.set(p.x + bw * 0.25, def.height + 0.55, p.z + bw * 0.2);
+          buildingGroup.add(mast);
+        } else if (loc.type === "commons") {
+          const treeMat = new THREE.MeshStandardMaterial({ color: 0x3f9a62, roughness: 0.9 });
+          const trunkMat = new THREE.MeshStandardMaterial({ color: 0x6b4a32, roughness: 0.9 });
+          const spots: [number, number, number][] = [[-0.5, -0.5, 1], [0.52, -0.45, 0.85], [-0.52, 0.48, 0.9], [0.5, 0.55, 1.05]];
+          for (const [dx, dz, s] of spots) {
+            const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.05, 0.28 * s, 6), trunkMat);
+            trunk.position.set(p.x + dx * CELL * 0.4, 0.2 * s, p.z + dz * CELL * 0.4);
+            const crown = new THREE.Mesh(new THREE.ConeGeometry(0.22 * s, 0.55 * s, 8), treeMat);
+            crown.position.set(trunk.position.x, 0.58 * s, trunk.position.z);
+            crown.castShadow = true;
+            buildingGroup.add(trunk, crown);
+          }
+        } else {
+          // institution: stepped tower + spire
+          const upper = new THREE.Mesh(new THREE.BoxGeometry(bw * 0.62, 0.9, bw * 0.62), windowMat(def, bw * 0.62, 0.9));
+          windows.push(upper.material as THREE.MeshStandardMaterial);
+          upper.position.set(p.x, def.height + 0.06 + 0.5, p.z);
+          upper.castShadow = true;
+          buildingGroup.add(upper);
+          const spire = new THREE.Mesh(new THREE.CylinderGeometry(0.01, 0.035, 1.1, 6), trim);
+          spire.position.set(p.x, def.height + 0.06 + 0.9 + 0.55, p.z);
+          buildingGroup.add(spire);
+          const base = new THREE.Mesh(new THREE.BoxGeometry(bw * 1.25, 0.28, bw * 1.25), new THREE.MeshStandardMaterial({ color: 0x4c4688, roughness: 0.8 }));
+          base.position.set(p.x, 0.2, p.z);
+          base.castShadow = base.receiveShadow = true;
+          buildingGroup.add(base);
+        }
+
+        // Label chip
         const div = document.createElement("div");
         div.textContent = loc.name;
         div.style.cssText = [
           `color:${def.label}`,
-          "font-size:8.5px",
-          "font-family:'SF Mono',ui-monospace,monospace",
-          "letter-spacing:0.06em",
-          "text-transform:uppercase",
-          "white-space:nowrap",
-          "pointer-events:none",
-          "opacity:0.8",
+          "font-size:10.5px", "font-weight:600",
+          "font-family:Inter,ui-sans-serif,system-ui,sans-serif",
+          "letter-spacing:0.04em", "white-space:nowrap", "pointer-events:none",
+          "padding:1px 6px", "border-radius:4px",
+          "background:rgba(8,12,22,0.62)", `border:1px solid ${def.label}44`,
+          "text-shadow:0 1px 2px rgba(0,0,0,0.8)",
         ].join(";");
         const labelObj = new CSS2DObject(div);
-        labelObj.position.set(p.x, def.height + 0.5, p.z);
-        scene.add(labelObj);
+        const topY = def.height + (loc.type === "institution" ? 2.5 : 1.0);
+        labelObj.position.set(p.x, topY, p.z);
+        labelGroup.add(labelObj);
 
-        // Crisis point-light (off by default)
-        const light = new THREE.PointLight(0xd94040, 0, CELL * 3.5);
+        // Crisis: a red pulsing beam + point light (off until closed)
+        const light = new THREE.PointLight(0xff4a4a, 0, CELL * 4);
         light.position.set(p.x, def.height + 1, p.z);
         crisisGroup.add(light);
+        const beacon = new THREE.Mesh(
+          new THREE.CylinderGeometry(0.16, 0.16, 7, 12, 1, true),
+          new THREE.MeshBasicMaterial({ color: 0xff4a4a, transparent: true, opacity: 0, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide }),
+        );
+        beacon.position.set(p.x, def.height + 3.5, p.z);
+        beacon.visible = false;
+        crisisGroup.add(beacon);
 
-        buildings.set(loc.id, { body, roof, light });
+        buildings.set(loc.id, { loc, body, roof, light, beacon, windows, px: p.x, pz: p.z });
       }
     }
 
-    // ── Update buildings ─────────────────────────────────────────────────────
+    // ── Update buildings (closed state) ──────────────────────────────────────
     function updateBuildings(locs: LocationT[], closed: string[]) {
       for (const loc of locs) {
         const b = buildings.get(loc.id);
         if (!b) continue;
         const def    = BUILDING_DEF[loc.type] ?? BUILDING_DEF.home;
         const isDown = closed.includes(loc.id);
-        const bm     = b.body.material as THREE.MeshStandardMaterial;
         const rm     = b.roof.material as THREE.MeshStandardMaterial;
-        if (isDown) {
-          bm.color.setHex(0x2a1010);
-          rm.color.setHex(0xd94040);
-          rm.emissive.setHex(0xd94040);
-          rm.emissiveIntensity = 0.9;
-        } else {
-          bm.color.setHex(def.color);
-          rm.color.setHex(def.accent);
-          rm.emissive.setHex(def.accent);
-          rm.emissiveIntensity = 0.55;
-        }
+        for (const wmat of b.windows) wmat.color.setHex(isDown ? 0x6a3434 : def.wall);
+        rm.color.setHex(isDown ? 0xff4a4a : def.accent);
+        rm.emissive.setHex(isDown ? 0xff4a4a : def.accent);
+        rm.emissiveIntensity = isDown ? 1.1 : 0.7;
+        b.beacon.visible = isDown;
       }
     }
 
-    // ── Update crisis lights ─────────────────────────────────────────────────
-    function updateCrisisLights(locs: LocationT[], closed: string[], t: number) {
-      for (const loc of locs) {
-        const b = buildings.get(loc.id);
-        if (!b) continue;
-        b.light.intensity = closed.includes(loc.id) ? 2.0 + 0.7 * Math.sin(t * 2.8) : 0;
+    function updateCrisisFx(closed: string[], t: number) {
+      for (const [id, b] of buildings) {
+        const isDown = closed.includes(id);
+        b.light.intensity = isDown ? 6 + 2.4 * Math.sin(t * 3) : 0;
+        if (isDown) (b.beacon.material as THREE.MeshBasicMaterial).opacity = 0.22 + 0.12 * Math.sin(t * 3);
       }
     }
 
@@ -348,128 +532,128 @@ export default function CityStage3D() {
       for (const c of citizenData)
         if ((c.fear ?? 0) > 0.1 && c.location_id)
           fearMap.set(c.location_id, Math.max(fearMap.get(c.location_id) ?? 0, c.fear));
-
-      for (const [key, tile] of groundTiles) {
-        const [xs, ys] = key.split(",");
-        const loc = locs.find(l => l.x === +xs && l.y === +ys);
+      const locAt = new Map(locs.map(l => [`${l.x},${l.y}`, l]));
+      for (const [k, tile] of groundTiles) {
+        const loc = locAt.get(k);
         const mat = tile.material as THREE.MeshStandardMaterial;
         if (loc) {
           const f = fearMap.get(loc.id) ?? 0;
           mat.emissive.copy(fearColor(f));
-          mat.emissiveIntensity = f * 0.14;
+          mat.emissiveIntensity = f * 0.45;
         } else {
-          mat.emissive.set(0, 0, 0);
           mat.emissiveIntensity = 0;
         }
       }
     }
 
     // ── Citizen factory ──────────────────────────────────────────────────────
-    function getCitizen(id: string, name: string): CitizenObj {
-      const ex = citizens.get(id);
+    function getCitizen(c: Citizen): CitizenObj {
+      const ex = citizens.get(c.id);
       if (ex) return ex;
 
-      // Clean matte white-ish body, head tinted by fear
-      const bodyMat = new THREE.MeshStandardMaterial({ color: 0xe8eef5, roughness: 0.65, metalness: 0.05 });
-      const headMat = new THREE.MeshStandardMaterial({ color: 0xccd8e8, roughness: 0.55, metalness: 0.05,
-        emissive: new THREE.Color(0x7cb4e0), emissiveIntensity: 0.12 });
+      const hue = hashHue(c.id);
+      const bodyMat = new THREE.MeshStandardMaterial({ color: new THREE.Color().setHSL(hue, 0.5, 0.62), roughness: 0.6, metalness: 0.05 });
+      const headMat = new THREE.MeshStandardMaterial({ color: 0xe9d8c8, roughness: 0.55, metalness: 0.02, emissive: new THREE.Color(0x7cc4f0), emissiveIntensity: 0.18 });
+      const shadowMat = new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.3, depthWrite: false });
+      const ringMat = new THREE.MeshBasicMaterial({ color: 0x7cc4f0, transparent: true, opacity: 0.85, depthWrite: false, side: THREE.DoubleSide });
+      const selMat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0, depthWrite: false, side: THREE.DoubleSide });
 
-      // Faint blob shadow on ground
-      const shadowMat = new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.22, depthWrite: false });
-
-      const body   = new THREE.Mesh(bodyGeo, bodyMat);
-      body.castShadow = true;
-      body.userData.citizenId = id;
-      body.position.y = 0.53;
-
-      const head   = new THREE.Mesh(headGeo, headMat);
-      head.castShadow = true;
-      head.userData.citizenId = id;
-      head.position.y = 1.1;
-
+      const body = new THREE.Mesh(bodyGeo, bodyMat);
+      body.castShadow = true; body.userData.citizenId = c.id;
+      const head = new THREE.Mesh(headGeo, headMat);
+      head.castShadow = true; head.userData.citizenId = c.id;
       const shadow = new THREE.Mesh(shadowGeo, shadowMat);
       shadow.rotation.x = -Math.PI / 2;
-      shadow.position.y = 0.003;
+      const ring = new THREE.Mesh(ringGeo, ringMat);
+      ring.rotation.x = -Math.PI / 2;
+      const selRing = new THREE.Mesh(selGeo, selMat);
+      selRing.rotation.x = -Math.PI / 2;
+      // generous invisible hit volume: the visible capsule is only a few pixels wide from far away
+      const hit = new THREE.Mesh(hitGeo, hitMat);
+      hit.userData.citizenId = c.id;
 
-      // Citizen label - first name only, ultra minimal
-      const nameDiv = document.createElement("div");
-      nameDiv.textContent = name.split(" ")[0];
-      nameDiv.style.cssText = [
-        "color:rgba(180,200,225,0.55)",
-        "font-size:7px",
-        "font-family:'SF Mono',ui-monospace,monospace",
-        "letter-spacing:0.12em",
-        "text-transform:uppercase",
-        "white-space:nowrap",
-        "pointer-events:none",
-      ].join(";");
-      const label = new CSS2DObject(nameDiv);
-      label.position.set(0, 1.45, 0);
+      const nameEl = document.createElement("div");
+      nameEl.textContent = c.name.split(" ")[0];
+      const baseLabel = [
+        "color:rgba(226,236,250,0.92)", "font-size:10px", "font-weight:600",
+        "font-family:Inter,ui-sans-serif,system-ui,sans-serif", "letter-spacing:0.03em",
+        "white-space:nowrap", "pointer-events:none", "padding:0 5px", "border-radius:3px",
+        "background:rgba(8,12,22,0.55)", "text-shadow:0 1px 2px rgba(0,0,0,0.9)",
+      ];
+      nameEl.style.cssText = baseLabel.join(";");
+      const label = new CSS2DObject(nameEl);
 
-      // Speech bubble - clean dark glass
       const bubbleEl = document.createElement("div");
       bubbleEl.style.cssText = [
-        "background:rgba(6,10,18,0.82)",
-        "color:rgba(210,225,245,0.9)",
-        "font-size:9.5px",
-        "font-family:ui-sans-serif,system-ui,sans-serif",
-        "border:1px solid rgba(75,127,168,0.28)",
-        "border-radius:6px",
-        "padding:5px 9px",
-        "max-width:130px",
-        "line-height:1.45",
-        "pointer-events:none",
-        "display:none",
-        "white-space:pre-wrap",
-        "letter-spacing:0.01em",
+        "background:rgba(10,15,26,0.92)", "color:rgba(228,238,252,0.96)", "font-size:11px",
+        "font-family:Inter,ui-sans-serif,system-ui,sans-serif",
+        "border:1px solid rgba(124,196,240,0.4)", "border-radius:8px", "padding:5px 9px",
+        "max-width:150px", "line-height:1.4", "pointer-events:none",
+        "white-space:pre-wrap", "box-shadow:0 4px 14px rgba(0,0,0,0.45)",
       ].join(";");
       const bubble = new CSS2DObject(bubbleEl);
-      bubble.position.set(0, 1.95, 0);
 
-      citizenGroup.add(body, head, shadow, label, bubble);
-      clickable.push(body, head);
+      citizenGroup.add(body, head, shadow, ring, selRing, hit, label, bubble);
+      clickable.push(hit);
 
-      const obj: CitizenObj = { body, head, shadow, label, bubble, bubbleEl,
-        dispX: 0, dispZ: 0, tgtX: 0, tgtZ: 0 };
-      citizens.set(id, obj);
+      const obj: CitizenObj = {
+        id: c.id, name: c.name, occupation: c.occupation, action: c.action, fear: c.fear ?? 0,
+        body, head, shadow, ring, selRing, hit, speech: "", label, bubble, bubbleEl, nameEl,
+        dispX: 0, dispZ: 0, tgtX: 0, tgtZ: 0, moving: 0,
+      };
+      // spawn at the target on first sight (no slide-in from the origin)
+      citizens.set(c.id, obj);
       return obj;
     }
 
-    function updateCitizen(c: Citizen, gw: number, gh: number, selected: string | null, t: number) {
-      const obj = getCitizen(c.id, c.name);
-      const p   = gridToWorld(c.x, c.y, gw, gh);
-      obj.tgtX = p.x; obj.tgtZ = p.z;
+    // Citizens who share a building stand in a row in front of it instead of inside it.
+    function slotsFor(cd: Citizen[], gw: number, gh: number) {
+      const groups = new Map<string, Citizen[]>();
+      for (const c of cd) {
+        const k = c.location_id || `${c.x},${c.y}`;
+        const g = groups.get(k); if (g) g.push(c); else groups.set(k, [c]);
+      }
+      const out = new Map<string, { x: number; z: number }>();
+      for (const [, g] of groups) {
+        g.sort((a, b) => a.id.localeCompare(b.id));
+        const p = gridToWorld(g[0].x, g[0].y, gw, gh);
+        const perRow = 4;
+        g.forEach((c, i) => {
+          const row = Math.floor(i / perRow);
+          const inRow = Math.min(perRow, g.length - row * perRow);
+          const col = i % perRow;
+          out.set(c.id, { x: p.x + (col - (inRow - 1) / 2) * 0.72, z: p.z + CELL * 0.5 + 0.18 + row * 0.62 });
+        });
+      }
+      return out;
+    }
 
+    function updateCitizen(c: Citizen, slot: { x: number; z: number }, selected: string | null) {
+      const first = !citizens.has(c.id);
+      const obj = getCitizen(c);
+      obj.tgtX = slot.x; obj.tgtZ = slot.z;
+      if (first) { obj.dispX = slot.x; obj.dispZ = slot.z; }
+      obj.name = c.name; obj.occupation = c.occupation; obj.action = c.action;
       const fear = c.fear ?? 0;
-      const fc   = fearColor(fear);
+      obj.fear = fear;
+      const fc = fearColor(fear);
 
       const hm = obj.head.material as THREE.MeshStandardMaterial;
       hm.emissive.copy(fc);
-      hm.emissiveIntensity = 0.10 + fear * 0.55;
-      // Body tints slightly toward fear color at high fear
-      const bm = obj.body.material as THREE.MeshStandardMaterial;
-      bm.color.lerpColors(new THREE.Color(0xe8eef5), fc, fear * 0.28);
+      hm.emissiveIntensity = 0.16 + fear * 0.6 + (selected === c.id ? 0.5 : 0);
 
-      // Selection: brighter head
-      if (selected === c.id) hm.emissiveIntensity = Math.min(1.2, hm.emissiveIntensity + 0.6);
+      (obj.ring.material as THREE.MeshBasicMaterial).color.copy(fc);
 
-      // Shadow scales with fear (fear makes you stand out more)
-      const sm = obj.shadow.material as THREE.MeshBasicMaterial;
-      sm.opacity = 0.18 + fear * 0.12;
-      const ss = 1 + fear * 0.4;
-      obj.shadow.scale.set(ss, ss, ss);
-
-      // Speech bubble
       if (c.speech) {
         const raw = c.speech;
         const ci  = raw.indexOf(": ");
-        const txt = (ci !== -1 ? raw.slice(ci + 2) : raw).slice(0, 58);
-        obj.bubbleEl.textContent    = txt.length < raw.length - ci - 2 ? txt + "…" : txt;
-        obj.bubbleEl.style.display  = "block";
+        const full = ci !== -1 ? raw.slice(ci + 2) : raw;
+        const txt = full.slice(0, 64);
+        obj.speech = txt.length < full.length ? txt + "..." : txt;
+        obj.bubbleEl.textContent = obj.speech;
       } else {
-        obj.bubbleEl.style.display  = "none";
+        obj.speech = "";
       }
-      void t;
     }
 
     // ── Store sync ───────────────────────────────────────────────────────────
@@ -483,26 +667,30 @@ export default function CityStage3D() {
         buildGround(gridW, gridH);
         buildBuildings(locations, gridW, gridH);
         built = true;
+        computeFit();
+        startFly(1.5);
+        setReady(true);
       }
 
+      daylight = daylightAt(w.day_progress ?? 0.5);
       updateBuildings(locations, closed_locations ?? []);
       updateHeat(cd, locations);
 
       if ((active_crises?.length ?? 0) > prevCrises && flashEl)
-        flashUntil = performance.now() + 800;
+        flashUntil = performance.now() + 900;
       prevCrises = active_crises?.length ?? 0;
 
       const sel = useWorld.getState().selectedId;
+      const slots = slotsFor(cd, gridW, gridH);
       const seen = new Set<string>();
       for (const c of cd) {
         seen.add(c.id);
-        updateCitizen(c, gridW, gridH, sel, 0);
+        updateCitizen(c, slots.get(c.id)!, sel);
       }
       for (const [id, obj] of citizens) {
         if (!seen.has(id)) {
-          citizenGroup.remove(obj.body, obj.head, obj.shadow, obj.label, obj.bubble);
-          const bi = clickable.indexOf(obj.body); if (bi !== -1) clickable.splice(bi, 1);
-          const hi = clickable.indexOf(obj.head); if (hi !== -1) clickable.splice(hi, 1);
+          citizenGroup.remove(obj.body, obj.head, obj.shadow, obj.ring, obj.selRing, obj.hit, obj.label, obj.bubble);
+          const hi = clickable.indexOf(obj.hit); if (hi !== -1) clickable.splice(hi, 1);
           citizens.delete(id);
         }
       }
@@ -510,39 +698,119 @@ export default function CityStage3D() {
 
     const unsub = useWorld.subscribe(sync);
     sync();
+    if (!built) {
+      // before the first world message: sit at a sensible default so nothing flashes
+      computeFit();
+      target.set(0, 0.6, 1);
+      placeCamera(1.5, 0.2);
+    }
+
+    // ── Lighting follows the sim clock (smoothed so phase changes fade, not pop) ──
+    const cur = { day: 0.5, warm: 0 };
+    const cTop = new THREE.Color(), cBot = new THREE.Color(), tmp = new THREE.Color();
+    const NIGHT_TOP = new THREE.Color(0x0a1430), NIGHT_BOT = new THREE.Color(0x1c2c4c);
+    const DAY_TOP = new THREE.Color(0x3c6aa8),  DAY_BOT = new THREE.Color(0x9cc0de);
+    const WARM = new THREE.Color(0xf0a070);
+    const KEY_NIGHT = new THREE.Color(0x8fa8d8), KEY_DAY = new THREE.Color(0xfff2dc);
+    const HEMI_SKY_NIGHT = new THREE.Color(0x3a4c78), HEMI_SKY_DAY = new THREE.Color(0xb4cff0);
+    const GROUND_NIGHT = new THREE.Color(0x27354a), GROUND_DAY = new THREE.Color(0x4a5c78);
+
+    function applyLighting(dt: number) {
+      const k = 1 - Math.exp(-dt * 1.6);
+      cur.day  += (daylight.day  - cur.day)  * k;
+      cur.warm += (daylight.warm - cur.warm) * k;
+      const d = cur.day;
+      cTop.lerpColors(NIGHT_TOP, DAY_TOP, d);
+      cBot.lerpColors(NIGHT_BOT, DAY_BOT, d);
+      cBot.lerp(WARM, cur.warm * 0.55);
+      cTop.lerp(tmp.copy(WARM).multiplyScalar(0.5), cur.warm * 0.18);
+      (sky.mat.uniforms.top.value as THREE.Color).copy(cTop);
+      (sky.mat.uniforms.bottom.value as THREE.Color).copy(cBot);
+      fog.color.copy(cBot).multiplyScalar(0.92);
+      renderer.setClearColor(cBot, 1);
+      stars.mat.opacity = 0.75 * (1 - d);
+      key.color.lerpColors(KEY_NIGHT, KEY_DAY, d).lerp(WARM, cur.warm * 0.4);
+      key.intensity = 0.9 + d * 1.9;
+      key.position.set(16 - d * 6 + cur.warm * 10, 18 + d * 14, 14);
+      hemi.color.lerpColors(HEMI_SKY_NIGHT, HEMI_SKY_DAY, d);
+      hemi.intensity = 0.75 + d * 0.55;
+      baseMat.color.lerpColors(GROUND_NIGHT, GROUND_DAY, d);
+      renderer.toneMappingExposure = 1.0 + (1 - d) * 0.08;
+      const winGlow = 0.12 + (1 - d) * 1.0;
+      for (const [id, b] of buildings) {
+        const closed = (useWorld.getState().world?.closed_locations ?? []).includes(id);
+        for (const wm of b.windows) wm.emissiveIntensity = closed ? 0.05 : winGlow;
+      }
+    }
 
     // ── Animation loop ───────────────────────────────────────────────────────
     const clock = new THREE.Clock();
     let raf = 0;
+    const easeOut = (t: number) => 1 - Math.pow(1 - t, 3);
 
     function animate() {
       raf = requestAnimationFrame(animate);
-      const t = clock.getElapsedTime();
-      controls.update();
+      const dt = Math.min(clock.getDelta(), 0.1);
+      const t = clock.elapsedTime;
 
-      // Citizen position lerp + subtle float
-      for (const [, obj] of citizens) {
-        obj.dispX += (obj.tgtX - obj.dispX) * 0.11;
-        obj.dispZ += (obj.tgtZ - obj.dispZ) * 0.11;
-        const fy = 0.014 * Math.sin(t * 1.5 + obj.tgtX * 0.8);
-        obj.body.position.set(obj.dispX, 0.53 + fy, obj.dispZ);
-        obj.head.position.set(obj.dispX, 1.1  + fy, obj.dispZ);
-        obj.shadow.position.set(obj.dispX, 0.003, obj.dispZ);
-        obj.label.position.set(obj.dispX, 1.45 + fy, obj.dispZ);
-        obj.bubble.position.set(obj.dispX, 1.95 + fy, obj.dispZ);
+      // intro / reset fly-in (cancelled the moment the user touches the controls)
+      if (flyActive && built) {
+        flyT += dt;
+        const k = easeOut(clamp01(flyT / 1.8));
+        placeCamera(flyFrom + (1 - flyFrom) * k, 0.25 * (1 - k));
+        if (k >= 1) { flyActive = false; controls.enabled = true; }
+      } else {
+        controls.update();
+      }
+      void userMoved;
+
+      applyLighting(dt);
+
+      // Citizens: frame-rate independent glide, walking bob, rings
+      const kMove = 1 - Math.exp(-dt * 5.5);
+      const selected = useWorld.getState().selectedId;
+      // At most 3 ambient speech bubbles at once; hovering or selecting a citizen always shows theirs.
+      const talkers = new Set<string>();
+      for (const [id, o] of citizens) { if (o.speech && talkers.size < 3) talkers.add(id); }
+      for (const [id, obj] of citizens) {
+        const dx = obj.tgtX - obj.dispX, dz = obj.tgtZ - obj.dispZ;
+        obj.dispX += dx * kMove;
+        obj.dispZ += dz * kMove;
+        const speed = Math.hypot(dx, dz);
+        obj.moving += ((speed > 0.08 ? 1 : 0) - obj.moving) * (1 - Math.exp(-dt * 8));
+        const bob = obj.moving * Math.abs(Math.sin(t * 9 + obj.dispX * 3)) * 0.07 + 0.012 * Math.sin(t * 1.6 + obj.dispX);
+        obj.body.position.set(obj.dispX, 0.66 + bob, obj.dispZ);
+        obj.head.position.set(obj.dispX, 1.3 + bob, obj.dispZ);
+        obj.shadow.position.set(obj.dispX, 0.012, obj.dispZ);
+        obj.ring.position.set(obj.dispX, 0.02, obj.dispZ);
+        obj.selRing.position.set(obj.dispX, 0.025, obj.dispZ);
+        obj.hit.position.set(obj.dispX, 1.05, obj.dispZ);
+        obj.label.position.set(obj.dispX, 1.78 + bob, obj.dispZ);
+        obj.bubble.position.set(obj.dispX, 2.4 + bob, obj.dispZ);
+
+        const pulse = obj.fear > 0.55 ? 1 + 0.18 * Math.sin(t * 5 + obj.dispX) : 1;
+        obj.ring.scale.setScalar((1 + obj.fear * 0.35) * pulse);
+        (obj.ring.material as THREE.MeshBasicMaterial).opacity = 0.35 + obj.fear * 0.5;
+        (obj.shadow.material as THREE.MeshBasicMaterial).opacity = 0.28;
+
+        const isSel = selected === id;
+        const isHov = hoverId === id;
+        const sm = obj.selRing.material as THREE.MeshBasicMaterial;
+        sm.opacity += ((isSel ? 0.95 : isHov ? 0.55 : 0) - sm.opacity) * (1 - Math.exp(-dt * 12));
+        obj.selRing.rotation.z = t * 0.9;
+        const s = 1 + 0.06 * Math.sin(t * 3.2);
+        obj.selRing.scale.setScalar(isSel ? s : 1);
+        obj.bubble.visible = !!obj.speech && (isSel || isHov || talkers.has(id));
+        obj.nameEl.style.color = isSel ? "#ffffff" : "rgba(226,236,250,0.92)";
+        obj.nameEl.style.background = isSel ? "rgba(110,168,254,0.55)" : "rgba(8,12,22,0.55)";
       }
 
-      // Crisis lights
-      if (built) {
-        const w = useWorld.getState().world;
-        if (w) updateCrisisLights(w.locations, w.closed_locations ?? [], t);
-      }
+      const w = useWorld.getState().world;
+      if (built && w) updateCrisisFx(w.closed_locations ?? [], t);
 
-      // Flash overlay
       if (flashEl) {
         const now = performance.now();
-        flashEl.style.opacity = now < flashUntil
-          ? String(((flashUntil - now) / 800) * 0.16) : "0";
+        flashEl.style.opacity = now < flashUntil ? String(((flashUntil - now) / 900) * 0.2) : "0";
       }
 
       composer.render();
@@ -559,31 +827,70 @@ export default function CityStage3D() {
       renderer.setSize(w, h);
       composer.setSize(w, h);
       labelRenderer.setSize(w, h);
+      computeFit();
+      if (!userMoved && !flyActive) placeCamera(1, 0);
     };
     const ro = new ResizeObserver(onResize);
     ro.observe(el);
-    window.addEventListener("resize", onResize);
 
     // ── Cleanup ──────────────────────────────────────────────────────────────
     return () => {
       cancelAnimationFrame(raf);
+      if (hoverRaf) cancelAnimationFrame(hoverRaf);
       ro.disconnect();
-      window.removeEventListener("resize", onResize);
       unsub();
       controls.dispose();
-      renderer.dispose();
       composer.dispose();
-      if (renderer.domElement.parentNode    === el) el.removeChild(renderer.domElement);
+      renderer.dispose();
+      if (renderer.domElement.parentNode      === el) el.removeChild(renderer.domElement);
       if (labelRenderer.domElement.parentNode === el) el.removeChild(labelRenderer.domElement);
     };
   }, []);
 
   return (
-    <div ref={containerRef} style={{ width: "100%", height: "100%", position: "relative" }}>
+    <div ref={containerRef} style={{ width: "100%", height: "100%", position: "relative", cursor: "grab" }}>
       <div ref={flashRef} style={{
         position: "absolute", inset: 0, background: "#c0392b",
         opacity: 0, pointerEvents: "none", zIndex: 5,
       }} />
+
+      {!ready && (
+        <div className="stage-loading">
+          <div className="spinner" />
+          <div>Connecting to the city...</div>
+          <div className="muted xsmall">The free server sleeps when idle; the first load can take about 25 seconds.</div>
+        </div>
+      )}
+
+      {hover && (
+        <div className="stage-tip" style={{ left: hover.x + 14, top: hover.y + 14, borderColor: hover.accent }}>
+          <div className="stage-tip-title" style={{ color: hover.accent }}>{hover.title}</div>
+          <div className="stage-tip-sub">{hover.sub}</div>
+        </div>
+      )}
+
+      <div className="stage-legend">
+        <button className="legend-toggle" onClick={() => setLegendOpen(o => !o)} aria-expanded={legendOpen}>
+          {legendOpen ? "Map key  -" : "Map key  +"}
+        </button>
+        {legendOpen && (
+          <div className="legend-body">
+            {Object.values(BUILDING_DEF).map(d => (
+              <div key={d.kind} className="legend-row">
+                <span className="legend-dot" style={{ background: d.label }} />
+                <b>{d.kind}</b><span className="muted">{d.blurb}</span>
+              </div>
+            ))}
+            <div className="legend-row">
+              <span className="legend-grad" />
+              <b>Fear</b><span className="muted">calm to afraid (ring under each person)</span>
+            </div>
+            <div className="legend-row"><span className="legend-dot legend-red" /><b>Red beam</b><span className="muted">building closed by a crisis</span></div>
+            <div className="legend-help">Drag to rotate. Scroll to zoom. Click a person to read their mind.</div>
+            <button className="legend-reset" onClick={resetView}>Reset view</button>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

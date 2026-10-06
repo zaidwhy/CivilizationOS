@@ -136,17 +136,33 @@ const QUICK_SCENARIOS = [
 function ScenarioLauncher() {
   const [open, setOpen] = useState(false);
   const [firing, setFiring] = useState<string | null>(null);
+  const [note, setNote] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!note) return;
+    const id = setTimeout(() => setNote(null), 6000);
+    return () => clearTimeout(id);
+  }, [note]);
 
   async function fire(key: string, inst: string) {
     setFiring(key);
     try {
-      await fetch(`${API_BASE}/api/crisis`, {
+      const res = await fetch(`${API_BASE}/api/crisis`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ text: "", institution_id: inst, template_key: key }),
       });
-    } catch { /* ignore */ }
-    finally { setFiring(null); setOpen(false); }
+      if (res.status === 429) {
+        const body = await res.json().catch(() => null);
+        setNote(typeof body?.detail === "string" ? body.detail : "Crises are rate-limited on the shared demo. Try again in a moment.");
+      } else if (!res.ok) {
+        setNote("The city could not start that crisis. Is the server awake?");
+      } else {
+        setOpen(false);
+      }
+    } catch {
+      setNote("Could not reach the server. The free host sleeps when idle; retry in about 25 seconds.");
+    } finally { setFiring(null); }
   }
 
   return (
@@ -163,7 +179,7 @@ function ScenarioLauncher() {
           cursor: "pointer", backdropFilter: "blur(6px)", fontWeight: 600,
         }}
       >
-        {open ? "✕" : "⚡ Scenarios"}
+        {open ? "✕ Close" : "⚡ Inject a crisis"}
       </button>
       {open && (
         <div style={{
@@ -191,6 +207,13 @@ function ScenarioLauncher() {
           ))}
         </div>
       )}
+      {note && (
+        <div role="status" style={{
+          maxWidth: 260, padding: "7px 11px", fontSize: 11.5, lineHeight: 1.4,
+          background: "rgba(248,113,113,0.12)", border: "1px solid rgba(248,113,113,0.5)",
+          borderRadius: 8, color: "#fecaca", backdropFilter: "blur(6px)",
+        }}>{note}</div>
+      )}
     </div>
   );
 }
@@ -205,30 +228,41 @@ const PHASE_LABEL: Record<string, string> = {
 function SpeedControl() {
   const health = useWorld((s) => s.health);
   const [local, setLocal] = useState(1.0);
+  const [locked, setLocked] = useState(false);
 
   useEffect(() => {
     if (health?.tick_interval != null) setLocal(health.tick_interval);
   }, [health?.tick_interval]);
 
   async function changeSpeed(v: number) {
+    const prev = local;
     setLocal(v);
     try {
-      await fetch(`${API_BASE}/api/speed`, {
+      const res = await fetch(`${API_BASE}/api/speed`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ seconds_per_tick: v }),
       });
+      if (res.status === 401 || res.status === 403) {
+        // the public demo shares one simulation among all viewers, so speed is admin-only there
+        setLocked(true);
+        setLocal(prev);
+      }
     } catch { /* ignore */ }
   }
 
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-      <span style={{ fontSize: 11, color: "#64748b" }}>speed</span>
+    <div
+      style={{ display: "flex", alignItems: "center", gap: 6, opacity: locked ? 0.55 : 1 }}
+      title={locked ? "Speed is locked on the shared public demo (one simulation, many viewers). Run it locally to change it." : "Simulation speed: seconds of real time per tick. Lower is faster."}
+    >
+      <span style={{ fontSize: 11, color: "#64748b" }}>{locked ? "speed (locked)" : "speed"}</span>
       <input
         type="range" min={0.1} max={3} step={0.1}
         value={local}
+        disabled={locked}
         onChange={(e) => changeSpeed(parseFloat(e.target.value))}
-        style={{ width: 70, accentColor: "#6ea8fe", cursor: "pointer" }}
+        style={{ width: 70, accentColor: "#6ea8fe", cursor: locked ? "not-allowed" : "pointer" }}
         title={`${local.toFixed(1)}s / tick`}
       />
       <span className="pill" style={{ fontSize: 10, minWidth: 36, textAlign: "center" }}>
@@ -342,14 +376,16 @@ export default function App() {
         </span>
         {world && (
           <>
-            <span className="pill">{world.clock}</span>
+            <span className="pill" title="Simulated time. One tick is about 6 in-world minutes; a day is 240 ticks.">{world.clock}</span>
             <span className="pill">{PHASE_LABEL[world.phase] ?? world.phase}</span>
-            <span className="pill">{world.citizens.length} citizens</span>
+            <span className="pill" title="Click any citizen on the map to read their memories and relationships">{world.citizens.length} citizens</span>
           </>
         )}
-        {activeCrises.map((name) => (
-          <span key={name} className="pill crisis-pill">
-            ⚠ {name}
+        {Object.entries(
+          activeCrises.reduce<Record<string, number>>((acc, n) => ({ ...acc, [n]: (acc[n] ?? 0) + 1 }), {}),
+        ).map(([name, n]) => (
+          <span key={name} className="pill crisis-pill" title={n > 1 ? `${n} active crises of this kind` : "Active crisis"}>
+            ⚠ {name}{n > 1 ? ` x${n}` : ""}
           </span>
         ))}
         <TensionMeter />

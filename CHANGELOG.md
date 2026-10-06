@@ -2,6 +2,14 @@
 
 Newest first. There are no version tags beyond the `audit-2026-09-15` checkpoint, so entries are grouped by the dates and phases in `MASTER_BUILD_LOG.md`, which holds the full record.
 
+## 2026-10-06
+
+- Rebuilt the 3D city stage (`web/src/city/CityStage3D.tsx`). The old ground and walls used metalness with no environment map, so most of the scene rendered near black. Now: matte lit materials, a sky and lighting that follow the simulation clock (night windows glow, dawn and dusk warm), per-type building silhouettes (pitched homes, stepped council towers, tree-lined public spaces), and a camera that fits the whole 24 by 16 grid at any window size with a short fly-in.
+- Citizens used to stand inside their building and were invisible. They now stand in a row in front of it, each with a distinct colour, a fear ring on the ground, a larger invisible hit volume for clicking, a walking bob and frame-rate independent movement.
+- Added hover tooltips, a selection ring, a collapsible map key with a reset-view button, a loading state for the free host's cold start, and a cap of three ambient speech bubbles (hover or select shows any one). Fixed an empty black bubble that CSS2DRenderer was revealing over every citizen.
+- A closed building now shows a red pulsing beam, not just a darker roof. Repeated crises of one kind collapse into one pill with a count.
+- The speed slider disables itself with an explanation if the server answers 401 or 403, and crisis launches now say why they failed (rate limit, server asleep) instead of failing silently. Rewrote the onboarding copy and the empty inspector text to match the new map; corrected the tick tooltip (one tick is about 6 in-world minutes).
+
 ## 2026-09-16 to 2026-09-21
 
 - Structured per-call LLM logging: one JSON line per call on the `civos.llm.calls` logger with call id, tier requested and used, model, latency, cost and tokens, on success and on failure.

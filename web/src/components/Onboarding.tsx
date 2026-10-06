@@ -8,7 +8,7 @@ const STEPS = [
   },
   {
     title: "Citizens & the City Map",
-    body: "Dots on the isometric map are citizens. They move on daily routines, talk to neighbours, form relationships, and build episodic memories. Click any citizen to inspect their mind.",
+    body: "The coloured figures on the 3D map are citizens. The ring under each person shows their fear, from calm blue to afraid red. They go to work, meet in public spaces, talk, form alliances and remember. Hover for a summary, click to read their mind. Drag to rotate, scroll to zoom.",
     icon: "👥",
   },
   {
@@ -23,7 +23,7 @@ const STEPS = [
   },
   {
     title: "Speed & Cost",
-    body: "Use the speed slider in the header to control tick rate. The spend counter shows live Claude API cost (free mode uses local Ollama + Gemini for $0). Change PREMIUM_MODE=true in .env to enable Claude for council debates.",
+    body: "The header shows city stability, the simulation speed and what the council models have cost so far. On the shared public demo the speed can be locked and crises are rate-limited, so one visitor cannot burn the budget. Run it locally to control both.",
     icon: "⚡",
   },
 ];
