@@ -1505,3 +1505,12 @@ checked out at `research/tcmf_paper/paper/`.
   submission PDF passes aclpubcheck on a final-mode copy. Model/encoder citations and an
   artifacts-and-licenses appendix added for the Responsible NLP checklist.
 - Tests: tcmfbench 211 passed (206 + lambda=6 + four N34).
+
+## 2026-10-06 - 3D city stage rebuild (frontend only)
+
+- Cause of the near-black scene: ground and walls used metalness 0.6 to 0.85 with no environment map (metal with nothing to reflect renders black), and citizens stood at their building's cell centre, i.e. inside the building mesh. Both are fixed in `web/src/city/CityStage3D.tsx`.
+- New: matte lit materials; sky, fog, key/hemisphere light, star field and window glow driven by `world.day_progress`, smoothed so phases fade; per-type silhouettes; citizens in a row in front of their building with per-citizen colour, fear ring, selection ring, invisible hit cylinder, walking bob and frame-rate independent motion; hover tooltip; map key with reset view; camera fits the 24 x 16 grid with a fly-in; loading state for the cold start; 3 ambient speech bubbles max; red beam on a closed building.
+- Bug found on the way: CSS2DRenderer owns `element.style.display`, so setting `display:none` on bubble elements did nothing and every citizen carried an empty black bubble. Toggle `Object3D.visible` instead.
+- `App.tsx`: speed slider disables itself on 401/403 with an explanation; crisis launcher reports 429 and network failures; duplicate crisis pills collapse to one with a count. Onboarding and inspector empty-state text rewritten; the tick tooltip corrected (one tick is about 6 in-world minutes, 240 per day).
+- Verified: `tsc -b` and `npm run build` clean; headless Chromium screenshots at night, day and with an injected crisis; hover, click-to-select and the crisis beam exercised; CI green on 1a58ced; live bundle at civilization-os-murex.vercel.app contains the new strings. Not verified: a real GPU at high DPR, touch input, Safari.
+- Not done: Render dashboard (needs Zaid's login): `OPENROUTER_FREE_MODEL`, `OPENROUTER_PREMIUM_MODEL`, `ADMIN_TOKEN`, OpenRouter credit. The local `.venv` was missing (only `.venv312`), and `web/node_modules` was missing (`npm ci` fixed it).
