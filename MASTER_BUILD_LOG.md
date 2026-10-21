@@ -1514,3 +1514,13 @@ checked out at `research/tcmf_paper/paper/`.
 - `App.tsx`: speed slider disables itself on 401/403 with an explanation; crisis launcher reports 429 and network failures; duplicate crisis pills collapse to one with a count. Onboarding and inspector empty-state text rewritten; the tick tooltip corrected (one tick is about 6 in-world minutes, 240 per day).
 - Verified: `tsc -b` and `npm run build` clean; headless Chromium screenshots at night, day and with an injected crisis; hover, click-to-select and the crisis beam exercised; CI green on 1a58ced; live bundle at civilization-os-murex.vercel.app contains the new strings. Not verified: a real GPU at high DPR, touch input, Safari.
 - Not done: Render dashboard (needs Zaid's login): `OPENROUTER_FREE_MODEL`, `OPENROUTER_PREMIUM_MODEL`, `ADMIN_TOKEN`, OpenRouter credit. The local `.venv` was missing (only `.venv312`), and `web/node_modules` was missing (`npm ci` fixed it).
+
+## 2026-10-22 night - TCMF audit items M7, L5, L7, L8, L10 (code side)
+
+- M7: `docs/tcmf.md` and the `api/memory/tcmf.py` docstring now give the paper's shipped-weight number, recall@5 0.01 (pool of 78, 1500 scenarios), and keep 0.02 only as the first 300-scenario run on a pool of 17.
+- L5: every operator in `tcmfbench/methods.py` now defaults to `clean=True` (the multiplicative operator, `rank_causal_only`, `_causal_boosts` and `_ancestor_map` defaulted to False); stale docstrings fixed. `test_clean_default.py` asserts the ancestor maps are identical for both settings on 0/150 scenarios and the lambda=16 rankings on 0/50, so no committed result changes.
+- L8: `check_llmgraph_pairs.py` rebuilds the four LLM graphs from the committed graph files and reproduces every stored pair fraction exactly; the prox/root blocks look swapped because root-favoring weights move most pairs from both_right to both_wrong (Llama 37 of 53). Comment added in `run_llmgraph_n31._summ`.
+- L10: `analyze_decision_n34` uses `stats.holm_bonferroni`; its copy is gone; regenerated summary is byte-identical; new test re-adjusts each stored family.
+- L1 support: `research/tcmf_paper/recompute_rounding_l1.py` recomputes Tables 2, 5, 6 and the 4-page leak table (half up, 8 exact ties, 0 cells changed).
+- L7: README badge and run-tests line, `docs/tcmf.md` and CLAUDE.md now say 214 passed, 1 skipped (215 collected); api 76 passed.
+- Verified: `pytest research/tcmf_paper/tcmfbench` 214 passed, 1 skipped; `pytest api/tests` 76 passed.

@@ -124,6 +124,10 @@ def _summ(rows, pairs):
     if pairs:
         p = np.array(pairs)
         rho, beta = p[:, 0], p[:, 1]
+        # Quadrants of the (rho, beta) plane: multiplication is right iff rho > beta, addition iff
+        # beta < 1. The same pairs appear under both depth weightings; root-favoring weights
+        # raise beta for deep false ancestors, so both_wrong and both_right can look swapped
+        # between the two blocks (verified by check_llmgraph_pairs.py, audit L8).
         out["pairs"] = {"n": len(p), "frac_rho_lt_1": float(np.mean(rho < 1)),
                         "mult_only_wrong": float(np.mean((beta < 1) & (rho <= beta))),
                         "add_only_wrong": float(np.mean((beta > 1) & (rho > beta))),

@@ -226,3 +226,25 @@ def _run_all() -> None:
 
 if __name__ == "__main__":
     _run_all()
+
+
+def test_decision_analysis_uses_the_tested_holm_and_reproduces_its_summary() -> None:
+    # Audit L10: analyze_decision_n34 once carried its own untested Holm copy. It must now use
+    # stats.holm_bonferroni, and re-adjusting each committed family must give the stored values.
+    import json
+    from pathlib import Path
+
+    from . import analyze_decision_n34 as A
+
+    assert A.holm is holm_bonferroni
+    summ = Path(A.OUT) / "results_decision_n34_summary.json"
+    s = json.loads(summ.read_text(encoding="utf-8"))
+    fam = list(s["retrieval"].values())
+    assert len(fam) == 3
+    for got, row in zip(holm_bonferroni([r["p"] for r in fam]), fam):
+        assert abs(got - row["p_holm"]) < 1e-12
+    for tag in ("prox", "root"):
+        fam = [v for k, v in s["graphs"].items() if k.endswith(f"|{tag}")]
+        assert len(fam) == 6
+        for got, row in zip(holm_bonferroni([r["p"] for r in fam]), fam):
+            assert abs(got - row["p_holm"]) < 1e-12

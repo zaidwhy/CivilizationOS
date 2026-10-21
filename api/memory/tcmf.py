@@ -23,7 +23,8 @@ semantically far from the crisis, so its episodic score is well below the loud
 symptom memories'. Under the earlier multiplicative form
 `episodic * (1 + lambda*boost)` the lambda needed to lift it depends on that
 episodic gap, which differs from crisis to crisis, so no default is safe (it scored
-recall@5 = 0.02 at its old default of 0.6). Under additive fusion the needed lambda
+recall@5 = 0.01 at its old default of 0.6, pool of 78 memories, 1500 scenarios; 0.02 on
+the first 300-scenario run with a pool of 17). Under additive fusion the needed lambda
 is bounded by 1 / (causal margin) whatever the episodic scores are, so one default
 works. See research/tcmf_paper/FINDINGS.md (F3-F7) and NIGHT_QUEUE.md (N21).
 

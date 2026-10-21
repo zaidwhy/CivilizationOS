@@ -1,7 +1,7 @@
 # CivilizationOS
 
 [![CI](https://github.com/zaidwhy/CivilizationOS/actions/workflows/ci.yml/badge.svg)](https://github.com/zaidwhy/CivilizationOS/actions/workflows/ci.yml)
-![Tests](https://img.shields.io/badge/tests-76%20api%20%2B%20211%20benchmark%20passed-brightgreen)
+![Tests](https://img.shields.io/badge/tests-76%20api%20%2B%20214%20benchmark%20passed%2C%201%20skipped-brightgreen)
 ![Python](https://img.shields.io/badge/python-3.12%2B-blue)
 ![Node](https://img.shields.io/badge/node-18%2B-blue)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
@@ -198,7 +198,7 @@ Open **http://localhost:5173** in your browser.
 ### Run tests
 ```bash
 .venv\Scripts\python -m pytest api/tests/ -q
-# 61 tests, all pass
+# 76 passed (benchmark: 214 passed, 1 skipped, 215 collected)
 ```
 
 ---

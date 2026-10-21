@@ -127,13 +127,15 @@ def rank_semantic(mat: Materialized) -> list[str]:
     return sorted(mat.all_ids, key=lambda i: _cosine(mat.mem[i]["embedding"], q), reverse=True)
 
 
-def _ancestor_map(mat: Materialized, clean: bool = False, max_depth: int = 4) -> dict[str, int]:
+def _ancestor_map(mat: Materialized, clean: bool = True, max_depth: int = 4) -> dict[str, int]:
     """Ancestor set for the causal boost.
 
-    ``clean=False`` reproduces the SHIPPED TCMF set: true BFS predecessors PLUS the
-    institution-scoped weak-ancestor fallback (which, note, includes the crisis event
-    itself at depth 3 and thereby leaks a boost to semantically-similar distractors).
-    ``clean=True`` uses only the true BFS causal ancestors of the crisis. ``max_depth``
+    ``clean=True`` (the default everywhere in this module) uses only the true BFS causal
+    ancestors of the crisis. ``clean=False`` reproduces the SHIPPED TCMF set: true BFS
+    predecessors PLUS the institution-scoped weak-ancestor fallback at depth 3 (the crisis
+    event itself is popped below, so it never enters the set). On every benchmark tier the
+    fallback only re-adds chain events BFS already found, so both settings give identical maps
+    there (``test_clean_default.py``); they can differ only when chain edges are missing. ``max_depth``
     (default 4, matching ``TCMFRetriever``'s own default) is the BFS depth cap - exposed as a
     parameter so N12 can sweep it; every existing caller keeps the old hardcoded value.
     """
@@ -172,7 +174,7 @@ def _boost(emb: list[float], ancestors: dict[str, int], graph, threshold: float,
     return best
 
 
-def rank_causal_only(mat: Materialized, threshold: float = 0.45, clean: bool = False,
+def rank_causal_only(mat: Materialized, threshold: float = 0.45, clean: bool = True,
                      favor_root: bool = False) -> list[str]:
     ancestors = _ancestor_map(mat, clean=clean)
     max_depth = max(ancestors.values(), default=1) or 1
@@ -258,11 +260,12 @@ async def rank_episodic(mat: Materialized) -> list[str]:
 
 
 def rank_tcmf_multiplicative(mat: Materialized, lam: float = 0.6, threshold: float = 0.45,
-                             clean: bool = False, favor_root: bool = False) -> list[str]:
+                             clean: bool = True, favor_root: bool = False) -> list[str]:
     """The ORIGINAL (pre-fix) multiplicative operator, reproduced standalone so the paper's
     before/after contrast stays reproducible after the real code is fixed: raw episodic score
-    x (1 + lambda*boost). Defaults (dirty ancestors, favor-proximate) match the old shipped
-    behaviour."""
+    x (1 + lambda*boost). ``clean`` defaults to True like every other operator here; the old
+    shipped behaviour used the fallback (``clean=False``), which gives identical ancestor maps
+    and rankings on every benchmark tier (``test_clean_default.py``)."""
     epi = _episodic_scores(mat)
     boost = _causal_boosts(mat, threshold, clean=clean, favor_root=favor_root)
     score = {i: epi.get(i, 0.0) * (1.0 + lam * boost.get(i, 0.0)) for i in mat.all_ids}
@@ -287,7 +290,7 @@ def _episodic_scores(mat: Materialized) -> dict[str, float]:
     return scores
 
 
-def _causal_boosts(mat: Materialized, threshold: float, clean: bool = False,
+def _causal_boosts(mat: Materialized, threshold: float, clean: bool = True,
                    favor_root: bool = False, bfs_depth_cap: int = 4) -> dict[str, float]:
     """Per-memory causal boost, identical formula to TCMF._causal_boost_for_memory.
     ``bfs_depth_cap`` is the ancestor-search depth limit (N12 sweep parameter); every existing
@@ -363,7 +366,7 @@ def rank_tcmf_ablation(
     the paper's own decision-quality result suggests interact).
 
         fix 1 (operator):     additive=False  -> the old multiplicative form
-        fix 2 (ancestor leak): clean=False     -> crisis leaks into its own ancestor set
+        fix 2 (ancestor leak): clean=False     -> institution fallback adds weak ancestors at depth 3
         fix 3 (depth weight):  favor_root=False -> favors the proximate cause, not the root
         fix 4 (pre-fusion prune): prune_k=int  -> per-citizen top-k cut before fusion
     """

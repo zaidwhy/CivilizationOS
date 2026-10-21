@@ -15,6 +15,7 @@ import json
 from pathlib import Path
 
 from .run_decision_n27 import mcnemar_exact
+from .stats import holm_bonferroni as holm  # the one tested Holm implementation
 
 ROOT = Path(__file__).resolve().parents[1]
 A = ROOT / "results_decision_n34" / "results_decision_n34.json"
@@ -22,15 +23,6 @@ B = ROOT / "results_decision_n34b" / "results_decision_n33.json"
 OUT = ROOT / "results_decision_n34"
 SHORT = {"qwen2.5:3b-instruct": "Qwen2.5-3B", "meta-llama/llama-3.3-70b-instruct": "Llama-3.3-70B",
          "google/gemini-2.5-flash": "Gemini-2.5-Flash"}
-
-
-def holm(ps: list[float]) -> list[float]:
-    order = sorted(range(len(ps)), key=lambda i: ps[i])
-    adj, run = [0.0] * len(ps), 0.0
-    for rank, i in enumerate(order):
-        run = max(run, min(1.0, (len(ps) - rank) * ps[i]))
-        adj[i] = run
-    return adj
 
 
 def main():
