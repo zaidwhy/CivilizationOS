@@ -2,6 +2,10 @@
 
 Newest first. There are no version tags beyond the `audit-2026-09-15` checkpoint, so entries are grouped by the dates and phases in `MASTER_BUILD_LOG.md`, which holds the full record.
 
+## 2026-10-22
+
+- TCMF SRW audit fixes in two rounds (H1 to L10): code-side items M7, L1, L5, L7, L8, L10 here, paper items M2, L1 to L4 in the paper repo. `tcmfbench` 214 passed, 1 skipped; api 76 passed. Long paper 12 pages (body ends page 8); bundle `tcmf-anon-bundle-2026-10-22` is the 15 Dec upload. Full record in `MASTER_BUILD_LOG.md`.
+
 ## 2026-10-06
 
 - Rebuilt the 3D city stage (`web/src/city/CityStage3D.tsx`). The old ground and walls used metalness with no environment map, so most of the scene rendered near black. Now: matte lit materials, a sky and lighting that follow the simulation clock (night windows glow, dawn and dusk warm), per-type building silhouettes (pitched homes, stepped council towers, tree-lined public spaces), and a camera that fits the whole 24 by 16 grid at any window size with a short fly-in.
