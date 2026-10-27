@@ -1,3 +1,5 @@
+<img src=".github/plate.svg" alt="CivilizationOS: A causal memory that has to outrank a rumour with a witness, not a similar-sounding one. 10 agents, 5 councils; TCMF against 6 baselines, 300 scenarios; live on Vercel. Core strip: 323 commits over 20 weeks, Jun 2026 to Oct 2026." width="100%">
+
 # CivilizationOS
 
 [![CI](https://github.com/zaidwhy/CivilizationOS/actions/workflows/ci.yml/badge.svg)](https://github.com/zaidwhy/CivilizationOS/actions/workflows/ci.yml)
@@ -301,3 +303,7 @@ logic only), and `PREMIUM_MODE` must stay `false` by default so the app runs at 
 ## License
 
 [MIT](LICENSE).
+
+---
+
+<sub>One plate from the survey at [github.com/zaidwhy](https://github.com/zaidwhy). The strip on the plate above is this repository's own commit history, one band per week.</sub>
