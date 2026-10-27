@@ -1524,3 +1524,10 @@ checked out at `research/tcmf_paper/paper/`.
 - L1 support: `research/tcmf_paper/recompute_rounding_l1.py` recomputes Tables 2, 5, 6 and the 4-page leak table (half up, 8 exact ties, 0 cells changed).
 - L7: README badge and run-tests line, `docs/tcmf.md` and CLAUDE.md now say 214 passed, 1 skipped (215 collected); api 76 passed.
 - Verified: `pytest research/tcmf_paper/tcmfbench` 214 passed, 1 skipped; `pytest api/tests` 76 passed.
+
+## 2026-10-28 night - flagship checklist and dependency alerts
+
+- PROJECT-DECISIONS upgrade checklist re-checked: live URL 200, admin-gated writes, benchmark in CI, ARCHITECTURE.md, large embedding cache gitignored (small result caches committed on purpose for offline reruns, FINDINGS.md).
+- ARCHITECTURE.md: keepalive now described as reducing cold starts, not preventing them (GitHub runs the 10-minute cron hours apart; a 23 s cold start measured 2026-10-28); tradeoffs as a table; shipped per-call logging removed from Future.
+- Dependabot: urllib3 2.8.0, certifi 2026.10.18, vite 6.4.4, source-map-js 1.2.2.
+- Verified: `pytest api/tests` 76 passed; `npm run build` clean; `npm audit` 0 vulnerabilities.
