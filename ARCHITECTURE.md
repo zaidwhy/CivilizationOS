@@ -96,7 +96,7 @@ message reads or mutates that same instance.
 
 | Failure | Effect | Mitigation |
 |---|---|---|
-| Render free-tier cold start (~25s after 15 min idle) | first visitor of the day waits | GitHub Actions cron pings `/health` every 10 min to keep the one warm slot occupied |
+| Render free-tier cold start (~25s after 15 min idle) | first visitor of the day waits | GitHub Actions cron asks for a `/health` ping every 10 min, but GitHub throttles scheduled runs to gaps of hours, so this reduces cold starts rather than preventing them (a 23 s cold start was measured on 2026-10-28) |
 | A visitor spams `POST /crisis` | burns the shared LLM budget / spams every viewer's WebSocket | 30s global cooldown + a per-UTC-day cap (`CRISIS_DAILY_CAP`), both enforced in `_check_crisis_budget()` |
 | `POST /speed` or a manual crisis resolve from a random visitor | changes the simulation for every viewer | gated behind `X-Admin-Token` (`require_admin`), open only when `ADMIN_TOKEN` is unset (local dev) |
 | Process restart | the running society, its causal graph, and all debates are lost | accepted for a demo; nothing is durable by design (no database) |
@@ -163,7 +163,6 @@ per-process-lifetime ceiling, not a true monthly one - documented in `CLAUDE.md`
 ## Future
 
 - Move the vector store and simulation state out of process (see Scaling).
-- Structured per-call cost/latency logging (Observability, above).
 - A durable session store so a demo society survives a Render restart, if that ever
   becomes worth the added infrastructure for what is currently a stateless-by-design
   demo.
