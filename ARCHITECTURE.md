@@ -105,18 +105,12 @@ message reads or mutates that same instance.
 
 ## Tradeoffs
 
-- **In-process state over a database**: massively simpler to build and deploy for a
-  demo; the explicit cost is zero durability and no horizontal scaling.
-- **Additive over multiplicative fusion**: the benchmarked, corrected choice (see
-  `research/tcmf_paper/`) - the tradeoff is a slightly less "clean" formula (two terms to
-  balance with a lambda hyperparameter) in exchange for actually surfacing causally
-  relevant-but-semantically-distant memories.
-- **In-process vector store over Chroma/pgvector**: fine at this scale (a handful of
-  citizens, bounded memory streams); would need to move out-of-process well before this
-  design could support many concurrent societies.
-- **DEMO_MODE on the public deploy**: trades away the "living, breathing" ambient loop
-  (which needs the $0 Ollama tier, unavailable in the cloud) so the deploy stays free;
-  crisis injection and debates - the actual point of a demo - stay fully live.
+| Choice | Gain | Cost |
+|---|---|---|
+| In-process state over a database | far simpler to build and deploy for a demo | zero durability, no horizontal scaling |
+| Additive over multiplicative fusion (benchmarked in `research/tcmf_paper/`) | causally relevant but semantically distant memories actually surface | two terms to balance with a lambda hyperparameter |
+| In-process vector store over Chroma/pgvector | no extra service at this scale (a handful of citizens, bounded memory streams) | must move out of process before many concurrent societies |
+| `DEMO_MODE` on the public deploy | the deploy stays free; crisis injection and debates stay fully live | no ambient loop, which needs the $0 Ollama tier that the cloud cannot reach |
 
 ## Scaling (what would change first)
 
