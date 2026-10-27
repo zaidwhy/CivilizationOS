@@ -1,4 +1,7 @@
-<img src=".github/plate.svg" alt="CivilizationOS: A causal memory that has to outrank a rumour with a witness, not a similar-sounding one. 10 agents, 5 councils; TCMF against 6 baselines, 300 scenarios; live on Vercel. Core strip: 323 commits over 20 weeks, Jun 2026 to Oct 2026." width="100%">
+<picture>
+<source media="(max-width: 600px)" srcset=".github/plate-narrow.svg">
+<img src=".github/plate.svg" alt="CivilizationOS: A causal memory that has to outrank a rumour with a witness, not a similar-sounding one. 10 agents, 5 councils; TCMF against 6 baselines, 300 scenarios; live on Vercel. Core strip: 325 commits over 20 weeks, Jun 2026 to Oct 2026." width="100%">
+</picture>
 
 # CivilizationOS
 
