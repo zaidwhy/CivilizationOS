@@ -573,7 +573,9 @@ export default function CityStage3D() {
       const tanV = Math.tan(THREE.MathUtils.degToRad(camera.fov / 2));
       const needW = (gridW * CELL * 0.44) / (tanV * camera.aspect);
       const needD = (gridH * CELL * 0.34 + 3) / tanV;
-      overviewDist = Math.max(needW, needD);
+      // On a tall narrow screen fitting the full width would push the camera far out;
+      // crop the edges instead so the middle of town stays readable.
+      overviewDist = Math.min(Math.max(needW, needD), needD * 1.5);
     }
 
     function focusPoint() {
@@ -604,7 +606,7 @@ export default function CityStage3D() {
     const onUp = (e: PointerEvent) => {
       if (Math.hypot(e.clientX - downX, e.clientY - downY) > 5) return;
       const hit = pick(e).hits.find((h) => h.object.userData.citizenId);
-      if (hit) useWorld.getState().select(hit.object.userData.citizenId as string);
+      useWorld.getState().select(hit ? (hit.object.userData.citizenId as string) : null);
     };
     let hoverRaf = 0;
     const onMove = (e: PointerEvent) => {
@@ -716,12 +718,14 @@ export default function CityStage3D() {
       for (const [id, person] of people) {
         if (seen.has(id)) continue;
         peopleGroup.remove(person.root);
+        person.nameTag.element.remove();
+        person.bubble.element.remove();
         const at = hitTargets.indexOf(person.hit);
         if (at !== -1) hitTargets.splice(at, 1);
         people.delete(id);
       }
     }
-    const unsub = useWorld.subscribe(sync);
+    const unsub = useWorld.subscribe((state, prev) => { if (state.world !== prev.world) sync(); });
     sync();
 
     // ── Animation ────────────────────────────────────────────────────────────
@@ -746,6 +750,10 @@ export default function CityStage3D() {
         camera.position.copy(lookTarget).addScaledVector(dir, dist);
       }
       controls.update();
+      // Haze starts behind what the camera is looking at, however far out it sits.
+      const viewDist = camera.position.distanceTo(controls.target);
+      (scene.fog as THREE.Fog).near = viewDist * 1.1;
+      (scene.fog as THREE.Fog).far = viewDist * 2.6;
 
       focusTag.visible = !!focus;
       if (focus) {
@@ -762,7 +770,8 @@ export default function CityStage3D() {
         const speed = Math.hypot(dx, dz);
         person.moving += ((speed > 0.05 ? 1 : 0) - person.moving) * (1 - Math.exp(-dt * 6));
         if (speed > 0.05) person.heading = Math.atan2(dx, dz);
-        person.root.rotation.y += (((person.heading - person.root.rotation.y + Math.PI * 3) % (Math.PI * 2)) - Math.PI) * (1 - Math.exp(-dt * 8));
+        const turn = THREE.MathUtils.euclideanModulo(person.heading - person.root.rotation.y + Math.PI, Math.PI * 2) - Math.PI;
+        person.root.rotation.y += turn * (1 - Math.exp(-dt * 8));
         const stride = Math.sin(t * 8 + hashOf(id) % 7) * person.moving;
         person.legL.rotation.x = stride * 0.55; person.legR.rotation.x = -stride * 0.55;
         person.armL.rotation.x = -stride * 0.45; person.armR.rotation.x = stride * 0.45;
@@ -817,7 +826,18 @@ export default function CityStage3D() {
       controls.dispose();
       composer.dispose();
       pmrem.dispose();
+      scene.traverse((o) => {
+        const mesh = o as THREE.Mesh;
+        if (!mesh.isMesh) return;
+        mesh.geometry.dispose();
+        for (const m of Array.isArray(mesh.material) ? mesh.material : [mesh.material]) {
+          (m as THREE.MeshStandardMaterial).map?.dispose();
+          m.dispose();
+        }
+      });
+      matCache.clear();
       renderer.dispose();
+      renderer.forceContextLoss();
       if (renderer.domElement.parentNode === el) el.removeChild(renderer.domElement);
       if (labelRenderer.domElement.parentNode === el) el.removeChild(labelRenderer.domElement);
     };
