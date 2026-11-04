@@ -61,6 +61,18 @@ async def test_snapshot_shape():
 
 
 @pytest.mark.asyncio
+async def test_snapshot_lists_each_citizens_home_as_a_place():
+    e = Engine(seed=1, use_llm=False)
+    snap = await run_ticks(e, 1)
+    homes = {loc["id"]: loc for loc in snap["locations"] if loc["type"] == "home"}
+    assert len(homes) == 10
+    ava = e.citizens["ava"]
+    home = homes[f"home_{ava.p.id}"]
+    assert (home["x"], home["y"]) == (ava.p.home_x, ava.p.home_y)
+    assert home["name"] == "Ava's home"
+
+
+@pytest.mark.asyncio
 async def test_agent_detail_returns_memories():
     e = Engine(seed=1, use_llm=False)
     await run_ticks(e, 130)

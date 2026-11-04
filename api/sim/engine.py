@@ -725,6 +725,15 @@ class Engine:
         self._bg.add(task)
         task.add_done_callback(self._bg.discard)
 
+    def _home_locations(self) -> list[dict]:
+        # Homes are per-citizen, not part of the hand-laid map; listing them lets a client
+        # draw a house where each person goes home, under the same id citizens report.
+        return [
+            {"id": f"home_{c.p.id}", "name": f"{c.p.name.split()[0]}'s home", "type": "home",
+             "x": c.p.home_x, "y": c.p.home_y}
+            for c in self.citizens.values()
+        ]
+
     def snapshot(self) -> dict:
         tick = self.tick_count
         minute_of_day = (tick % TICKS_PER_DAY) / TICKS_PER_DAY
@@ -737,7 +746,7 @@ class Engine:
             "phase": phase_for_tick(tick).value,
             "day_progress": round(minute_of_day, 4),
             "grid": world_snap["grid"],
-            "locations": world_snap["locations"],
+            "locations": world_snap["locations"] + self._home_locations(),
             "citizens": [c.snapshot() for c in self.citizens.values()],
             "events": self.event_log[-8:],
             "active_crises": active_crises,
