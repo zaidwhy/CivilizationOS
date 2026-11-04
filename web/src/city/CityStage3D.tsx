@@ -1,175 +1,356 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import { EffectComposer } from "three/examples/jsm/postprocessing/EffectComposer.js";
 import { RenderPass } from "three/examples/jsm/postprocessing/RenderPass.js";
-import { UnrealBloomPass } from "three/examples/jsm/postprocessing/UnrealBloomPass.js";
+import { SSAOPass } from "three/examples/jsm/postprocessing/SSAOPass.js";
 import { OutputPass } from "three/examples/jsm/postprocessing/OutputPass.js";
+import { RoomEnvironment } from "three/examples/jsm/environments/RoomEnvironment.js";
 import { CSS2DRenderer, CSS2DObject } from "three/examples/jsm/renderers/CSS2DRenderer.js";
 import { useWorld } from "../ws/store";
 import type { LocationT, Citizen } from "../ws/store";
 
-// ── Palette: readable by day, moody by night ────────────────────────────────
+// A daylight model town. Every label is opt-in: the narrator names one thing at a time,
+// hover names what is under the pointer, and nothing else is written on the map.
+
 const CELL = 2.4;
+// Streets run on cell borders the server's hand-laid map leaves empty (see api/sim/world.py):
+// an avenue in front of the council row, two cross streets, and three north-south streets.
+const STREET_ROWS = [2.5, 7.5, 12.5];
+const STREET_COLS = [4.5, 8.5, 16.5];
+const STREET_W = 0.78;
 
-type BuildingDef = {
-  wall: number; accent: number; height: number; label: string; kind: string; blurb: string;
+const MOOD_CALM = new THREE.Color(0x3f9a5b), MOOD_WORRIED = new THREE.Color(0xe8b03a), MOOD_AFRAID = new THREE.Color(0xd64535);
+const COUNCIL_FLAG: Record<string, number> = {
+  inst_gov: 0x2f5d8a, inst_media: 0x7a5aa6, inst_police: 0x1f4e8c, inst_economy: 0x2f7d4f, inst_health: 0xd64535,
 };
-const BUILDING_DEF: Record<string, BuildingDef> = {
-  home:        { wall: 0x6f8fb0, accent: 0x7fb0dc, height: 1.5, label: "#8cc0ea", kind: "Home",        blurb: "where citizens live" },
-  workplace:   { wall: 0xa88458, accent: 0xe0a448, height: 2.7, label: "#e8b560", kind: "Workplace",   blurb: "daytime jobs" },
-  commons:     { wall: 0x4f8f6c, accent: 0x58c488, height: 1.2, label: "#76d6a0", kind: "Public space", blurb: "where people meet" },
-  institution: { wall: 0x7a6fc4, accent: 0xa597ff, height: 4.2, label: "#b4a8ff", kind: "Council",     blurb: "debates crises" },
-};
-
-// ── helpers ──────────────────────────────────────────────────────────────────
-const clamp01 = (v: number) => Math.min(1, Math.max(0, v));
-const smooth = (a: number, b: number, v: number) => {
-  const t = clamp01((v - a) / (b - a));
-  return t * t * (3 - 2 * t);
+const KIND_WORDS: Record<LocationT["type"], string> = {
+  home: "Home", workplace: "Workplace", commons: "Public space", institution: "Council hall",
 };
 
-/** 0 = deep night, 1 = full day, from the sim's 0..1 day progress (0 = midnight). */
-function daylightAt(dayProgress: number) {
-  const h = (((dayProgress % 1) + 1) % 1) * 24;
-  const day = smooth(5.5, 8, h) * (1 - smooth(17, 19.5, h));
-  const warm = Math.exp(-Math.pow(h - 6.8, 2) / 1.6) + Math.exp(-Math.pow(h - 18.4, 2) / 1.8);
-  return { day, warm: clamp01(warm) };
+function moodColor(fear: number) {
+  return fear < 0.35 ? MOOD_CALM : fear < 0.6 ? MOOD_WORRIED : MOOD_AFRAID;
 }
 
-function fearColor(fear: number): THREE.Color {
-  const c = new THREE.Color();
-  if (fear < 0.4)
-    c.lerpColors(new THREE.Color(0x7cc4f0), new THREE.Color(0xf0cc7c), fear / 0.4);
-  else
-    c.lerpColors(new THREE.Color(0xf0cc7c), new THREE.Color(0xf07c7c), (fear - 0.4) / 0.6);
-  return c;
-}
-
-function hashHue(id: string): number {
+function hashOf(id: string) {
   let h = 0;
   for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) >>> 0;
-  return (h % 360) / 360;
+  // Final avalanche: neighbouring ids ("plot:3:4", "plot:3:5") must not get neighbouring values.
+  h ^= h >>> 16; h = Math.imul(h, 0x45d9f3b); h ^= h >>> 16; h = Math.imul(h, 0x45d9f3b); h ^= h >>> 16;
+  return h >>> 0;
 }
 
 function gridToWorld(gx: number, gy: number, gw: number, gh: number) {
   return { x: (gx - (gw - 1) / 2) * CELL, z: (gy - (gh - 1) / 2) * CELL };
 }
 
-// ── Citizen runtime state ─────────────────────────────────────────────────────
-type CitizenObj = {
-  id: string; name: string; occupation: string; action: string; fear: number;
-  body: THREE.Mesh; head: THREE.Mesh; shadow: THREE.Mesh; ring: THREE.Mesh;
-  selRing: THREE.Mesh; hit: THREE.Mesh; speech: string;
-  label: CSS2DObject; bubble: CSS2DObject; bubbleEl: HTMLDivElement; nameEl: HTMLDivElement;
-  dispX: number; dispZ: number; tgtX: number; tgtZ: number; moving: number;
-};
-
-// ── Sky dome with a day-night gradient driven by uniforms ────────────────────
-function makeSkyDome() {
-  const geo = new THREE.SphereGeometry(120, 32, 16);
-  const mat = new THREE.ShaderMaterial({
-    side: THREE.BackSide, depthWrite: false, fog: false,
-    uniforms: {
-      top:    { value: new THREE.Color(0x0b1630) },
-      bottom: { value: new THREE.Color(0x1a2a48) },
-    },
-    vertexShader: `varying float vY; void main(){ vY = normalize(position).y; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }`,
-    fragmentShader: `uniform vec3 top; uniform vec3 bottom; varying float vY;
-      void main(){ float t = smoothstep(-0.05, 0.75, vY); gl_FragColor = vec4(mix(bottom, top, t), 1.0); }`,
-  });
-  return { mesh: new THREE.Mesh(geo, mat), mat };
+// ── Materials and facades ────────────────────────────────────────────────────
+const matCache = new Map<string, THREE.MeshStandardMaterial>();
+function solid(color: number, roughness = 0.85, metalness = 0.02) {
+  const key = `${color}:${roughness}:${metalness}`;
+  let m = matCache.get(key);
+  if (!m) { m = new THREE.MeshStandardMaterial({ color, roughness, metalness }); matCache.set(key, m); }
+  return m;
 }
 
-function makeStars() {
-  const N = 900;
-  const pos = new Float32Array(N * 3);
-  for (let i = 0; i < N; i++) {
-    const theta = Math.random() * Math.PI * 2;
-    const phi = Math.acos(1 - Math.random() * 0.9);
-    const r = 110;
-    pos[i * 3] = r * Math.sin(phi) * Math.cos(theta);
-    pos[i * 3 + 1] = r * Math.cos(phi);
-    pos[i * 3 + 2] = r * Math.sin(phi) * Math.sin(theta);
+type FacadeKind = "office" | "house" | "civic" | "brick";
+// Painted canvases give walls windows, mortar and doors without loading any texture files.
+function facade(kind: FacadeKind, base: string) {
+  const canvas = document.createElement("canvas");
+  canvas.width = canvas.height = 128;
+  const paint = canvas.getContext("2d")!;
+  paint.fillStyle = base;
+  paint.fillRect(0, 0, 128, 128);
+  if (kind === "office") {
+    for (let y = 6; y < 128; y += 20) for (let x = 6; x < 128; x += 20) {
+      paint.fillStyle = (x * 7 + y * 3) % 11 === 0 ? "#d6e6f2" : "#56778f";
+      paint.fillRect(x, y, 15, 13);
+      paint.fillStyle = "rgba(255,255,255,0.22)";
+      paint.fillRect(x, y, 15, 3);
+    }
+  } else if (kind === "brick") {
+    paint.fillStyle = "rgba(0,0,0,0.16)";
+    for (let y = 0; y < 128; y += 6) {
+      paint.fillRect(0, y, 128, 1);
+      for (let x = (y / 6) % 2 ? 0 : 8; x < 128; x += 16) paint.fillRect(x, y, 1, 6);
+    }
+    for (let row = 0; row < 2; row++) for (let col = 0; col < 3; col++) {
+      paint.fillStyle = "#f2ede4"; paint.fillRect(10 + col * 40, 16 + row * 56, 28, 36);
+      paint.fillStyle = "#6f8fa8"; paint.fillRect(13 + col * 40, 19 + row * 56, 22, 30);
+    }
+  } else if (kind === "civic") {
+    for (let col = 0; col < 4; col++) {
+      paint.fillStyle = "#4f6b82";
+      paint.fillRect(10 + col * 30, 22, 16, 34);
+      paint.fillRect(10 + col * 30, 78, 16, 34);
+    }
+  } else {
+    paint.fillStyle = "rgba(0,0,0,0.1)";
+    for (let y = 0; y < 128; y += 6) paint.fillRect(0, y, 128, 1);
+    paint.fillStyle = "#ffffff"; paint.fillRect(16, 34, 30, 30); paint.fillRect(82, 34, 30, 30);
+    paint.fillStyle = "#7d9cb4"; paint.fillRect(19, 37, 24, 24); paint.fillRect(85, 37, 24, 24);
+    paint.fillStyle = "#5b3a29"; paint.fillRect(54, 76, 20, 52);
   }
-  const geo = new THREE.BufferGeometry();
-  geo.setAttribute("position", new THREE.BufferAttribute(pos, 3));
-  const mat = new THREE.PointsMaterial({
-    color: 0xe8eeff, size: 0.5, sizeAttenuation: true, transparent: true, opacity: 0.7,
-    depthWrite: false, fog: false,
-  });
-  return { points: new THREE.Points(geo, mat), mat };
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  texture.anisotropy = 4;
+  texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
+  return texture;
 }
 
-// Window grid used as an emissive map so towers read as buildings, and glow at night.
-function makeWindowTexture(): THREE.CanvasTexture {
-  const c = document.createElement("canvas");
-  c.width = 64; c.height = 64;
-  const g = c.getContext("2d")!;
-  g.fillStyle = "#000";
-  g.fillRect(0, 0, 64, 64);
-  for (let y = 0; y < 2; y++) {
-    for (let x = 0; x < 2; x++) {
-      const lit = Math.random() > 0.25;
-      g.fillStyle = lit ? "#ffd9a0" : "#40342a";
-      g.fillRect(8 + x * 28, 10 + y * 28, 14, 16);
+function shaded<T extends THREE.Mesh>(mesh: T) {
+  mesh.castShadow = true;
+  mesh.receiveShadow = true;
+  return mesh;
+}
+
+// ── Building shapes, one per location type ──────────────────────────────────
+function makeHouse(id: string) {
+  const g = new THREE.Group();
+  const h = hashOf(id);
+  const walls = ["#d9c6a5", "#c98d6b", "#e2d6c0", "#cfb79a", "#e6dccb", "#c4876a"][h % 6];
+  const roofs = [0x7b4a3a, 0x5e4136, 0x6d4c41, 0x4f5b66][(h >>> 3) % 4];
+  const body = shaded(new THREE.Mesh(new THREE.BoxGeometry(1.5, 1.15, 1.35),
+    new THREE.MeshStandardMaterial({ map: facade("house", walls), roughness: 0.85 })));
+  body.position.y = 0.575;
+  g.add(body);
+  const gable = new THREE.Shape();
+  gable.moveTo(-0.88, 0); gable.lineTo(0, 0.7); gable.lineTo(0.88, 0); gable.lineTo(-0.88, 0);
+  const roof = shaded(new THREE.Mesh(new THREE.ExtrudeGeometry(gable, { depth: 1.55, bevelEnabled: false }), solid(roofs, 0.9)));
+  roof.position.set(0, 1.15, -0.775);
+  g.add(roof);
+  const chimney = shaded(new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.45, 0.18), solid(0x8c5a46)));
+  chimney.position.set(0.4, 1.6, 0.25);
+  g.add(chimney);
+  return { group: g, height: 1.9, body };
+}
+
+function makeOffice(id: string) {
+  const g = new THREE.Group();
+  const h = hashOf(id);
+  const height = 2.6 + (h % 4) * 0.7;
+  const width = 1.5;
+  const wall = ["#6f8ba3", "#7d97ad", "#6a879f", "#8099ae"][h % 4];
+  const front = facade(id === "clinic" ? "brick" : "office", id === "clinic" ? "#e7e1d6" : wall);
+  front.repeat.set(1, Math.max(1, Math.round(height / 1.3)));
+  const sideMat = new THREE.MeshStandardMaterial({ map: front, roughness: 0.75 });
+  const roofMat = solid(0x8a8f96);
+  const body = shaded(new THREE.Mesh(new THREE.BoxGeometry(width, height, width), [sideMat, sideMat, roofMat, roofMat, sideMat, sideMat]));
+  body.position.y = height / 2;
+  g.add(body);
+  const parapet = shaded(new THREE.Mesh(new THREE.BoxGeometry(width + 0.08, 0.12, width + 0.08), solid(0x9a9fa6)));
+  parapet.position.y = height + 0.06;
+  g.add(parapet);
+  const aircon = shaded(new THREE.Mesh(new THREE.BoxGeometry(0.45, 0.28, 0.35), solid(0xb9bec4)));
+  aircon.position.set(0.25, height + 0.26, -0.2);
+  g.add(aircon);
+  if (id === "clinic") {
+    const crossMat = new THREE.MeshStandardMaterial({ color: 0xd64535, emissive: 0xd64535, emissiveIntensity: 0.25 });
+    for (const [w, hh] of [[0.5, 0.15], [0.15, 0.5]] as const) {
+      const arm = new THREE.Mesh(new THREE.BoxGeometry(w, hh, 0.04), crossMat);
+      arm.position.set(0, height * 0.72, width / 2 + 0.03);
+      g.add(arm);
     }
   }
-  const tex = new THREE.CanvasTexture(c);
-  tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
-  tex.colorSpace = THREE.SRGBColorSpace;
-  tex.anisotropy = 4;
-  return tex;
+  return { group: g, height: height + 0.3, body };
 }
 
-function makeGridLines(gw: number, gh: number): THREE.LineSegments {
-  const pts: number[] = [];
-  const hw = (gw * CELL) / 2, hh = (gh * CELL) / 2;
-  for (let gx = 0; gx <= gw; gx++) {
-    const x = gx * CELL - hw;
-    pts.push(x, 0.012, -hh, x, 0.012, hh);
+function makeCouncilHall(id: string) {
+  const g = new THREE.Group();
+  const width = 1.9, height = 2.2, depth = 1.5;
+  const front = facade("civic", "#ece6da");
+  const wallMat = new THREE.MeshStandardMaterial({ map: front, roughness: 0.8 });
+  const body = shaded(new THREE.Mesh(new THREE.BoxGeometry(width, height, depth), [wallMat, wallMat, solid(0x8a8f96), solid(0x8a8f96), wallMat, wallMat]));
+  body.position.y = height / 2 + 0.15;
+  g.add(body);
+  const podium = shaded(new THREE.Mesh(new THREE.BoxGeometry(width + 0.4, 0.15, depth + 0.5), solid(0xd8d2c6)));
+  podium.position.y = 0.075;
+  g.add(podium);
+  const pediment = new THREE.Shape();
+  pediment.moveTo(-width / 2 - 0.1, 0); pediment.lineTo(0, 0.45); pediment.lineTo(width / 2 + 0.1, 0); pediment.lineTo(-width / 2 - 0.1, 0);
+  const roof = shaded(new THREE.Mesh(new THREE.ExtrudeGeometry(pediment, { depth: depth + 0.1, bevelEnabled: false }), solid(0xe4ddd0)));
+  roof.position.set(0, height + 0.15, -(depth + 0.1) / 2);
+  g.add(roof);
+  const columnMat = solid(0xf6f2ea, 0.6);
+  for (let i = 0; i < 5; i++) {
+    const column = shaded(new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.08, height * 0.9, 10), columnMat));
+    column.position.set(-width * 0.4 + i * width * 0.2, height * 0.45 + 0.15, depth / 2 + 0.12);
+    g.add(column);
   }
-  for (let gz = 0; gz <= gh; gz++) {
-    const z = gz * CELL - hh;
-    pts.push(-hw, 0.012, z, hw, 0.012, z);
+  const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.9, 6), solid(0xcccccc, 0.4, 0.4));
+  pole.position.set(width * 0.38, height + 0.85, 0);
+  g.add(pole);
+  const flag = new THREE.Mesh(new THREE.PlaneGeometry(0.42, 0.26),
+    new THREE.MeshStandardMaterial({ color: COUNCIL_FLAG[id] ?? 0x2f5d8a, side: THREE.DoubleSide, roughness: 0.8 }));
+  flag.position.set(width * 0.38 + 0.22, height + 1.15, 0);
+  g.add(flag);
+  g.userData.flag = flag;
+  return { group: g, height: height + 1.4, body };
+}
+
+const leafDark = solid(0x4f7d3a), leafLight = solid(0x5f8f45), bark = solid(0x6b4f35);
+leafDark.flatShading = leafLight.flatShading = true;
+function makeTree(size: number, seed: number) {
+  const g = new THREE.Group();
+  const trunk = shaded(new THREE.Mesh(new THREE.CylinderGeometry(0.05 * size, 0.08 * size, 0.6 * size, 6), bark));
+  trunk.position.y = 0.3 * size;
+  const crown = shaded(new THREE.Mesh(new THREE.IcosahedronGeometry(0.5 * size, 1), seed % 2 ? leafDark : leafLight));
+  crown.position.y = 0.9 * size;
+  const top = shaded(new THREE.Mesh(new THREE.IcosahedronGeometry(0.33 * size, 1), seed % 2 ? leafLight : leafDark));
+  top.position.set(0.18 * size, 1.25 * size, -0.12 * size);
+  g.add(trunk, crown, top);
+  return g;
+}
+
+function makeCommons(id: string) {
+  const g = new THREE.Group();
+  const lawn = shaded(new THREE.Mesh(new THREE.BoxGeometry(CELL * 0.92, 0.06, CELL * 0.92), solid(id === "park" ? 0x6f9a4c : 0xddd5c6, 0.95)));
+  lawn.position.y = 0.03;
+  g.add(lawn);
+  if (id === "park") {
+    [[-0.6, -0.55, 1.1], [0.55, -0.45, 0.9], [-0.5, 0.55, 1], [0.6, 0.6, 1.2]].forEach(([x, z, s], i) => {
+      const tree = makeTree(s, i); tree.position.set(x, 0.06, z); g.add(tree);
+    });
+  } else if (id === "plaza") {
+    const basin = shaded(new THREE.Mesh(new THREE.CylinderGeometry(0.62, 0.68, 0.22, 28), solid(0xd8d2c6)));
+    basin.position.y = 0.17;
+    const water = new THREE.Mesh(new THREE.CircleGeometry(0.55, 28), solid(0x6fa4c8, 0.15, 0.25));
+    water.rotation.x = -Math.PI / 2; water.position.y = 0.285;
+    g.add(basin, water);
+  } else if (id === "market") {
+    [0xc0503f, 0xe0b04a, 0x3d7a8a].forEach((color, i) => {
+      const stall = shaded(new THREE.Mesh(new THREE.BoxGeometry(0.55, 0.45, 0.45), solid(0xb89a74)));
+      stall.position.set(-0.65 + i * 0.65, 0.29, 0);
+      const awning = shaded(new THREE.Mesh(new THREE.BoxGeometry(0.65, 0.05, 0.6), solid(color)));
+      awning.position.set(-0.65 + i * 0.65, 0.6, 0.06);
+      awning.rotation.x = 0.18;
+      g.add(stall, awning);
+    });
+  } else {
+    const cafe = shaded(new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.95, 0.9), new THREE.MeshStandardMaterial({ map: facade("brick", "#c98d6b"), roughness: 0.85 })));
+    cafe.position.set(0, 0.53, -0.35);
+    const awning = shaded(new THREE.Mesh(new THREE.BoxGeometry(1.25, 0.05, 0.45), solid(0x2f6b4f)));
+    awning.position.set(0, 0.85, 0.2); awning.rotation.x = 0.25;
+    g.add(cafe, awning);
+    [-0.4, 0.4].forEach((x) => {
+      const table = shaded(new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.16, 0.04, 14), solid(0xf2f2f2)));
+      table.position.set(x, 0.4, 0.65);
+      g.add(table);
+    });
   }
-  const geo = new THREE.BufferGeometry();
-  geo.setAttribute("position", new THREE.BufferAttribute(new Float32Array(pts), 3));
-  return new THREE.LineSegments(geo, new THREE.LineBasicMaterial({ color: 0x5a6f8c, transparent: true, opacity: 0.16 }));
+  return { group: g, height: 1.6, body: lawn };
+}
+
+// ── People ──────────────────────────────────────────────────────────────────
+const SKIN = [0xe2b48c, 0xc68e64, 0x8d5a3b, 0xf0c9a6];
+const SHIRT = [0x3d6fa8, 0xc76b4a, 0x5b8a5e, 0xe0b04a, 0x7b5ea7, 0x4a8fa8, 0xa84a6b, 0x8a8a8a, 0x2f4f6f, 0xb07a3a];
+
+function limb(length: number, radius: number, material: THREE.Material, pivotY: number, x: number) {
+  const pivot = new THREE.Group();
+  pivot.position.set(x, pivotY, 0);
+  const part = shaded(new THREE.Mesh(new THREE.CapsuleGeometry(radius, length, 4, 8), material));
+  part.position.y = -length / 2 - radius;
+  pivot.add(part);
+  return pivot;
+}
+
+type Person = {
+  id: string; name: string; occupation: string; action: string; fear: number; speech: string;
+  root: THREE.Group; legL: THREE.Group; legR: THREE.Group; armL: THREE.Group; armR: THREE.Group;
+  moodRing: THREE.Mesh; selRing: THREE.Mesh; hit: THREE.Mesh;
+  nameTag: CSS2DObject; nameEl: HTMLDivElement; bubble: CSS2DObject; bubbleEl: HTMLDivElement;
+  dispX: number; dispZ: number; tgtX: number; tgtZ: number; moving: number; heading: number;
+};
+
+const hitGeo = new THREE.CylinderGeometry(0.4, 0.4, 1.3, 8);
+const hitMat = new THREE.MeshBasicMaterial({ visible: false });
+
+function makePerson(c: Citizen): Person {
+  const h = hashOf(c.id);
+  const shirt = solid(SHIRT[h % SHIRT.length], 0.7);
+  const trousers = solid(0x2d3440, 0.8);
+  const root = new THREE.Group();
+  const legL = limb(0.2, 0.045, trousers, 0.33, -0.055), legR = limb(0.2, 0.045, trousers, 0.33, 0.055);
+  const armL = limb(0.17, 0.034, shirt, 0.64, -0.14), armR = limb(0.17, 0.034, shirt, 0.64, 0.14);
+  const torso = shaded(new THREE.Mesh(new THREE.CapsuleGeometry(0.1, 0.2, 4, 10), shirt));
+  torso.position.y = 0.5;
+  const head = shaded(new THREE.Mesh(new THREE.SphereGeometry(0.09, 16, 12), solid(SKIN[(h >>> 4) % SKIN.length], 0.75)));
+  head.position.y = 0.76;
+  const hair = shaded(new THREE.Mesh(new THREE.SphereGeometry(0.094, 16, 8, 0, Math.PI * 2, 0, Math.PI / 2.2), solid((h >>> 2) % 3 ? 0x2a1d14 : 0x6b4a2b)));
+  hair.position.y = 0.775;
+  const moodRing = new THREE.Mesh(new THREE.RingGeometry(0.18, 0.25, 28),
+    new THREE.MeshBasicMaterial({ color: MOOD_CALM, transparent: true, opacity: 0.9, depthWrite: false }));
+  moodRing.rotation.x = -Math.PI / 2; moodRing.position.y = 0.02;
+  const selRing = new THREE.Mesh(new THREE.RingGeometry(0.3, 0.36, 32),
+    new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0, depthWrite: false }));
+  selRing.rotation.x = -Math.PI / 2; selRing.position.y = 0.025;
+  const hit = new THREE.Mesh(hitGeo, hitMat);
+  hit.position.y = 0.6;
+  hit.userData.citizenId = c.id;
+  root.add(legL, legR, armL, armR, torso, head, hair, moodRing, selRing, hit);
+
+  const nameEl = document.createElement("div");
+  nameEl.className = "map-tag";
+  const nameTag = new CSS2DObject(nameEl);
+  nameTag.position.y = 1.15;
+  nameTag.visible = false;
+  const bubbleEl = document.createElement("div");
+  bubbleEl.className = "map-bubble";
+  const bubble = new CSS2DObject(bubbleEl);
+  bubble.position.y = 1.6;
+  bubble.visible = false;
+  root.add(nameTag, bubble);
+  // Slightly larger than true scale so a person is still visible from the overview camera.
+  root.scale.setScalar(1.5);
+  nameTag.position.y = 1.15 / 1.5 + 0.2;
+  bubble.position.y = 1.6 / 1.5 + 0.2;
+
+  return {
+    id: c.id, name: c.name, occupation: c.occupation, action: c.action, fear: c.fear ?? 0, speech: "",
+    root, legL, legR, armL, armR, moodRing, selRing, hit, nameTag, nameEl, bubble, bubbleEl,
+    dispX: 0, dispZ: 0, tgtX: 0, tgtZ: 0, moving: 0, heading: 0,
+  };
+}
+
+// People who share a place stand in a ring around it, front first, instead of inside it.
+function standingSpots(citizensNow: Citizen[], gw: number, gh: number) {
+  const groups = new Map<string, Citizen[]>();
+  for (const c of citizensNow) {
+    const key = c.location_id || `${c.x},${c.y}`;
+    const group = groups.get(key);
+    if (group) group.push(c); else groups.set(key, [c]);
+  }
+  const spots = new Map<string, { x: number; z: number }>();
+  for (const [, group] of groups) {
+    group.sort((a, b) => a.id.localeCompare(b.id));
+    const centre = gridToWorld(group[0].x, group[0].y, gw, gh);
+    group.forEach((c, i) => {
+      const angle = Math.PI / 2 + (i - (group.length - 1) / 2) * 0.5;
+      spots.set(c.id, { x: centre.x + Math.cos(angle) * 1.0, z: centre.z + Math.sin(angle) * 1.0 });
+    });
+  }
+  return spots;
 }
 
 // ── Component ────────────────────────────────────────────────────────────────
-type Hover = { x: number; y: number; title: string; sub: string; accent: string } | null;
+type Hover = { x: number; y: number; title: string; sub: string } | null;
 
 export default function CityStage3D() {
   const containerRef = useRef<HTMLDivElement>(null);
-  const flashRef     = useRef<HTMLDivElement>(null);
-  const resetViewRef = useRef<() => void>(() => {});
   const [hover, setHover] = useState<Hover>(null);
-  const [legendOpen, setLegendOpen] = useState(() => {
-    try { return !localStorage.getItem("civOS_legend_seen_v1"); } catch { return true; }
-  });
-  useEffect(() => {
-    if (!legendOpen) return;
-    try { localStorage.setItem("civOS_legend_seen_v1", "1"); } catch { /* ignore */ }
-  }, [legendOpen]);
   const [ready, setReady] = useState(false);
 
-  const resetView = useCallback(() => resetViewRef.current(), []);
-
   useEffect(() => {
-    const el      = containerRef.current;
-    const flashEl = flashRef.current;
+    const el = containerRef.current;
     if (!el) return;
 
-    // ── Renderer ────────────────────────────────────────────────────────────
-    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false, powerPreference: "high-performance" });
+    const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.75));
-    renderer.toneMapping         = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = 1.05;
-    renderer.setClearColor(0x0b1020, 1);
-    renderer.shadowMap.enabled   = true;
-    renderer.shadowMap.type      = THREE.PCFShadowMap;
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 0.95;
+    renderer.outputColorSpace = THREE.SRGBColorSpace;
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFShadowMap;
     renderer.domElement.style.cssText = "position:absolute;inset:0;width:100%;height:100%;touch-action:none";
     renderer.setSize(el.offsetWidth || 800, el.offsetHeight || 600);
     el.appendChild(renderer.domElement);
@@ -179,638 +360,430 @@ export default function CityStage3D() {
     labelRenderer.domElement.style.cssText = "position:absolute;inset:0;pointer-events:none";
     el.appendChild(labelRenderer.domElement);
 
-    // ── Scene ────────────────────────────────────────────────────────────────
     const scene = new THREE.Scene();
-    const fog = new THREE.FogExp2(0x1a2a48, 0.006);
-    scene.fog = fog;
+    scene.fog = new THREE.Fog(0xd6e4ee, 70, 140);
+    const pmrem = new THREE.PMREMGenerator(renderer);
+    scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+    scene.environmentIntensity = 0.35;
 
-    const sky = makeSkyDome();
-    scene.add(sky.mesh);
-    const stars = makeStars();
-    scene.add(stars.points);
+    const skyMat = new THREE.ShaderMaterial({
+      side: THREE.BackSide, depthWrite: false, fog: false,
+      uniforms: { horizon: { value: new THREE.Color(0xdbe7f2) }, zenith: { value: new THREE.Color(0x6b9ed9) } },
+      vertexShader: "varying float vY; void main(){ vY = normalize(position).y; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }",
+      fragmentShader: "uniform vec3 horizon; uniform vec3 zenith; varying float vY; void main(){ float t = clamp(vY*1.6,0.0,1.0); gl_FragColor = vec4(mix(horizon, zenith, t), 1.0); }",
+    });
+    scene.add(new THREE.Mesh(new THREE.SphereGeometry(180, 32, 16), skyMat));
 
-    // Ground: matte, no metalness (a metallic surface with no environment map renders black)
-    const baseMat = new THREE.MeshStandardMaterial({ color: 0x27354a, roughness: 0.95, metalness: 0 });
-    const base = new THREE.Mesh(new THREE.PlaneGeometry(220, 220), baseMat);
-    base.rotation.x = -Math.PI / 2;
-    base.position.y = -0.03;
-    base.receiveShadow = true;
-    scene.add(base);
-
-    // ── Lighting ─────────────────────────────────────────────────────────────
-    const hemi = new THREE.HemisphereLight(0x9db8e0, 0x2a3140, 0.8);
+    const hemi = new THREE.HemisphereLight(0xe4efff, 0x6f7f5a, 1.0);
     scene.add(hemi);
-    const key = new THREE.DirectionalLight(0xffffff, 2);
-    key.position.set(16, 30, 14);
-    key.castShadow = true;
-    key.shadow.camera.near = 1;
-    key.shadow.camera.far = 90;
-    key.shadow.camera.left = -40;
-    key.shadow.camera.right = 40;
-    key.shadow.camera.top = 28;
-    key.shadow.camera.bottom = -28;
-    key.shadow.mapSize.set(2048, 2048);
-    key.shadow.bias = -0.0004;
-    key.shadow.normalBias = 0.03;
-    scene.add(key);
+    const sun = new THREE.DirectionalLight(0xfff1dc, 2.6);
+    sun.position.set(22, 34, 16);
+    sun.castShadow = true;
+    sun.shadow.mapSize.set(4096, 4096);
+    Object.assign(sun.shadow.camera, { left: -36, right: 36, top: 26, bottom: -26, near: 1, far: 110 });
+    sun.shadow.bias = -0.0003;
+    sun.shadow.normalBias = 0.02;
+    scene.add(sun);
 
-    // ── Camera ────────────────────────────────────────────────────────────────
-    const W0 = el.offsetWidth || 800, H0 = el.offsetHeight || 600;
-    const camera = new THREE.PerspectiveCamera(40, W0 / H0, 0.1, 400);
-    const viewDir = new THREE.Vector3(0, 0.62, 0.78).normalize();
-    const target = new THREE.Vector3(0, 0.6, 1);
-
+    const camera = new THREE.PerspectiveCamera(36, (el.offsetWidth || 800) / (el.offsetHeight || 600), 0.1, 500);
     const controls = new OrbitControls(camera, renderer.domElement);
     controls.enableDamping = true;
     controls.dampingFactor = 0.08;
-    controls.minPolarAngle = 0.2;
-    controls.maxPolarAngle = Math.PI / 2.12;
-    controls.minDistance   = 7;
-    controls.target.copy(target);
-    controls.zoomSpeed = 0.8;
+    controls.minPolarAngle = 0.25;
+    controls.maxPolarAngle = Math.PI / 2.3;
+    controls.minDistance = 6;
+    controls.maxDistance = 110;
 
-    let gridW = 0, gridH = 0, built = false;
-    let fitDist = 50;
-    let flyT = 0, flyActive = true;          // intro / reset fly-in progress (seconds)
-    let flyFrom = 1.5;
-    let userMoved = false;
-
-    function computeFit() {
-      const aspect = camera.aspect || 1.5;
-      const tanV = Math.tan(THREE.MathUtils.degToRad(camera.fov / 2));
-      const W = (gridW || 24) * CELL, D = (gridH || 16) * CELL;
-      const needW = (W / 2) * 1.2 / (tanV * aspect);
-      const needH = (D / 2 * 0.66 + 4.2) / tanV;
-      fitDist = Math.max(needW, needH);
-      controls.maxDistance = fitDist * 1.5;
-    }
-
-    function placeCamera(distMul: number, elevBoost: number) {
-      const dir = viewDir.clone();
-      dir.y += elevBoost;
-      dir.normalize();
-      camera.position.copy(target).addScaledVector(dir, fitDist * distMul);
-      controls.update();
-    }
-
-    function startFly(from: number) {
-      flyFrom = from; flyT = 0; flyActive = true; userMoved = false;
-      controls.enabled = false;
-    }
-    resetViewRef.current = () => {
-      controls.target.copy(target);
-      startFly(1.12);
-    };
-    controls.addEventListener("start", () => { userMoved = true; flyActive = false; controls.enabled = true; });
-
-    // ── Post-processing ───────────────────────────────────────────────────────
     const composer = new EffectComposer(renderer);
     composer.addPass(new RenderPass(scene, camera));
-    const bloom = new UnrealBloomPass(new THREE.Vector2(W0, H0), 0.32, 0.55, 0.78);
-    composer.addPass(bloom);
+    const ssao = new SSAOPass(scene, camera, el.offsetWidth || 800, el.offsetHeight || 600);
+    ssao.kernelRadius = 0.6;
+    ssao.minDistance = 0.0008;
+    ssao.maxDistance = 0.04;
+    composer.addPass(ssao);
     composer.addPass(new OutputPass());
 
-    // ── Groups ────────────────────────────────────────────────────────────────
-    const groundGroup   = new THREE.Group();
-    const buildingGroup = new THREE.Group();
-    const crisisGroup   = new THREE.Group();
-    const citizenGroup  = new THREE.Group();
-    const labelGroup    = new THREE.Group();
-    scene.add(groundGroup, buildingGroup, crisisGroup, citizenGroup, labelGroup);
+    const groundGroup = new THREE.Group(), buildingGroup = new THREE.Group(), peopleGroup = new THREE.Group(), trafficGroup = new THREE.Group();
+    scene.add(groundGroup, buildingGroup, peopleGroup, trafficGroup);
 
-    // ── Shared geo ───────────────────────────────────────────────────────────
-    const bodyGeo   = new THREE.CapsuleGeometry(0.27, 0.55, 4, 10);
-    const headGeo   = new THREE.SphereGeometry(0.23, 14, 10);
-    const shadowGeo = new THREE.CircleGeometry(0.4, 20);
-    const ringGeo   = new THREE.RingGeometry(0.46, 0.56, 32);
-    const selGeo    = new THREE.RingGeometry(0.82, 0.92, 40);
-    const hitGeo    = new THREE.CylinderGeometry(0.6, 0.6, 2.1, 10);
-    const hitMat    = new THREE.MeshBasicMaterial({ visible: false });
-    const windowTex = makeWindowTexture();
-
-    // ── Runtime maps ─────────────────────────────────────────────────────────
-    const citizens    = new Map<string, CitizenObj>();
-    const buildings   = new Map<string, {
-      loc: LocationT; body: THREE.Mesh; roof: THREE.Mesh; light: THREE.PointLight;
-      beacon: THREE.Mesh; windows: THREE.MeshStandardMaterial[]; px: number; pz: number;
-    }>();
-    const groundTiles = new Map<string, THREE.Mesh>();
-    const clickable   : THREE.Object3D[] = [];
-    const buildingMeshes: THREE.Object3D[] = [];
-    let prevCrises = 0, flashUntil = 0;
-    let daylight = { day: 0, warm: 0 };
+    type Place = { loc: LocationT; x: number; z: number; height: number; body: THREE.Mesh; cordon: THREE.Mesh; flag?: THREE.Object3D };
+    const places = new Map<string, Place>();
+    const people = new Map<string, Person>();
+    const hitTargets: THREE.Object3D[] = [];
+    const buildingTargets: THREE.Object3D[] = [];
+    const cars: { model: THREE.Group; along: "x" | "z"; dir: number; speed: number; min: number; max: number }[] = [];
+    let gridW = 24, gridH = 16, built = false;
     let hoverId: string | null = null;
 
-    // ── Pointer: select + hover ─────────────────────────────────────────────
+    // Focus label: the narrator names one place or person at a time.
+    const focusEl = document.createElement("div");
+    focusEl.className = "map-tag map-tag-focus";
+    const focusTag = new CSS2DObject(focusEl);
+    focusTag.visible = false;
+    scene.add(focusTag);
+
+    // ── Ground: grass, sidewalks, asphalt, lane marks, crosswalks ────────────
+    function buildGround(gw: number, gh: number) {
+      groundGroup.clear();
+      const span = { w: gw * CELL, d: gh * CELL };
+      const grass = new THREE.Mesh(new THREE.PlaneGeometry(400, 400), solid(0x7ea25a, 1));
+      grass.rotation.x = -Math.PI / 2;
+      grass.receiveShadow = true;
+      groundGroup.add(grass);
+
+      const toX = (gx: number) => (gx - (gw - 1) / 2) * CELL;
+      const toZ = (gy: number) => (gy - (gh - 1) / 2) * CELL;
+      const asphalt = solid(0x4c4f54, 0.95), kerb = solid(0xc9c5bc, 0.95);
+      const lanePaint = new THREE.MeshBasicMaterial({ color: 0xf1f1ec });
+      const zMin = toZ(2.5), zMax = toZ(gh - 0.5);
+
+      // Council square: one stone plaza in front of all five halls.
+      const square = shaded(new THREE.Mesh(new THREE.BoxGeometry(span.w * 0.82, 0.05, CELL * 1.7), solid(0xddd5c6, 0.9)));
+      square.position.set(toX((gw - 1) / 2) + CELL * 0.5, 0.025, toZ(1.15));
+      groundGroup.add(square);
+
+      const street = (cx: number, cz: number, w: number, d: number, horizontal: boolean) => {
+        const pavement = shaded(new THREE.Mesh(new THREE.BoxGeometry(w + (horizontal ? 0 : 0.5), 0.08, d + (horizontal ? 0.5 : 0)), kerb));
+        pavement.position.set(cx, 0.04, cz);
+        const surface = new THREE.Mesh(new THREE.PlaneGeometry(w, d), asphalt);
+        surface.rotation.x = -Math.PI / 2;
+        surface.position.set(cx, 0.085, cz);
+        surface.receiveShadow = true;
+        groundGroup.add(pavement, surface);
+        const length = horizontal ? w : d;
+        for (let t = -length / 2 + 0.6; t < length / 2 - 0.4; t += 1.1) {
+          const dash = new THREE.Mesh(new THREE.PlaneGeometry(horizontal ? 0.5 : 0.05, horizontal ? 0.05 : 0.5), lanePaint);
+          dash.rotation.x = -Math.PI / 2;
+          dash.position.set(horizontal ? cx + t : cx, 0.09, horizontal ? cz : cz + t);
+          groundGroup.add(dash);
+        }
+      };
+      for (const row of STREET_ROWS) street(0, toZ(row), span.w, STREET_W, true);
+      for (const col of STREET_COLS) street(toX(col), (zMin + zMax) / 2, STREET_W, zMax - zMin, false);
+      for (const row of STREET_ROWS) for (const col of STREET_COLS) {
+        for (let i = -2; i <= 2; i++) {
+          const stripe = new THREE.Mesh(new THREE.PlaneGeometry(0.12, 0.5), lanePaint);
+          stripe.rotation.x = -Math.PI / 2;
+          stripe.position.set(toX(col) + i * 0.16, 0.091, toZ(row) + STREET_W / 2 + 0.45);
+          groundGroup.add(stripe);
+        }
+      }
+
+      // Street lamps along the council avenue.
+      const lampMetal = solid(0x3a3f45, 0.5, 0.4);
+      const lampGlass = new THREE.MeshStandardMaterial({ color: 0xfff4d6, emissive: 0xfff0c8, emissiveIntensity: 0.35 });
+      for (let x = -span.w / 2 + 2; x < span.w / 2; x += 4.8) {
+        const post = shaded(new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.035, 1.3, 8), lampMetal));
+        post.position.set(x, 0.73, toZ(2.5) - STREET_W / 2 - 0.15);
+        const lamp = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.05, 0.1), lampGlass);
+        lamp.position.set(x, 1.38, post.position.z);
+        groundGroup.add(post, lamp);
+      }
+    }
+
+    // Street trees: planted in rows along the kerbs, the way a town plants them, never at random.
+    function plantTrees(locs: LocationT[], gw: number, gh: number) {
+      const taken = new Set(locs.map((l) => `${l.x},${l.y}`));
+      const kerb = STREET_W / 2 + 0.55;
+      for (const row of STREET_ROWS) {
+        for (let gx = 0; gx < gw; gx += 2) {
+          if (taken.has(`${gx},${Math.floor(row)}`) || taken.has(`${gx},${Math.ceil(row)}`)) continue;
+          if (STREET_COLS.some((col) => Math.abs(gx - col) < 1)) continue;
+          const p = gridToWorld(gx, row, gw, gh);
+          const h = hashOf(`${gx}:${row}`);
+          const tree = makeTree(0.85 + (h % 4) * 0.08, h);
+          tree.position.set(p.x, 0, p.z + (row === STREET_ROWS[0] ? kerb : -kerb));
+          groundGroup.add(tree);
+        }
+      }
+    }
+
+    function buildTraffic(gw: number, gh: number) {
+      trafficGroup.clear();
+      cars.length = 0;
+      const half = (gw * CELL) / 2;
+      const colors = [0xc0392b, 0xf2f2f2, 0x2c5e8f, 0x9aa3ad];
+      STREET_ROWS.forEach((row, i) => {
+        const model = new THREE.Group();
+        const body = shaded(new THREE.Mesh(new THREE.BoxGeometry(0.85, 0.24, 0.42), solid(colors[i % colors.length], 0.35, 0.2)));
+        body.position.y = 0.24;
+        const cabin = shaded(new THREE.Mesh(new THREE.BoxGeometry(0.46, 0.2, 0.38), solid(0x2b3440, 0.2)));
+        cabin.position.set(-0.04, 0.45, 0);
+        model.add(body, cabin);
+        const dir = i % 2 ? -1 : 1;
+        const z = gridToWorld(0, row, gw, gh).z + dir * 0.17;
+        model.position.set(-half + i * 9, 0.09, z);
+        if (dir < 0) model.rotation.y = Math.PI;
+        trafficGroup.add(model);
+        cars.push({ model, along: "x", dir, speed: 2 + i * 0.4, min: -half, max: half });
+      });
+    }
+
+    // Background neighbours on empty plots, matched to each district, so the town is not a
+    // lawn with a few buildings. They carry no buildingId: hover and the narrator ignore them.
+    function fillEmptyPlots(locs: LocationT[], gw: number, gh: number) {
+      const taken = new Set(locs.map((l) => `${l.x},${l.y}`));
+      for (let gx = 0; gx < gw; gx++) for (let gy = 3; gy < gh - 1; gy++) {
+        if (taken.has(`${gx},${gy}`)) continue;
+        const h = hashOf(`plot:${gx}:${gy}`);
+        const residential = gx <= 6, downtown = gx >= 18, shops = gx >= 9 && gx <= 15;
+        const chance = residential ? 50 : downtown ? 30 : shops ? 18 : 10;
+        if (h % 100 >= chance) continue;
+        const made = downtown ? makeOffice(`filler-${gx}-${gy}`) : makeHouse(`filler-${gx}-${gy}`);
+        const p = gridToWorld(gx, gy, gw, gh);
+        made.group.position.set(p.x, 0, p.z);
+        made.group.rotation.y = ((h >>> 6) % 4) * (Math.PI / 2);
+        made.group.scale.setScalar(downtown ? 0.85 : 0.9);
+        groundGroup.add(made.group);
+      }
+    }
+
+    function buildPlaces(locs: LocationT[], gw: number, gh: number) {
+      buildingGroup.clear();
+      places.clear();
+      buildingTargets.length = 0;
+      for (const loc of locs) {
+        const p = gridToWorld(loc.x, loc.y, gw, gh);
+        const made = loc.type === "home" ? makeHouse(loc.id)
+          : loc.type === "workplace" ? makeOffice(loc.id)
+          : loc.type === "institution" ? makeCouncilHall(loc.id)
+          : makeCommons(loc.id);
+        made.group.position.set(p.x, 0, p.z);
+        made.group.traverse((o) => { if ((o as THREE.Mesh).isMesh) { o.userData.buildingId = loc.id; buildingTargets.push(o); } });
+        buildingGroup.add(made.group);
+        // A red cordon around a building that a crisis has closed; hidden until then.
+        const cordon = new THREE.Mesh(new THREE.TorusGeometry(1.25, 0.04, 6, 48), new THREE.MeshBasicMaterial({ color: 0xd64535 }));
+        cordon.rotation.x = -Math.PI / 2;
+        cordon.position.set(p.x, 0.35, p.z);
+        cordon.visible = false;
+        buildingGroup.add(cordon);
+        places.set(loc.id, { loc, x: p.x, z: p.z, height: made.height, body: made.body, cordon, flag: made.group.userData.flag });
+      }
+    }
+
+    // ── Camera: an overview, and a glide to whatever the narrator names ─────
+    const overviewTarget = new THREE.Vector3(0, 0, -2);
+    const overviewDir = new THREE.Vector3(0.32, 0.72, 0.62).normalize();
+    let overviewDist = 62;
+    const camGoal = { target: overviewTarget.clone(), dist: overviewDist };
+    let userHeldUntil = 0;
+    controls.addEventListener("start", () => { userHeldUntil = performance.now() + 15000; });
+
+    function fitOverview() {
+      const tanV = Math.tan(THREE.MathUtils.degToRad(camera.fov / 2));
+      const needW = (gridW * CELL * 0.44) / (tanV * camera.aspect);
+      const needD = (gridH * CELL * 0.34 + 3) / tanV;
+      overviewDist = Math.max(needW, needD);
+    }
+
+    function focusPoint() {
+      const f = useWorld.getState().focus;
+      if (!f) return null;
+      if (f.kind === "location") {
+        const place = places.get(f.id);
+        return place ? { point: new THREE.Vector3(place.x, 0.6, place.z), dist: 22, label: place.loc.name, top: place.height + 0.4 } : null;
+      }
+      const person = people.get(f.id);
+      return person ? { point: new THREE.Vector3(person.dispX, 0.5, person.dispZ), dist: 14, label: person.name.split(" ")[0], top: 1.25 } : null;
+    }
+
+    camera.position.copy(overviewTarget).addScaledVector(overviewDir, overviewDist * 1.3);
+    controls.target.copy(overviewTarget);
+
+    // ── Pointer: hover names a thing, click selects a person ────────────────
     const raycaster = new THREE.Raycaster();
     const ndc = new THREE.Vector2();
     function pick(e: PointerEvent) {
       const rect = renderer.domElement.getBoundingClientRect();
       ndc.set(((e.clientX - rect.left) / rect.width) * 2 - 1, -((e.clientY - rect.top) / rect.height) * 2 + 1);
       raycaster.setFromCamera(ndc, camera);
-      return { hits: raycaster.intersectObjects([...clickable, ...buildingMeshes], false), rect };
+      return { hits: raycaster.intersectObjects([...hitTargets, ...buildingTargets], false), rect };
     }
     let downX = 0, downY = 0;
-    renderer.domElement.addEventListener("pointerdown", (e: PointerEvent) => { downX = e.clientX; downY = e.clientY; });
-    renderer.domElement.addEventListener("pointerup", (e: PointerEvent) => {
-      // a drag is an orbit, not a click
+    const onDown = (e: PointerEvent) => { downX = e.clientX; downY = e.clientY; };
+    const onUp = (e: PointerEvent) => {
       if (Math.hypot(e.clientX - downX, e.clientY - downY) > 5) return;
-      const hit = pick(e).hits.find(h => h.object.userData.citizenId);
+      const hit = pick(e).hits.find((h) => h.object.userData.citizenId);
       if (hit) useWorld.getState().select(hit.object.userData.citizenId as string);
-    });
+    };
     let hoverRaf = 0;
-    renderer.domElement.addEventListener("pointermove", (e: PointerEvent) => {
-      if (e.buttons) return;
-      if (hoverRaf) return;
+    const onMove = (e: PointerEvent) => {
+      if (e.buttons || hoverRaf) return;
       hoverRaf = requestAnimationFrame(() => {
         hoverRaf = 0;
         const { hits, rect } = pick(e);
-        const h = hits[0];
-        const cid = h?.object.userData.citizenId as string | undefined;
-        const bid = h?.object.userData.buildingId as string | undefined;
+        const first = hits[0];
+        const cid = first?.object.userData.citizenId as string | undefined;
+        const bid = first?.object.userData.buildingId as string | undefined;
         hoverId = cid ?? null;
         renderer.domElement.style.cursor = cid ? "pointer" : "grab";
-        const px = e.clientX - rect.left, py = e.clientY - rect.top;
-        if (cid) {
-          const c = citizens.get(cid);
-          if (c) {
-            setHover({ x: px, y: py, title: c.name, sub: `${c.occupation} - ${c.action}`, accent: "#" + fearColor(c.fear).getHexString() });
-            return;
-          }
+        const x = e.clientX - rect.left, y = e.clientY - rect.top;
+        const person = cid ? people.get(cid) : undefined;
+        if (person) {
+          const mood = person.fear < 0.35 ? "calm" : person.fear < 0.6 ? "worried" : "afraid";
+          setHover({ x, y, title: person.name, sub: `${person.occupation}, ${mood}. Click to read their mind.` });
+          return;
         }
-        if (bid) {
-          const b = buildings.get(bid);
-          if (b) {
-            const def = BUILDING_DEF[b.loc.type] ?? BUILDING_DEF.home;
-            const w = useWorld.getState().world;
-            const n = w?.citizens.filter(c => c.location_id === bid).length ?? 0;
-            const down = w?.closed_locations?.includes(bid);
-            const sub = down ? "CLOSED by a crisis" : `${def.kind} - ${n} ${n === 1 ? "person" : "people"} here`;
-            setHover({ x: px, y: py, title: b.loc.name, sub, accent: def.label });
-            return;
-          }
+        const place = bid ? places.get(bid) : undefined;
+        if (place) {
+          const closed = useWorld.getState().world?.closed_locations?.includes(place.loc.id);
+          setHover({ x, y, title: place.loc.name, sub: closed ? "Closed by a crisis" : KIND_WORDS[place.loc.type] });
+          return;
         }
         setHover(null);
       });
-    });
-    renderer.domElement.addEventListener("pointerleave", () => { hoverId = null; setHover(null); });
+    };
+    const onLeave = () => { hoverId = null; setHover(null); };
+    renderer.domElement.addEventListener("pointerdown", onDown);
+    renderer.domElement.addEventListener("pointerup", onUp);
+    renderer.domElement.addEventListener("pointermove", onMove);
+    renderer.domElement.addEventListener("pointerleave", onLeave);
 
-    // ── Build ground tiles ───────────────────────────────────────────────────
-    function buildGround(gw: number, gh: number) {
-      groundGroup.clear();
-      groundTiles.clear();
-      const geo = new THREE.PlaneGeometry(CELL - 0.1, CELL - 0.1);
-      for (let gx = 0; gx < gw; gx++) {
-        for (let gy = 0; gy < gh; gy++) {
-          const col = (gx + gy) % 2 === 0 ? 0x33445c : 0x2c3b52;
-          const mat = new THREE.MeshStandardMaterial({ color: col, roughness: 0.9, metalness: 0, emissive: 0x000000, emissiveIntensity: 0 });
-          const m = new THREE.Mesh(geo, mat);
-          m.rotation.x = -Math.PI / 2;
-          const p = gridToWorld(gx, gy, gw, gh);
-          m.position.set(p.x, 0.002, p.z);
-          m.receiveShadow = true;
-          groundGroup.add(m);
-          groundTiles.set(`${gx},${gy}`, m);
-        }
-      }
-      groundGroup.add(makeGridLines(gw, gh));
+    // ── Light follows the sim clock, softly: night is a blue dusk, never too dark to read ──
+    const LIGHT = {
+      day:   { sun: new THREE.Color(0xfff1dc), sunI: 2.6, hemiI: 1.0, horizon: new THREE.Color(0xdbe7f2), zenith: new THREE.Color(0x6b9ed9), exposure: 0.95 },
+      warm:  { sun: new THREE.Color(0xffb27a), sunI: 2.0, hemiI: 0.9, horizon: new THREE.Color(0xf3c9a4), zenith: new THREE.Color(0x7a8fc4), exposure: 0.95 },
+      night: { sun: new THREE.Color(0x9fb4e0), sunI: 0.9, hemiI: 0.65, horizon: new THREE.Color(0x5d6f96), zenith: new THREE.Color(0x1f2d55), exposure: 0.85 },
+    };
+    const lightNow = { day: 1, warm: 0 };
+    function lightGoal() {
+      const progress = useWorld.getState().world?.day_progress ?? 0.5;
+      const hour = (((progress % 1) + 1) % 1) * 24;
+      const ramp = (a: number, b: number, v: number) => Math.min(1, Math.max(0, (v - a) / (b - a)));
+      const day = ramp(5.5, 8, hour) * (1 - ramp(18, 20.5, hour));
+      const warm = Math.max(0, 1 - Math.abs(hour - 7) / 1.5) + Math.max(0, 1 - Math.abs(hour - 18.8) / 1.5);
+      return { day, warm: Math.min(1, warm) };
     }
-
-    // ── Build buildings ──────────────────────────────────────────────────────
-    function windowMat(def: BuildingDef, w: number, h: number) {
-      const t = windowTex.clone();
-      t.needsUpdate = true;
-      t.repeat.set(Math.max(1, Math.round(w / 0.45)), Math.max(1, Math.round(h / 0.55)));
-      return new THREE.MeshStandardMaterial({
-        color: def.wall, roughness: 0.78, metalness: 0.05,
-        emissive: new THREE.Color(0xffc880), emissiveMap: t, emissiveIntensity: 0.1,
-      });
-    }
-
-    function buildBuildings(locs: LocationT[], gw: number, gh: number) {
-      buildingGroup.clear(); crisisGroup.clear(); labelGroup.clear();
-      buildings.clear(); buildingMeshes.length = 0;
-
-      for (const loc of locs) {
-        const def = BUILDING_DEF[loc.type] ?? BUILDING_DEF.home;
-        const p   = gridToWorld(loc.x, loc.y, gw, gh);
-        const bw  = CELL * 0.56;
-        const windows: THREE.MeshStandardMaterial[] = [];
-        const tag = (m: THREE.Mesh) => { m.userData.buildingId = loc.id; buildingMeshes.push(m); };
-
-        // District pad under every building: tells you what kind of place it is even from far away
-        const pad = new THREE.Mesh(
-          new THREE.BoxGeometry(CELL * 0.94, 0.06, CELL * 0.94),
-          new THREE.MeshStandardMaterial({ color: def.accent, emissive: def.accent, emissiveIntensity: 0.1, roughness: 0.85, transparent: true, opacity: 0.38 }),
-        );
-        pad.position.set(p.x, 0.03, p.z);
-        pad.receiveShadow = true;
-        buildingGroup.add(pad);
-
-        // Main body
-        const wm = windowMat(def, bw, def.height);
-        windows.push(wm);
-        const body = new THREE.Mesh(new THREE.BoxGeometry(bw, def.height, bw), wm);
-        body.position.set(p.x, def.height / 2 + 0.06, p.z);
-        body.castShadow = body.receiveShadow = true;
-        tag(body);
-        buildingGroup.add(body);
-
-        // Roof cap (emissive accent strip - turns red when the building is closed)
-        const roof = new THREE.Mesh(
-          new THREE.BoxGeometry(bw + 0.1, 0.07, bw + 0.1),
-          new THREE.MeshStandardMaterial({ color: def.accent, emissive: def.accent, emissiveIntensity: 0.7, roughness: 0.4 }),
-        );
-        roof.position.set(p.x, def.height + 0.1, p.z);
-        roof.castShadow = true;
-        buildingGroup.add(roof);
-
-        // Per-type silhouette so the map is readable without labels
-        const trim = new THREE.MeshStandardMaterial({ color: def.accent, roughness: 0.6, metalness: 0.1 });
-        if (loc.type === "home") {
-          const pitched = new THREE.Mesh(new THREE.ConeGeometry(bw * 0.78, 0.55, 4), new THREE.MeshStandardMaterial({ color: 0x8a5a4a, roughness: 0.85 }));
-          pitched.rotation.y = Math.PI / 4;
-          pitched.position.set(p.x, def.height + 0.06 + 0.3, p.z);
-          pitched.castShadow = true;
-          buildingGroup.add(pitched);
-        } else if (loc.type === "workplace") {
-          const tower = new THREE.Mesh(new THREE.BoxGeometry(bw * 0.45, 0.6, bw * 0.45), wm);
-          tower.position.set(p.x - bw * 0.15, def.height + 0.4, p.z - bw * 0.1);
-          tower.castShadow = true;
-          buildingGroup.add(tower);
-          const mast = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.015, 0.9, 6), trim);
-          mast.position.set(p.x + bw * 0.25, def.height + 0.55, p.z + bw * 0.2);
-          buildingGroup.add(mast);
-        } else if (loc.type === "commons") {
-          const treeMat = new THREE.MeshStandardMaterial({ color: 0x3f9a62, roughness: 0.9 });
-          const trunkMat = new THREE.MeshStandardMaterial({ color: 0x6b4a32, roughness: 0.9 });
-          const spots: [number, number, number][] = [[-0.5, -0.5, 1], [0.52, -0.45, 0.85], [-0.52, 0.48, 0.9], [0.5, 0.55, 1.05]];
-          for (const [dx, dz, s] of spots) {
-            const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.05, 0.28 * s, 6), trunkMat);
-            trunk.position.set(p.x + dx * CELL * 0.4, 0.2 * s, p.z + dz * CELL * 0.4);
-            const crown = new THREE.Mesh(new THREE.ConeGeometry(0.22 * s, 0.55 * s, 8), treeMat);
-            crown.position.set(trunk.position.x, 0.58 * s, trunk.position.z);
-            crown.castShadow = true;
-            buildingGroup.add(trunk, crown);
-          }
-        } else {
-          // institution: stepped tower + spire
-          const upper = new THREE.Mesh(new THREE.BoxGeometry(bw * 0.62, 0.9, bw * 0.62), windowMat(def, bw * 0.62, 0.9));
-          windows.push(upper.material as THREE.MeshStandardMaterial);
-          upper.position.set(p.x, def.height + 0.06 + 0.5, p.z);
-          upper.castShadow = true;
-          buildingGroup.add(upper);
-          const spire = new THREE.Mesh(new THREE.CylinderGeometry(0.01, 0.035, 1.1, 6), trim);
-          spire.position.set(p.x, def.height + 0.06 + 0.9 + 0.55, p.z);
-          buildingGroup.add(spire);
-          const base = new THREE.Mesh(new THREE.BoxGeometry(bw * 1.25, 0.28, bw * 1.25), new THREE.MeshStandardMaterial({ color: 0x4c4688, roughness: 0.8 }));
-          base.position.set(p.x, 0.2, p.z);
-          base.castShadow = base.receiveShadow = true;
-          buildingGroup.add(base);
-        }
-
-        // Label chip
-        const div = document.createElement("div");
-        div.textContent = loc.name;
-        div.style.cssText = [
-          `color:${def.label}`,
-          "font-size:10.5px", "font-weight:600",
-          "font-family:Inter,ui-sans-serif,system-ui,sans-serif",
-          "letter-spacing:0.04em", "white-space:nowrap", "pointer-events:none",
-          "padding:1px 6px", "border-radius:4px",
-          "background:rgba(8,12,22,0.62)", `border:1px solid ${def.label}44`,
-          "text-shadow:0 1px 2px rgba(0,0,0,0.8)",
-        ].join(";");
-        const labelObj = new CSS2DObject(div);
-        const topY = def.height + (loc.type === "institution" ? 2.5 : 1.0);
-        labelObj.position.set(p.x, topY, p.z);
-        labelGroup.add(labelObj);
-
-        // Crisis: a red pulsing beam + point light (off until closed)
-        const light = new THREE.PointLight(0xff4a4a, 0, CELL * 4);
-        light.position.set(p.x, def.height + 1, p.z);
-        crisisGroup.add(light);
-        const beacon = new THREE.Mesh(
-          new THREE.CylinderGeometry(0.16, 0.16, 7, 12, 1, true),
-          new THREE.MeshBasicMaterial({ color: 0xff4a4a, transparent: true, opacity: 0, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide }),
-        );
-        beacon.position.set(p.x, def.height + 3.5, p.z);
-        beacon.visible = false;
-        crisisGroup.add(beacon);
-
-        buildings.set(loc.id, { loc, body, roof, light, beacon, windows, px: p.x, pz: p.z });
-      }
-    }
-
-    // ── Update buildings (closed state) ──────────────────────────────────────
-    function updateBuildings(locs: LocationT[], closed: string[]) {
-      for (const loc of locs) {
-        const b = buildings.get(loc.id);
-        if (!b) continue;
-        const def    = BUILDING_DEF[loc.type] ?? BUILDING_DEF.home;
-        const isDown = closed.includes(loc.id);
-        const rm     = b.roof.material as THREE.MeshStandardMaterial;
-        for (const wmat of b.windows) wmat.color.setHex(isDown ? 0x6a3434 : def.wall);
-        rm.color.setHex(isDown ? 0xff4a4a : def.accent);
-        rm.emissive.setHex(isDown ? 0xff4a4a : def.accent);
-        rm.emissiveIntensity = isDown ? 1.1 : 0.7;
-        b.beacon.visible = isDown;
-      }
-    }
-
-    function updateCrisisFx(closed: string[], t: number) {
-      for (const [id, b] of buildings) {
-        const isDown = closed.includes(id);
-        b.light.intensity = isDown ? 6 + 2.4 * Math.sin(t * 3) : 0;
-        if (isDown) (b.beacon.material as THREE.MeshBasicMaterial).opacity = 0.22 + 0.12 * Math.sin(t * 3);
-      }
-    }
-
-    // ── Ground fear heatmap ──────────────────────────────────────────────────
-    function updateHeat(citizenData: Citizen[], locs: LocationT[]) {
-      const fearMap = new Map<string, number>();
-      for (const c of citizenData)
-        if ((c.fear ?? 0) > 0.1 && c.location_id)
-          fearMap.set(c.location_id, Math.max(fearMap.get(c.location_id) ?? 0, c.fear));
-      const locAt = new Map(locs.map(l => [`${l.x},${l.y}`, l]));
-      for (const [k, tile] of groundTiles) {
-        const loc = locAt.get(k);
-        const mat = tile.material as THREE.MeshStandardMaterial;
-        if (loc) {
-          const f = fearMap.get(loc.id) ?? 0;
-          mat.emissive.copy(fearColor(f));
-          mat.emissiveIntensity = f * 0.45;
-        } else {
-          mat.emissiveIntensity = 0;
-        }
-      }
-    }
-
-    // ── Citizen factory ──────────────────────────────────────────────────────
-    function getCitizen(c: Citizen): CitizenObj {
-      const ex = citizens.get(c.id);
-      if (ex) return ex;
-
-      const hue = hashHue(c.id);
-      const bodyMat = new THREE.MeshStandardMaterial({ color: new THREE.Color().setHSL(hue, 0.5, 0.62), roughness: 0.6, metalness: 0.05 });
-      const headMat = new THREE.MeshStandardMaterial({ color: 0xe9d8c8, roughness: 0.55, metalness: 0.02, emissive: new THREE.Color(0x7cc4f0), emissiveIntensity: 0.18 });
-      const shadowMat = new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.3, depthWrite: false });
-      const ringMat = new THREE.MeshBasicMaterial({ color: 0x7cc4f0, transparent: true, opacity: 0.85, depthWrite: false, side: THREE.DoubleSide });
-      const selMat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0, depthWrite: false, side: THREE.DoubleSide });
-
-      const body = new THREE.Mesh(bodyGeo, bodyMat);
-      body.castShadow = true; body.userData.citizenId = c.id;
-      const head = new THREE.Mesh(headGeo, headMat);
-      head.castShadow = true; head.userData.citizenId = c.id;
-      const shadow = new THREE.Mesh(shadowGeo, shadowMat);
-      shadow.rotation.x = -Math.PI / 2;
-      const ring = new THREE.Mesh(ringGeo, ringMat);
-      ring.rotation.x = -Math.PI / 2;
-      const selRing = new THREE.Mesh(selGeo, selMat);
-      selRing.rotation.x = -Math.PI / 2;
-      // generous invisible hit volume: the visible capsule is only a few pixels wide from far away
-      const hit = new THREE.Mesh(hitGeo, hitMat);
-      hit.userData.citizenId = c.id;
-
-      const nameEl = document.createElement("div");
-      nameEl.textContent = c.name.split(" ")[0];
-      const baseLabel = [
-        "color:rgba(226,236,250,0.92)", "font-size:10px", "font-weight:600",
-        "font-family:Inter,ui-sans-serif,system-ui,sans-serif", "letter-spacing:0.03em",
-        "white-space:nowrap", "pointer-events:none", "padding:0 5px", "border-radius:3px",
-        "background:rgba(8,12,22,0.55)", "text-shadow:0 1px 2px rgba(0,0,0,0.9)",
-      ];
-      nameEl.style.cssText = baseLabel.join(";");
-      const label = new CSS2DObject(nameEl);
-
-      const bubbleEl = document.createElement("div");
-      bubbleEl.style.cssText = [
-        "background:rgba(10,15,26,0.92)", "color:rgba(228,238,252,0.96)", "font-size:11px",
-        "font-family:Inter,ui-sans-serif,system-ui,sans-serif",
-        "border:1px solid rgba(124,196,240,0.4)", "border-radius:8px", "padding:5px 9px",
-        "max-width:150px", "line-height:1.4", "pointer-events:none",
-        "white-space:pre-wrap", "box-shadow:0 4px 14px rgba(0,0,0,0.45)",
-      ].join(";");
-      const bubble = new CSS2DObject(bubbleEl);
-
-      citizenGroup.add(body, head, shadow, ring, selRing, hit, label, bubble);
-      clickable.push(hit);
-
-      const obj: CitizenObj = {
-        id: c.id, name: c.name, occupation: c.occupation, action: c.action, fear: c.fear ?? 0,
-        body, head, shadow, ring, selRing, hit, speech: "", label, bubble, bubbleEl, nameEl,
-        dispX: 0, dispZ: 0, tgtX: 0, tgtZ: 0, moving: 0,
-      };
-      // spawn at the target on first sight (no slide-in from the origin)
-      citizens.set(c.id, obj);
-      return obj;
-    }
-
-    // Citizens who share a building stand in a row in front of it instead of inside it.
-    function slotsFor(cd: Citizen[], gw: number, gh: number) {
-      const groups = new Map<string, Citizen[]>();
-      for (const c of cd) {
-        const k = c.location_id || `${c.x},${c.y}`;
-        const g = groups.get(k); if (g) g.push(c); else groups.set(k, [c]);
-      }
-      const out = new Map<string, { x: number; z: number }>();
-      for (const [, g] of groups) {
-        g.sort((a, b) => a.id.localeCompare(b.id));
-        const p = gridToWorld(g[0].x, g[0].y, gw, gh);
-        const perRow = 4;
-        g.forEach((c, i) => {
-          const row = Math.floor(i / perRow);
-          const inRow = Math.min(perRow, g.length - row * perRow);
-          const col = i % perRow;
-          out.set(c.id, { x: p.x + (col - (inRow - 1) / 2) * 0.72, z: p.z + CELL * 0.5 + 0.18 + row * 0.62 });
-        });
-      }
-      return out;
-    }
-
-    function updateCitizen(c: Citizen, slot: { x: number; z: number }, selected: string | null) {
-      const first = !citizens.has(c.id);
-      const obj = getCitizen(c);
-      obj.tgtX = slot.x; obj.tgtZ = slot.z;
-      if (first) { obj.dispX = slot.x; obj.dispZ = slot.z; }
-      obj.name = c.name; obj.occupation = c.occupation; obj.action = c.action;
-      const fear = c.fear ?? 0;
-      obj.fear = fear;
-      const fc = fearColor(fear);
-
-      const hm = obj.head.material as THREE.MeshStandardMaterial;
-      hm.emissive.copy(fc);
-      hm.emissiveIntensity = 0.16 + fear * 0.6 + (selected === c.id ? 0.5 : 0);
-
-      (obj.ring.material as THREE.MeshBasicMaterial).color.copy(fc);
-
-      if (c.speech) {
-        const raw = c.speech;
-        const ci  = raw.indexOf(": ");
-        const full = ci !== -1 ? raw.slice(ci + 2) : raw;
-        const txt = full.slice(0, 64);
-        obj.speech = txt.length < full.length ? txt + "..." : txt;
-        obj.bubbleEl.textContent = obj.speech;
-      } else {
-        obj.speech = "";
-      }
+    function applyLight(dt: number) {
+      const goal = lightGoal();
+      const k = 1 - Math.exp(-dt * 0.8);
+      lightNow.day += (goal.day - lightNow.day) * k;
+      lightNow.warm += (goal.warm - lightNow.warm) * k;
+      const { day, warm } = lightNow;
+      const mix = (a: number, b: number) => a + (b - a) * day;
+      sun.color.copy(LIGHT.night.sun).lerp(LIGHT.day.sun, day).lerp(LIGHT.warm.sun, warm * 0.6);
+      sun.intensity = mix(LIGHT.night.sunI, LIGHT.day.sunI) * (1 - warm * 0.2);
+      hemi.intensity = mix(LIGHT.night.hemiI, LIGHT.day.hemiI);
+      (skyMat.uniforms.horizon.value as THREE.Color).copy(LIGHT.night.horizon).lerp(LIGHT.day.horizon, day).lerp(LIGHT.warm.horizon, warm * 0.7);
+      (skyMat.uniforms.zenith.value as THREE.Color).copy(LIGHT.night.zenith).lerp(LIGHT.day.zenith, day).lerp(LIGHT.warm.zenith, warm * 0.4);
+      (scene.fog as THREE.Fog).color.copy(skyMat.uniforms.horizon.value as THREE.Color);
+      renderer.toneMappingExposure = mix(LIGHT.night.exposure, LIGHT.day.exposure);
     }
 
     // ── Store sync ───────────────────────────────────────────────────────────
     function sync() {
       const w = useWorld.getState().world;
       if (!w) return;
-      const { grid, locations, citizens: cd, closed_locations, active_crises } = w;
-
       if (!built) {
-        gridW = grid.w; gridH = grid.h;
+        gridW = w.grid.w; gridH = w.grid.h;
         buildGround(gridW, gridH);
-        buildBuildings(locations, gridW, gridH);
+        buildPlaces(w.locations, gridW, gridH);
+        plantTrees(w.locations, gridW, gridH);
+        fillEmptyPlots(w.locations, gridW, gridH);
+        buildTraffic(gridW, gridH);
+        fitOverview();
+        Object.assign(lightNow, lightGoal());
         built = true;
-        computeFit();
-        startFly(1.5);
         setReady(true);
       }
+      const closed = new Set(w.closed_locations ?? []);
+      for (const [id, place] of places) place.cordon.visible = closed.has(id);
 
-      daylight = daylightAt(w.day_progress ?? 0.5);
-      updateBuildings(locations, closed_locations ?? []);
-      updateHeat(cd, locations);
-
-      if ((active_crises?.length ?? 0) > prevCrises && flashEl)
-        flashUntil = performance.now() + 900;
-      prevCrises = active_crises?.length ?? 0;
-
-      const sel = useWorld.getState().selectedId;
-      const slots = slotsFor(cd, gridW, gridH);
+      const spots = standingSpots(w.citizens, gridW, gridH);
       const seen = new Set<string>();
-      for (const c of cd) {
+      for (const c of w.citizens) {
         seen.add(c.id);
-        updateCitizen(c, slots.get(c.id)!, sel);
-      }
-      for (const [id, obj] of citizens) {
-        if (!seen.has(id)) {
-          citizenGroup.remove(obj.body, obj.head, obj.shadow, obj.ring, obj.selRing, obj.hit, obj.label, obj.bubble);
-          const hi = clickable.indexOf(obj.hit); if (hi !== -1) clickable.splice(hi, 1);
-          citizens.delete(id);
+        let person = people.get(c.id);
+        const spot = spots.get(c.id)!;
+        if (!person) {
+          person = makePerson(c);
+          person.dispX = person.tgtX = spot.x;
+          person.dispZ = person.tgtZ = spot.z;
+          people.set(c.id, person);
+          peopleGroup.add(person.root);
+          hitTargets.push(person.hit);
         }
+        person.tgtX = spot.x; person.tgtZ = spot.z;
+        person.name = c.name; person.occupation = c.occupation; person.action = c.action;
+        person.fear = c.fear ?? 0;
+        (person.moodRing.material as THREE.MeshBasicMaterial).color.copy(moodColor(person.fear));
+        const speakerEnd = c.speech ? c.speech.indexOf(": ") : -1;
+        const said = c.speech ? (speakerEnd === -1 ? c.speech : c.speech.slice(speakerEnd + 2)) : "";
+        person.speech = said.length > 70 ? said.slice(0, 70) + "..." : said;
+        person.bubbleEl.textContent = person.speech;
+        person.nameEl.textContent = c.name.split(" ")[0];
+      }
+      for (const [id, person] of people) {
+        if (seen.has(id)) continue;
+        peopleGroup.remove(person.root);
+        const at = hitTargets.indexOf(person.hit);
+        if (at !== -1) hitTargets.splice(at, 1);
+        people.delete(id);
       }
     }
-
     const unsub = useWorld.subscribe(sync);
     sync();
-    if (!built) {
-      // before the first world message: sit at a sensible default so nothing flashes
-      computeFit();
-      target.set(0, 0.6, 1);
-      placeCamera(1.5, 0.2);
-    }
 
-    // ── Lighting follows the sim clock (smoothed so phase changes fade, not pop) ──
-    const cur = { day: 0.5, warm: 0 };
-    const cTop = new THREE.Color(), cBot = new THREE.Color(), tmp = new THREE.Color();
-    const NIGHT_TOP = new THREE.Color(0x0a1430), NIGHT_BOT = new THREE.Color(0x1c2c4c);
-    const DAY_TOP = new THREE.Color(0x3c6aa8),  DAY_BOT = new THREE.Color(0x9cc0de);
-    const WARM = new THREE.Color(0xf0a070);
-    const KEY_NIGHT = new THREE.Color(0x8fa8d8), KEY_DAY = new THREE.Color(0xfff2dc);
-    const HEMI_SKY_NIGHT = new THREE.Color(0x3a4c78), HEMI_SKY_DAY = new THREE.Color(0xb4cff0);
-    const GROUND_NIGHT = new THREE.Color(0x27354a), GROUND_DAY = new THREE.Color(0x4a5c78);
-
-    function applyLighting(dt: number) {
-      const k = 1 - Math.exp(-dt * 1.6);
-      cur.day  += (daylight.day  - cur.day)  * k;
-      cur.warm += (daylight.warm - cur.warm) * k;
-      const d = cur.day;
-      cTop.lerpColors(NIGHT_TOP, DAY_TOP, d);
-      cBot.lerpColors(NIGHT_BOT, DAY_BOT, d);
-      cBot.lerp(WARM, cur.warm * 0.55);
-      cTop.lerp(tmp.copy(WARM).multiplyScalar(0.5), cur.warm * 0.18);
-      (sky.mat.uniforms.top.value as THREE.Color).copy(cTop);
-      (sky.mat.uniforms.bottom.value as THREE.Color).copy(cBot);
-      fog.color.copy(cBot).multiplyScalar(0.92);
-      renderer.setClearColor(cBot, 1);
-      stars.mat.opacity = 0.75 * (1 - d);
-      key.color.lerpColors(KEY_NIGHT, KEY_DAY, d).lerp(WARM, cur.warm * 0.4);
-      key.intensity = 0.9 + d * 1.9;
-      key.position.set(16 - d * 6 + cur.warm * 10, 18 + d * 14, 14);
-      hemi.color.lerpColors(HEMI_SKY_NIGHT, HEMI_SKY_DAY, d);
-      hemi.intensity = 0.75 + d * 0.55;
-      baseMat.color.lerpColors(GROUND_NIGHT, GROUND_DAY, d);
-      renderer.toneMappingExposure = 1.0 + (1 - d) * 0.08;
-      const winGlow = 0.12 + (1 - d) * 1.0;
-      for (const [id, b] of buildings) {
-        const closed = (useWorld.getState().world?.closed_locations ?? []).includes(id);
-        for (const wm of b.windows) wm.emissiveIntensity = closed ? 0.05 : winGlow;
-      }
-    }
-
-    // ── Animation loop ───────────────────────────────────────────────────────
+    // ── Animation ────────────────────────────────────────────────────────────
     const clock = new THREE.Clock();
     let raf = 0;
-    const easeOut = (t: number) => 1 - Math.pow(1 - t, 3);
-
+    const lookTarget = controls.target;
     function animate() {
       raf = requestAnimationFrame(animate);
       const dt = Math.min(clock.getDelta(), 0.1);
       const t = clock.elapsedTime;
 
-      // intro / reset fly-in (cancelled the moment the user touches the controls)
-      if (flyActive && built) {
-        flyT += dt;
-        const k = easeOut(clamp01(flyT / 1.8));
-        placeCamera(flyFrom + (1 - flyFrom) * k, 0.25 * (1 - k));
-        if (k >= 1) { flyActive = false; controls.enabled = true; }
-      } else {
-        controls.update();
+      applyLight(dt);
+      const focus = built ? focusPoint() : null;
+      if (performance.now() > userHeldUntil) {
+        camGoal.target.copy(focus ? focus.point : overviewTarget);
+        camGoal.dist = focus ? focus.dist : overviewDist;
+        const k = 1 - Math.exp(-dt * 1.4);
+        lookTarget.lerp(camGoal.target, k);
+        const offset = camera.position.clone().sub(lookTarget);
+        const dist = offset.length() + (camGoal.dist - offset.length()) * k;
+        const dir = offset.normalize().lerp(overviewDir, k * 0.6).normalize();
+        camera.position.copy(lookTarget).addScaledVector(dir, dist);
       }
-      void userMoved;
+      controls.update();
 
-      applyLighting(dt);
+      focusTag.visible = !!focus;
+      if (focus) {
+        focusEl.textContent = focus.label;
+        focusTag.position.set(focus.point.x, focus.top, focus.point.z);
+      }
 
-      // Citizens: frame-rate independent glide, walking bob, rings
-      const kMove = 1 - Math.exp(-dt * 5.5);
       const selected = useWorld.getState().selectedId;
-      // At most 3 ambient speech bubbles at once; hovering or selecting a citizen always shows theirs.
-      const talkers = new Set<string>();
-      for (const [id, o] of citizens) { if (o.speech && talkers.size < 3) talkers.add(id); }
-      for (const [id, obj] of citizens) {
-        const dx = obj.tgtX - obj.dispX, dz = obj.tgtZ - obj.dispZ;
-        obj.dispX += dx * kMove;
-        obj.dispZ += dz * kMove;
+      const kMove = 1 - Math.exp(-dt * 3.5);
+      for (const [id, person] of people) {
+        const dx = person.tgtX - person.dispX, dz = person.tgtZ - person.dispZ;
+        person.dispX += dx * kMove;
+        person.dispZ += dz * kMove;
         const speed = Math.hypot(dx, dz);
-        obj.moving += ((speed > 0.08 ? 1 : 0) - obj.moving) * (1 - Math.exp(-dt * 8));
-        const bob = obj.moving * Math.abs(Math.sin(t * 9 + obj.dispX * 3)) * 0.07 + 0.012 * Math.sin(t * 1.6 + obj.dispX);
-        obj.body.position.set(obj.dispX, 0.66 + bob, obj.dispZ);
-        obj.head.position.set(obj.dispX, 1.3 + bob, obj.dispZ);
-        obj.shadow.position.set(obj.dispX, 0.012, obj.dispZ);
-        obj.ring.position.set(obj.dispX, 0.02, obj.dispZ);
-        obj.selRing.position.set(obj.dispX, 0.025, obj.dispZ);
-        obj.hit.position.set(obj.dispX, 1.05, obj.dispZ);
-        obj.label.position.set(obj.dispX, 1.78 + bob, obj.dispZ);
-        obj.bubble.position.set(obj.dispX, 2.4 + bob, obj.dispZ);
+        person.moving += ((speed > 0.05 ? 1 : 0) - person.moving) * (1 - Math.exp(-dt * 6));
+        if (speed > 0.05) person.heading = Math.atan2(dx, dz);
+        person.root.rotation.y += (((person.heading - person.root.rotation.y + Math.PI * 3) % (Math.PI * 2)) - Math.PI) * (1 - Math.exp(-dt * 8));
+        const stride = Math.sin(t * 8 + hashOf(id) % 7) * person.moving;
+        person.legL.rotation.x = stride * 0.55; person.legR.rotation.x = -stride * 0.55;
+        person.armL.rotation.x = -stride * 0.45; person.armR.rotation.x = stride * 0.45;
+        person.root.position.set(person.dispX, 0.09 + Math.abs(stride) * 0.02, person.dispZ);
 
-        const pulse = obj.fear > 0.55 ? 1 + 0.18 * Math.sin(t * 5 + obj.dispX) : 1;
-        obj.ring.scale.setScalar((1 + obj.fear * 0.35) * pulse);
-        (obj.ring.material as THREE.MeshBasicMaterial).opacity = 0.35 + obj.fear * 0.5;
-        (obj.shadow.material as THREE.MeshBasicMaterial).opacity = 0.28;
-
-        const isSel = selected === id;
-        const isHov = hoverId === id;
-        const sm = obj.selRing.material as THREE.MeshBasicMaterial;
-        sm.opacity += ((isSel ? 0.95 : isHov ? 0.55 : 0) - sm.opacity) * (1 - Math.exp(-dt * 12));
-        obj.selRing.rotation.z = t * 0.9;
-        const s = 1 + 0.06 * Math.sin(t * 3.2);
-        obj.selRing.scale.setScalar(isSel ? s : 1);
-        obj.bubble.visible = !!obj.speech && (isSel || isHov || talkers.has(id));
-        obj.nameEl.style.color = isSel ? "#ffffff" : "rgba(226,236,250,0.92)";
-        obj.nameEl.style.background = isSel ? "rgba(110,168,254,0.55)" : "rgba(8,12,22,0.55)";
+        const isSel = selected === id, isHov = hoverId === id;
+        const ringMat = person.selRing.material as THREE.MeshBasicMaterial;
+        ringMat.opacity += ((isSel ? 0.95 : isHov ? 0.5 : 0) - ringMat.opacity) * (1 - Math.exp(-dt * 12));
+        person.nameTag.visible = isSel;
+        person.bubble.visible = !!person.speech && (isSel || isHov);
       }
 
-      const w = useWorld.getState().world;
-      if (built && w) updateCrisisFx(w.closed_locations ?? [], t);
-
-      if (flashEl) {
-        const now = performance.now();
-        flashEl.style.opacity = now < flashUntil ? String(((flashUntil - now) / 900) * 0.2) : "0";
+      for (const car of cars) {
+        car.model.position.x += car.dir * car.speed * dt;
+        if (car.model.position.x > car.max) car.model.position.x = car.min;
+        if (car.model.position.x < car.min) car.model.position.x = car.max;
+      }
+      let flagIndex = 0;
+      for (const [, place] of places) {
+        if (place.flag) place.flag.rotation.y = Math.sin(t * 2.6 + flagIndex++) * 0.25;
+        if (place.cordon.visible) place.cordon.scale.setScalar(1 + Math.sin(t * 2.4) * 0.04);
       }
 
       composer.render();
@@ -818,7 +791,6 @@ export default function CityStage3D() {
     }
     animate();
 
-    // ── Resize ───────────────────────────────────────────────────────────────
     const onResize = () => {
       const w = el.offsetWidth, h = el.offsetHeight;
       if (!w || !h) return;
@@ -826,71 +798,46 @@ export default function CityStage3D() {
       camera.updateProjectionMatrix();
       renderer.setSize(w, h);
       composer.setSize(w, h);
+      ssao.setSize(w, h);
       labelRenderer.setSize(w, h);
-      computeFit();
-      if (!userMoved && !flyActive) placeCamera(1, 0);
+      fitOverview();
     };
     const ro = new ResizeObserver(onResize);
     ro.observe(el);
 
-    // ── Cleanup ──────────────────────────────────────────────────────────────
     return () => {
       cancelAnimationFrame(raf);
       if (hoverRaf) cancelAnimationFrame(hoverRaf);
       ro.disconnect();
       unsub();
+      renderer.domElement.removeEventListener("pointerdown", onDown);
+      renderer.domElement.removeEventListener("pointerup", onUp);
+      renderer.domElement.removeEventListener("pointermove", onMove);
+      renderer.domElement.removeEventListener("pointerleave", onLeave);
       controls.dispose();
       composer.dispose();
+      pmrem.dispose();
       renderer.dispose();
-      if (renderer.domElement.parentNode      === el) el.removeChild(renderer.domElement);
+      if (renderer.domElement.parentNode === el) el.removeChild(renderer.domElement);
       if (labelRenderer.domElement.parentNode === el) el.removeChild(labelRenderer.domElement);
     };
   }, []);
 
   return (
     <div ref={containerRef} style={{ width: "100%", height: "100%", position: "relative", cursor: "grab" }}>
-      <div ref={flashRef} style={{
-        position: "absolute", inset: 0, background: "#c0392b",
-        opacity: 0, pointerEvents: "none", zIndex: 5,
-      }} />
-
       {!ready && (
         <div className="stage-loading">
           <div className="spinner" />
-          <div>Connecting to the city...</div>
+          <div>Waking up the city...</div>
           <div className="muted xsmall">The free server sleeps when idle; the first load can take about 25 seconds.</div>
         </div>
       )}
-
       {hover && (
-        <div className="stage-tip" style={{ left: hover.x + 14, top: hover.y + 14, borderColor: hover.accent }}>
-          <div className="stage-tip-title" style={{ color: hover.accent }}>{hover.title}</div>
+        <div className="stage-tip" style={{ left: hover.x + 14, top: hover.y + 14 }}>
+          <div className="stage-tip-title">{hover.title}</div>
           <div className="stage-tip-sub">{hover.sub}</div>
         </div>
       )}
-
-      <div className="stage-legend">
-        <button className="legend-toggle" onClick={() => setLegendOpen(o => !o)} aria-expanded={legendOpen}>
-          {legendOpen ? "Map key  -" : "Map key  +"}
-        </button>
-        {legendOpen && (
-          <div className="legend-body">
-            {Object.values(BUILDING_DEF).map(d => (
-              <div key={d.kind} className="legend-row">
-                <span className="legend-dot" style={{ background: d.label }} />
-                <b>{d.kind}</b><span className="muted">{d.blurb}</span>
-              </div>
-            ))}
-            <div className="legend-row">
-              <span className="legend-grad" />
-              <b>Fear</b><span className="muted">calm to afraid (ring under each person)</span>
-            </div>
-            <div className="legend-row"><span className="legend-dot legend-red" /><b>Red beam</b><span className="muted">building closed by a crisis</span></div>
-            <div className="legend-help">Drag to rotate. Scroll to zoom. Click a person to read their mind.</div>
-            <button className="legend-reset" onClick={resetView}>Reset view</button>
-          </div>
-        )}
-      </div>
     </div>
   );
 }

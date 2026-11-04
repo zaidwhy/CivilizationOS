@@ -1,17 +1,17 @@
 import { useEffect, useRef, useState } from "react";
 import { connectWorldSocket, useWorld } from "./ws/store";
 import CityStage from "./city/CityStage3D";
+import Narrator from "./city/Narrator";
 import Inspector from "./panels/Inspector";
 import EventFeed from "./panels/EventFeed";
 import CouncilChamber from "./panels/CouncilChamber";
 import RelationshipGraph from "./panels/RelationshipGraph";
 import Timeline from "./panels/Timeline";
 import StatsPanel from "./panels/StatsPanel";
-import Onboarding from "./components/Onboarding";
 import Chronicle from "./panels/Chronicle";
 import { API_ROOT } from "./config";
 
-// ---- Stability sparkline (topbar) ----
+// ---- Stability sparkline (details drawer) ----
 function StabilitySparkline() {
   const history = useWorld((s) => s.stabilityHistory);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -59,78 +59,13 @@ function StabilitySparkline() {
   );
 }
 
-// ---- Toast notifications (overlay on city) ----
-type ToastItem = { id: number; kind: "crisis" | "verdict" | "social"; text: string };
-const TOAST_COLORS = { crisis: "#f87171", verdict: "#fbbf24", social: "#a78bfa" };
-const TOAST_ICONS  = { crisis: "⚡",      verdict: "★",        social: "🤝" };
-
-function ToastStack() {
-  const [toasts, setToasts] = useState<ToastItem[]>([]);
-  const seenTickRef = useRef(-1);
-
-  useEffect(() => {
-    return useWorld.subscribe((state) => {
-      const events = state.world?.events;
-      if (!events?.length) return;
-      const maxTick = Math.max(...events.map(e => e.tick));
-      if (maxTick <= seenTickRef.current) return;
-      const fresh = events.filter(e => e.tick > seenTickRef.current);
-      seenTickRef.current = maxTick;
-      const interesting = fresh.filter(e =>
-        e.kind === "emergent" ||
-        (e.kind === "event" && /bloc|rivalry|dissolved/i.test(e.text)) ||
-        (e.kind === "decision" && e.text.includes("VERDICT"))
-      );
-      if (!interesting.length) return;
-      const now = Date.now();
-      setToasts(prev => [
-        ...prev,
-        ...interesting.map((e, i) => ({
-          id: now + i,
-          kind: (e.kind === "emergent" ? "crisis" : e.kind === "decision" ? "verdict" : "social") as ToastItem["kind"],
-          text: e.text.replace(/^[⚡★🤝💔⚠\s]+/, "").slice(0, 72),
-        })),
-      ].slice(-3));
-    });
-  }, []);
-
-  useEffect(() => {
-    if (!toasts.length) return;
-    const id = setTimeout(() => setToasts(p => p.slice(1)), 5000);
-    return () => clearTimeout(id);
-  }, [toasts.length]);
-
-  if (!toasts.length) return null;
-  return (
-    <div style={{
-      position: "absolute", bottom: 14, left: 14, zIndex: 20,
-      display: "flex", flexDirection: "column", gap: 5,
-      pointerEvents: "none",
-    }}>
-      {toasts.map(t => (
-        <div key={t.id} style={{
-          padding: "8px 13px",
-          background: `${TOAST_COLORS[t.kind]}14`,
-          border: `1px solid ${TOAST_COLORS[t.kind]}50`,
-          borderRadius: 8, fontSize: 11, color: "#e2e8f0",
-          backdropFilter: "blur(6px)", maxWidth: 270, lineHeight: 1.45,
-          animation: "toast-slide-in 0.3s ease-out",
-        }}>
-          <span style={{ color: TOAST_COLORS[t.kind], marginRight: 5 }}>{TOAST_ICONS[t.kind]}</span>
-          {t.text}
-        </div>
-      ))}
-    </div>
-  );
-}
-
-// ---- Scenario quick-launch overlay ----
+// ---- Crisis launcher (top right of the city) ----
 const QUICK_SCENARIOS = [
-  { key: "pandemic",    emoji: "🦠", label: "Epidemic",   inst: "inst_health" },
-  { key: "crime_wave",  emoji: "🚨", label: "Crime Wave", inst: "inst_police" },
-  { key: "power_outage",emoji: "⚡", label: "Blackout",   inst: "inst_gov"    },
-  { key: "drought",     emoji: "🌵", label: "Drought",    inst: "inst_economy"},
-  { key: "cyberattack", emoji: "💻", label: "Cyberattack",inst: "inst_gov"    },
+  { key: "pandemic",     label: "Epidemic",    inst: "inst_health" },
+  { key: "crime_wave",   label: "Crime wave",  inst: "inst_police" },
+  { key: "power_outage", label: "Blackout",    inst: "inst_gov" },
+  { key: "drought",      label: "Drought",     inst: "inst_economy" },
+  { key: "cyberattack",  label: "Cyberattack", inst: "inst_gov" },
 ];
 
 function ScenarioLauncher() {
@@ -166,63 +101,30 @@ function ScenarioLauncher() {
   }
 
   return (
-    <div style={{
-      position: "absolute", top: 10, right: 10, zIndex: 20,
-      display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 5,
-    }}>
-      <button
-        onClick={() => setOpen(o => !o)}
-        style={{
-          background: open ? "rgba(124,58,237,0.9)" : "rgba(124,58,237,0.75)",
-          color: "#fff", border: "1px solid rgba(167,139,250,0.45)",
-          borderRadius: 6, padding: "4px 12px", fontSize: 12,
-          cursor: "pointer", backdropFilter: "blur(6px)", fontWeight: 600,
-        }}
-      >
-        {open ? "✕ Close" : "⚡ Inject a crisis"}
+    <div className="launcher">
+      <button className="launcher-main" onClick={() => setOpen((o) => !o)} aria-expanded={open}>
+        {open ? "Close" : "Start a crisis"}
       </button>
       {open && (
-        <div style={{
-          background: "rgba(11,14,20,0.88)", backdropFilter: "blur(10px)",
-          border: "1px solid var(--line)", borderRadius: 8, padding: 7,
-          display: "flex", flexDirection: "column", gap: 4, minWidth: 148,
-        }}>
-          {QUICK_SCENARIOS.map(s => (
-            <button
-              key={s.key}
-              onClick={() => fire(s.key, s.inst)}
-              disabled={!!firing}
-              style={{
-                background: firing === s.key ? "rgba(124,58,237,0.45)" : "rgba(255,255,255,0.04)",
-                color: "#e2e8f0", border: "1px solid var(--line)",
-                borderRadius: 5, padding: "5px 10px", fontSize: 12,
-                cursor: firing ? "not-allowed" : "pointer",
-                textAlign: "left", display: "flex", alignItems: "center", gap: 7,
-                transition: "background 0.15s",
-              }}
-            >
-              <span style={{ fontSize: 14 }}>{s.emoji}</span>
-              <span>{firing === s.key ? "Injecting…" : s.label}</span>
+        <div className="launcher-menu">
+          <div className="launcher-hint">Pick what goes wrong. The right council will debate it.</div>
+          {QUICK_SCENARIOS.map((s) => (
+            <button key={s.key} onClick={() => fire(s.key, s.inst)} disabled={!!firing}>
+              {firing === s.key ? "Starting..." : s.label}
             </button>
           ))}
         </div>
       )}
-      {note && (
-        <div role="status" style={{
-          maxWidth: 260, padding: "7px 11px", fontSize: 11.5, lineHeight: 1.4,
-          background: "rgba(248,113,113,0.12)", border: "1px solid rgba(248,113,113,0.5)",
-          borderRadius: 8, color: "#fecaca", backdropFilter: "blur(6px)",
-        }}>{note}</div>
-      )}
+      {note && <div role="status" className="launcher-note">{note}</div>}
     </div>
   );
 }
 
 const PHASE_LABEL: Record<string, string> = {
-  night: "🌙 Night",
-  morning: "🌅 Morning",
-  work: "🏙️ Work",
-  evening: "🌆 Evening",
+  night: "Night",
+  morning: "Morning",
+  work: "Working hours",
+  evening: "Evening",
 };
 
 function SpeedControl() {
@@ -274,29 +176,16 @@ function SpeedControl() {
 
 function TensionMeter() {
   const pressure = useWorld((s) => s.world?.fear_pressure ?? 0);
-  const activeCrises = useWorld((s) => s.world?.active_crises) ?? [];
   if (pressure <= 0.05) return null;
-
   const pct = Math.round(pressure * 100);
   const color = pressure >= 0.75 ? "#f87171" : pressure >= 0.40 ? "#fb923c" : "#fbbf24";
-  const label = pressure >= 0.99
-    ? "⚡ ERUPTING"
-    : activeCrises.length > 0
-    ? `⚡ COMPOUND ${pct}%`
-    : `⚡ TENSION ${pct}%`;
-
   return (
     <span
       className="pill"
-      title={`Fear has been critically high for ${pct}% of the auto-crisis threshold. A new crisis will erupt if it stays this high.`}
-      style={{
-        color,
-        borderColor: color,
-        cursor: "default",
-        animation: pressure >= 0.85 ? "crisis-pulse 1s ease-in-out infinite" : undefined,
-      }}
+      title="How close the city's fear is to setting off a crisis on its own."
+      style={{ color, borderColor: color, cursor: "default" }}
     >
-      {label}
+      {pressure >= 0.99 ? "Erupting" : `Tension ${pct}%`}
     </span>
   );
 }
@@ -311,11 +200,11 @@ function StabilityBadge() {
   const score = Math.max(0, Math.min(100, Math.round(100 - avgFear * 65 - activeCrises.length * 12)));
 
   const [label, color] =
-    score >= 80 ? ["THRIVING", "#4ade80"]
-    : score >= 60 ? ["STABLE", "#a3e635"]
-    : score >= 40 ? ["TENSE", "#fbbf24"]
-    : score >= 20 ? ["UNSTABLE", "#fb923c"]
-    : ["CRITICAL", "#f87171"];
+    score >= 80 ? ["Thriving", "#4ade80"]
+    : score >= 60 ? ["Stable", "#a3e635"]
+    : score >= 40 ? ["Tense", "#fbbf24"]
+    : score >= 20 ? ["Unstable", "#fb923c"]
+    : ["Critical", "#f87171"];
 
   return (
     <span
@@ -323,14 +212,14 @@ function StabilityBadge() {
       title={`City stability ${score}/100 - avg fear ${Math.round(avgFear * 100)}%, ${activeCrises.length} active crisis`}
       style={{ color, borderColor: color, cursor: "default", fontWeight: 700 }}
     >
-      ◈ {label} {score}
+      {label} {score}
     </span>
   );
 }
 
 function SpendCounter() {
   const health = useWorld((s) => s.health);
-  if (!health) return <span className="pill">brains · loading…</span>;
+  if (!health) return <span className="pill">AI models loading...</span>;
 
   const spent = health.tier2_spent_usd;
   const budget = health.tier2_budget_usd;
@@ -340,20 +229,12 @@ function SpendCounter() {
   return (
     <>
       {health.council_model && (
-        <span
-          className="pill"
-          title={`Fine-tuned council model active: ${health.council_model}`}
-          style={{ color: "#a78bfa", borderColor: "#a78bfa", cursor: "default" }}
-        >
-          🧠 {health.council_model}
+        <span className="pill" title={`Fine-tuned council model active: ${health.council_model}`} style={{ color: "#a78bfa", borderColor: "#a78bfa", cursor: "default" }}>
+          model {health.council_model}
         </span>
       )}
-      <span
-        className="pill"
-        title={`$${spent.toFixed(4)} of $${budget} Claude budget used (${pct.toFixed(1)}%)`}
-        style={{ color, borderColor: color, cursor: "default" }}
-      >
-        {health.premium_mode ? "⚡ premium" : "⚙ free"} · ${spent.toFixed(3)}
+      <span className="pill" title={`$${spent.toFixed(4)} of $${budget} AI budget used (${pct.toFixed(1)}%)`} style={{ color, borderColor: color, cursor: "default" }}>
+        {health.premium_mode ? "premium" : "free"} AI · ${spent.toFixed(3)}
       </span>
     </>
   );
@@ -362,55 +243,58 @@ function SpendCounter() {
 export default function App() {
   const conn = useWorld((s) => s.conn);
   const world = useWorld((s) => s.world);
-  const activeCrises = useWorld((s) => s.world?.active_crises) ?? [];
+  const selectedId = useWorld((s) => s.selectedId);
+  const [drawerOpen, setDrawerOpen] = useState(false);
 
   useEffect(() => connectWorldSocket(), []);
+  // Clicking a person opens the drawer on their mind.
+  useEffect(() => { if (selectedId) setDrawerOpen(true); }, [selectedId]);
 
   return (
     <div className="app">
-      <Onboarding />
       <header className="topbar">
-        <h1>CIVILIZATION&nbsp;<span className="os">OS</span></h1>
-        <span className={`pill ${conn === "open" ? "live" : "off"}`}>
-          {conn === "open" ? "● live" : conn}
+        <div className="brand">
+          <h1>CivilizationOS</h1>
+          <span className="tagline">A small city where AI people live, and AI councils govern.</span>
+        </div>
+        <span className="grow" />
+        <span className={`live-dot ${conn === "open" ? "on" : ""}`} title={conn === "open" ? "Connected to the live simulation" : "Connecting"}>
+          {conn === "open" ? "Live" : "Connecting"}
         </span>
         {world && (
-          <>
-            <span className="pill" title="Simulated time. One tick is about 6 in-world minutes; a day is 240 ticks.">{world.clock}</span>
-            <span className="pill">{PHASE_LABEL[world.phase] ?? world.phase}</span>
-            <span className="pill" title="Click any citizen on the map to read their memories and relationships">{world.citizens.length} citizens</span>
-          </>
-        )}
-        {Object.entries(
-          activeCrises.reduce<Record<string, number>>((acc, n) => ({ ...acc, [n]: (acc[n] ?? 0) + 1 }), {}),
-        ).map(([name, n]) => (
-          <span key={name} className="pill crisis-pill" title={n > 1 ? `${n} active crises of this kind` : "Active crisis"}>
-            ⚠ {name}{n > 1 ? ` x${n}` : ""}
+          <span className="clock" title="Simulated time. One tick is about 6 in-world minutes.">
+            {world.clock.replace(/^Day (\d+) /, "Day $1, ")} · {PHASE_LABEL[world.phase] ?? world.phase}
           </span>
-        ))}
-        <TensionMeter />
-        <span className="grow" />
-        <StabilitySparkline />
-        <StabilityBadge />
-        <SpeedControl />
-        <SpendCounter />
+        )}
+        <button className="details-toggle" onClick={() => setDrawerOpen((o) => !o)} aria-expanded={drawerOpen}>
+          {drawerOpen ? "Hide details" : "Details"}
+        </button>
       </header>
 
-      <main className="layout">
+      <main className={`layout ${drawerOpen ? "with-drawer" : ""}`}>
         <div className="city">
           <CityStage />
-          <ToastStack />
           <ScenarioLauncher />
+          <Narrator />
         </div>
-        <aside className="sidebar">
-          <Inspector />
-          <RelationshipGraph />
-          <EventFeed />
-          <CouncilChamber />
-          <Timeline />
-          <Chronicle />
-          <StatsPanel />
-        </aside>
+        {drawerOpen && (
+          <aside className="sidebar" aria-label="Details">
+            <div className="panel status-row">
+              <StabilityBadge />
+              <TensionMeter />
+              <StabilitySparkline />
+              <SpeedControl />
+              <SpendCounter />
+            </div>
+            <Inspector />
+            <CouncilChamber />
+            <EventFeed />
+            <RelationshipGraph />
+            <Timeline />
+            <Chronicle />
+            <StatsPanel />
+          </aside>
+        )}
       </main>
     </div>
   );

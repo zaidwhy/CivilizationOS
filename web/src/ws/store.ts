@@ -85,6 +85,9 @@ export type HealthData = {
 
 type ConnState = "connecting" | "open" | "closed";
 
+/** What the narrator is talking about; the 3D stage glides the camera to it. */
+export type Focus = { kind: "location" | "citizen"; id: string } | null;
+
 interface WorldStore {
   conn: ConnState;
   world: WorldMessage | null;
@@ -94,7 +97,9 @@ interface WorldStore {
   debates: Record<string, DebateTurn[]>;
   activeDebateId: string | null;
   health: HealthData | null;
+  focus: Focus;
   setConn: (c: ConnState) => void;
+  setFocus: (f: Focus) => void;
   apply: (msg: WorldMessage) => void;
   select: (id: string | null) => void;
   refreshDetail: () => void;
@@ -114,7 +119,9 @@ export const useWorld = create<WorldStore>((set, get) => ({
   debates: emptyDebates,
   activeDebateId: null,
   health: null,
+  focus: null,
   setConn: (conn) => set({ conn }),
+  setFocus: (focus) => set({ focus }),
   apply: (msg) => set((s) => {
     if (msg.tick % 5 !== 0) return { world: msg };
     const fears = msg.citizens.map(c => c.fear ?? 0);
