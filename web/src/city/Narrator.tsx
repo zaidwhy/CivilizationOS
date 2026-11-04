@@ -12,9 +12,14 @@ const IDLE_TOUR_MS = 9000;  // with nothing live to say, the tour continues afte
 const BROWSE_HOLD_MS = 20000;
 const AFRAID = 0.6;
 
+// The server cuts long event text at a fixed length and ends it with an ellipsis; keep that
+// visible as "..." so a cut sentence never reads as a finished one.
 function trimText(text: string, max = 130) {
-  const clean = text.replace(/[…]+$/u, "").replace(/\s+/g, " ").trim();
-  return clean.length > max ? clean.slice(0, max).replace(/\s+\S*$/, "") + "..." : clean;
+  const clean = text.replace(/\s+/g, " ").trim();
+  const wasCut = /(…|\.\.\.)$/u.test(clean);
+  const body = clean.replace(/(…|\.\.\.)+$/u, "").trim();
+  if (body.length > max) return body.slice(0, max).replace(/\s+\S*$/, "") + "...";
+  return wasCut ? body.replace(/\s+\S*$/, "") + "..." : body;
 }
 
 function councilName(world: WorldMessage, institutionId: string) {
@@ -63,7 +68,7 @@ function lineForEvent(kind: string, text: string, world: WorldMessage, newlyClos
     };
   }
   if (kind === "decision" && inst) {
-    const plan = trimText(text.replace(/^VERDICT \[[^\]]+\]:\s*/, ""));
+    const plan = trimText(text.replace(/^VERDICT \[[^\]]+\]:\s*/, "").replace(/^VERDICT:\s*/i, ""));
     const noModel = /^\[[^\]]*unavailable\]/i.test(plan);
     return { text: `The ${councilName(world, inst)} council has voted on a plan.`,
       detail: noModel ? "The AI advisers could not be reached this time, so no plan was written." : plan,
