@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useWorld, DebateTurn } from "../ws/store";
-import { API_BASE } from "../config";
+import { API_ROOT } from "../config";
 
 const INSTITUTIONS = [
   { id: "inst_gov",     label: "Government" },
@@ -185,7 +185,7 @@ export default function CouncilChamber() {
   }, [liveTurns.length, liveId]);
 
   useEffect(() => {
-    fetch(`${API_BASE}/api/events/templates`)
+    fetch(`${API_ROOT}/events/templates`)
       .then((r) => r.json())
       .then((d) => setTemplates(d.templates ?? []))
       .catch(() => {});
@@ -193,7 +193,7 @@ export default function CouncilChamber() {
 
   useEffect(() => {
     const fetchCrises = () => {
-      fetch(`${API_BASE}/api/crises`)
+      fetch(`${API_ROOT}/crises`)
         .then((r) => r.json())
         .then((d: { crises: CrisisRecord[] }) => {
           setCustomCrises(
@@ -221,7 +221,7 @@ export default function CouncilChamber() {
     setInjecting(true);
     setError(null);
     try {
-      const res = await fetch(`${API_BASE}/api/crisis`, {
+      const res = await fetch(`${API_ROOT}/crisis`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -248,7 +248,7 @@ export default function CouncilChamber() {
     setResolving(key);
     setError(null);
     try {
-      const res = await fetch(`${API_BASE}/api/crisis/${key}/resolve`, { method: "POST" });
+      const res = await fetch(`${API_ROOT}/crisis/${key}/resolve`, { method: "POST" });
       if (!res.ok) {
         const d = await res.json().catch(() => ({}));
         setError(d.detail ?? `HTTP ${res.status}`);
@@ -264,7 +264,7 @@ export default function CouncilChamber() {
     setResolving(crisisId);
     setError(null);
     try {
-      const res = await fetch(`${API_BASE}/api/crisis/id/${crisisId}/resolve`, { method: "POST" });
+      const res = await fetch(`${API_ROOT}/crisis/id/${crisisId}/resolve`, { method: "POST" });
       if (!res.ok) {
         const d = await res.json().catch(() => ({}));
         setError(d.detail ?? `HTTP ${res.status}`);

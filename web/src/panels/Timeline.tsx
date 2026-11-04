@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { API_BASE } from "../config";
+import { API_ROOT } from "../config";
 
 type CausalEvent = {
   id: string;
@@ -42,7 +42,7 @@ export default function Timeline() {
   useEffect(() => {
     const fetchTimeline = async () => {
       try {
-        const res = await fetch(`${API_BASE}/api/timeline?k=200`);
+        const res = await fetch(`${API_ROOT}/timeline?k=200`);
         if (res.ok) {
           const d = await res.json();
           setEvents(d.events ?? []);

@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import { API_BASE, WS_URL } from "../config";
+import { API_ROOT, WS_URL } from "../config";
 
 export type Citizen = {
   id: string;
@@ -131,7 +131,7 @@ export const useWorld = create<WorldStore>((set, get) => ({
     const id = get().selectedId;
     if (!id) return;
     try {
-      const res = await fetch(`${API_BASE}/api/agent/${id}`);
+      const res = await fetch(`${API_ROOT}/agent/${id}`);
       const d = await res.json();
       if (!d.error && get().selectedId === id) set({ detail: d });
     } catch {
@@ -165,7 +165,7 @@ export function connectWorldSocket() {
 
   const pollHealth = async () => {
     try {
-      const res = await fetch(`${API_BASE}/api/health`);
+      const res = await fetch(`${API_ROOT}/health`);
       if (res.ok) {
         const d = await res.json();
         useWorld.getState().setHealth({
