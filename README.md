@@ -132,9 +132,10 @@ civilizationos/
 │
 ├── web/                        React 18 + Vite + TypeScript frontend
 │   └── src/
-│       ├── App.tsx              Layout, speed slider, spend counter, tension meter
+│       ├── App.tsx              Layout: light top bar, city, crisis launcher, details drawer
 │       ├── city/
-│       │   ├── CityStage3D.tsx  Three.js 3D city - orbit camera, bloom, PCF shadows (primary)
+│       │   ├── CityStage3D.tsx  Three.js daylight town - streets, houses, walking people, SSAO (primary)
+│       │   ├── Narrator.tsx     One plain sentence at a time from live events; drives the camera
 │       │   ├── CityStage.tsx    PixiJS isometric city (kept as fallback)
 │       │   └── iso.ts           Isometric math, palettes
 │       ├── panels/
@@ -145,8 +146,6 @@ civilizationos/
 │       │   ├── Timeline.tsx          Story Rewind - scrubbable causal event spine
 │       │   ├── StatsPanel.tsx        Fear histogram, council scorecards, session export
 │       │   └── Chronicle.tsx         LLM-generated newspaper-style city dispatch
-│       ├── components/
-│       │   └── Onboarding.tsx        5-step dismissible first-run tour
 │       └── ws/
 │           └── store.ts               Zustand store + WebSocket client + health poll
 │

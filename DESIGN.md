@@ -1,5 +1,14 @@
 # CivilizationOS - Design Language
 
+> **2026-11-04: the city view was redesigned; this file now covers the details drawer.**
+> The first screen is a daylight model town (`city/CityStage3D.tsx`) under a light top bar,
+> with one narrator sentence at a time (`city/Narrator.tsx`) instead of a legend, toasts and an
+> onboarding tour. The rule for that view: nothing is written on the map unless the narrator
+> or the pointer is about it; colour on the map means mood only (green calm, amber worried,
+> red afraid) and red cordons mark closed buildings. Light chrome tokens live in the
+> `topbar`, `narrator`, `launcher` and `map-tag` blocks of `index.css`. The dark tokens below
+> still govern the panels inside the Details drawer. `Onboarding.tsx` was removed.
+
 This documents the visual language that already exists in `web/src/index.css`, `App.tsx`,
 `panels/*.tsx`, `components/Onboarding.tsx`, and `city/CityStage3D.tsx` (the Three.js
 renderer actually mounted by `App.tsx` - see "Two city renderers" below). It is written

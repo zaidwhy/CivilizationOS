@@ -1538,3 +1538,12 @@ checked out at `research/tcmf_paper/paper/`.
 - Em dash scan: 314 hits, all inside `ml/dataset/council_voices.jsonl` (generated training data, left as recorded).
 - Local env: `.venv` (3.14) no longer exists; `.venv312` passes `pip check`.
 - Verified: `pytest api/tests` 76 passed; `pytest research/tcmf_paper` 214 passed, 1 skipped (sentence_transformers absent); `tsc --noEmit` 0 errors; `npm run build` clean; live `/health` 200 (21 s cold start); CI green on main.
+
+## 2026-11-04 - city view redesign and the live-site API fix
+
+- Live site bug: every REST call went to `<render>/api/...`, which 404s (the backend serves at the root; only Vite's dev proxy stripped `/api`). Crisis injection, stats, timeline and health were broken in production since the July deploy config. `config.ts` now exports `API_ROOT` (backend origin in production, `/api` in dev) and all 15 call sites use it.
+- City view rebuilt for a first-time viewer: a daylight model town (streets, kerbs, crossings, street trees, background houses and offices, cars, council halls with flags, a clinic with a red cross), walking people with a mood ring (green calm, amber worried, red afraid), red cordons on closed buildings, soft day-night light from the sim clock, SSAO. No permanent labels: hover names a thing, the narrator names one thing at a time.
+- `city/Narrator.tsx`: one plain sentence at a time from live events (crisis, fear, debate, verdict, resolution, conversations) with a guided tour when idle; it sets the store's `focus` and the camera glides there. Events are matched by identity, not tick, because a crisis is stamped with an already-broadcast tick.
+- Layout: light top bar with a one-line description; the old panels live in a Details drawer that opens on demand or when a person is clicked. Removed the onboarding modal, toast stack and map key (the narrator replaces them).
+- Backend: the world snapshot now lists each citizen's home as a `home` location (`home_<id>`, "<Name>'s home") so clients can draw houses; new test `test_snapshot_lists_each_citizens_home_as_a_place`.
+- Verified: `pytest api/tests` 77 passed; `tsc --noEmit` 0 errors; `npm run build` clean; local run in demo mode: crisis button starts a crisis, the clinic/park gets a cordon, the narrator says "A crisis hits the city: ... has closed." and the camera glides to it; the drawer opens with all panels. Benchmark suite not rerun (no retrieval code changed).
