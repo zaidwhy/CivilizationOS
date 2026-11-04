@@ -93,6 +93,8 @@ interface WorldStore {
   world: WorldMessage | null;
   stabilityHistory: [number, number][];  // [tick, score 0-100] sampled every 5 ticks
   selectedId: string | null;
+  /** Bumped on every select, so picking the same person again still counts as a pick. */
+  selectedAt: number;
   detail: AgentDetail | null;
   debates: Record<string, DebateTurn[]>;
   activeDebateId: string | null;
@@ -115,6 +117,7 @@ export const useWorld = create<WorldStore>((set, get) => ({
   world: null,
   stabilityHistory: [],
   selectedId: null,
+  selectedAt: 0,
   detail: null,
   debates: emptyDebates,
   activeDebateId: null,
@@ -131,7 +134,7 @@ export const useWorld = create<WorldStore>((set, get) => ({
     return { world: msg, stabilityHistory: next };
   }),
   select: (id) => {
-    set({ selectedId: id, detail: null });
+    set({ selectedId: id, selectedAt: Date.now(), detail: get().selectedId === id ? get().detail : null });
     if (id) get().refreshDetail();
   },
   refreshDetail: async () => {

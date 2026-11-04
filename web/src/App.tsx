@@ -243,12 +243,12 @@ function SpendCounter() {
 export default function App() {
   const conn = useWorld((s) => s.conn);
   const world = useWorld((s) => s.world);
-  const selectedId = useWorld((s) => s.selectedId);
+  const selectedAt = useWorld((s) => s.selectedAt);
   const [drawerOpen, setDrawerOpen] = useState(false);
 
   useEffect(() => connectWorldSocket(), []);
   // Clicking a person opens the drawer on their mind.
-  useEffect(() => { if (selectedId) setDrawerOpen(true); }, [selectedId]);
+  useEffect(() => { if (useWorld.getState().selectedId) setDrawerOpen(true); }, [selectedAt]);
 
   return (
     <div className="app">
