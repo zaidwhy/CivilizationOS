@@ -3,7 +3,8 @@
 // prefix, so the default root is "/api". In production (frontend and backend
 // on separate hosts, e.g. Vercel + Render) VITE_API_BASE is the backend's
 // origin and requests go straight to its root, with no /api prefix.
-export const API_ROOT = import.meta.env.VITE_API_BASE ?? "/api";
+// A trailing slash in the env value would otherwise produce "//crisis".
+export const API_ROOT = (import.meta.env.VITE_API_BASE ?? "/api").replace(/\/+$/, "");
 
 export const WS_URL =
   import.meta.env.VITE_WS_URL ??
