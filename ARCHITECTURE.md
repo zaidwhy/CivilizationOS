@@ -78,6 +78,38 @@ message reads or mutates that same instance.
 6. The Synthesizer's verdict is applied back into the simulation (fear levels, faction
    state) and logged as a new causal-graph node, closing the loop for the next crisis.
 
+## Data flow: what a visitor sees
+
+The browser holds one Zustand store (`web/src/ws/store.ts`); everything on screen reads it.
+
+```
+WebSocket "world" message (every tick)  ──►  store.world
+        │                                       │
+        │                       ┌───────────────┼──────────────────────┐
+        │                       ▼               ▼                      ▼
+        │             CityStage3D.tsx     Narrator.tsx           Details drawer
+        │             draws the town,     narration.ts rules:    (panels, REST:
+        │             people, cordons     event -> one sentence  /agent, /timeline,
+        │                                 + store.focus          /stats, ...)
+        │                                       │
+        │             camera glides to  ◄───────┘  store.focus = { location | citizen }
+```
+
+1. `Engine.snapshot()` sends the whole visible world each tick: locations (including one
+   home per citizen), citizens with position and fear, closed buildings, and the last 8
+   events from the log.
+2. `CityStage3D` rebuilds nothing per tick except people's targets; buildings are built
+   once from the first snapshot. People glide to their spot and walk while moving; the
+   ring under each person is their fear (green, amber, red).
+3. `Narrator` matches events by identity (`tick|kind|text`), not by tick, because the
+   engine stamps a crisis or verdict with a tick the client has already received.
+   `narration.ts` turns each new event into at most one sentence with a weight (crisis
+   and verdict 3, debate and fear 2, social 1, chatter 0) and a topic; a queued line with
+   the same topic is replaced, so a debate or a wave of fear stays one line.
+4. The narrator shows the heaviest waiting line for at least 6.5 s and sets
+   `store.focus`; the stage moves the camera there unless the visitor has dragged it in
+   the last 15 s. With nothing live to say, a short tour alternates with who is talking.
+
 ## Components
 
 | Component | File | Responsibility |
@@ -91,6 +123,9 @@ message reads or mutates that same instance.
 | LLMRouter | `api/llm/router.py` | `Tier` enum (0 local Ollama, 1 free-tier Gemini, 2 paid Claude/OpenRouter), budget cap enforcement |
 | VectorStore | `api/memory/vectorstore.py` | in-process embedding storage, no external service |
 | FastAPI app | `api/main.py` (511 lines, 17 routes + `/ws`) | HTTP/WebSocket surface, admin guard, crisis rate limiting |
+| City stage | `web/src/city/CityStage3D.tsx` | Three.js daylight town, people, cordons, hover, camera glide to `store.focus` |
+| Narration rules | `web/src/city/narration.ts` (tested in `narration.test.ts`) | which events become a sentence, its wording, queue order; pure functions |
+| Narrator | `web/src/city/Narrator.tsx` | timing, history browsing, sets `store.focus` |
 
 ## Failure modes
 
@@ -100,6 +135,8 @@ message reads or mutates that same instance.
 | A visitor spams `POST /crisis` | burns the shared LLM budget / spams every viewer's WebSocket | 30s global cooldown + a per-UTC-day cap (`CRISIS_DAILY_CAP`), both enforced in `_check_crisis_budget()` |
 | `POST /speed` or a manual crisis resolve from a random visitor | changes the simulation for every viewer | gated behind `X-Admin-Token` (`require_admin`), open only when `ADMIN_TOKEN` is unset (local dev) |
 | Process restart | the running society, its causal graph, and all debates are lost | accepted for a demo; nothing is durable by design (no database) |
+| Frontend and backend on different hosts disagree on URL shape | every REST call 404s while the WebSocket still works, so the page looks alive | `API_ROOT` in `web/src/config.ts` is the backend origin in production and `/api` only in dev, where Vite's proxy strips the prefix; this bug shipped from July to November 2026 because only `/health` and the page were checked |
+| More than 8 events logged between two broadcasts (fast speed, a debate and chatter at once) | the narrator never sees the earlier ones | accepted: the snapshot carries the last 8 by design; the Details drawer reads the full timeline over REST |
 | A debate's async task outlives the process shutting down (or a test's event loop) | a dangling-task warning at teardown | tests construct/tear down the `Engine` per-test; production has no such teardown path since the process runs continuously |
 | Causal-graph BFS at scale | walking backward from a crisis gets slower as the graph grows across a long-running session | acceptable at the 10-citizen / one-session scale this ships at; the first thing to change past that scale (see below) |
 
@@ -108,6 +145,7 @@ message reads or mutates that same instance.
 | Choice | Gain | Cost |
 |---|---|---|
 | In-process state over a database | far simpler to build and deploy for a demo | zero durability, no horizontal scaling |
+| One narrated sentence over seven always-open panels | a first-time visitor knows where to look | detail is one click away in the drawer, not on screen |
 | Additive over multiplicative fusion (benchmarked in `research/tcmf_paper/`) | causally relevant but semantically distant memories actually surface | two terms to balance with a lambda hyperparameter |
 | In-process vector store over Chroma/pgvector | no extra service at this scale (a handful of citizens, bounded memory streams) | must move out of process before many concurrent societies |
 | `DEMO_MODE` on the public deploy | the deploy stays free; crisis injection and debates stay fully live | no ambient loop, which needs the $0 Ollama tier that the cloud cannot reach |

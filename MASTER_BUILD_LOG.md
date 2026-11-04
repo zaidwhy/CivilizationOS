@@ -1547,3 +1547,11 @@ checked out at `research/tcmf_paper/paper/`.
 - Layout: light top bar with a one-line description; the old panels live in a Details drawer that opens on demand or when a person is clicked. Removed the onboarding modal, toast stack and map key (the narrator replaces them).
 - Backend: the world snapshot now lists each citizen's home as a `home` location (`home_<id>`, "<Name>'s home") so clients can draw houses; new test `test_snapshot_lists_each_citizens_home_as_a_place`.
 - Verified: `pytest api/tests` 77 passed; `tsc --noEmit` 0 errors; `npm run build` clean; local run in demo mode: crisis button starts a crisis, the clinic/park gets a cordon, the narrator says "A crisis hits the city: ... has closed." and the camera glides to it; the drawer opens with all panels. Benchmark suite not rerun (no retrieval code changed).
+
+## 2026-11-04 evening - review fixes, frontend tests, docs
+
+- Independent review of the redesign found 9 issues; fixed 8: people spinning after walking loops (sign of JS `%` in the heading wrap), the drawer not reopening on the same person, labels left in the DOM, the narrator dropping crises over its cap and skipping two tour lines, a fear wave becoming a minute of lines, muted events after a server restart, screen-reader flooding, phone layout and fog on narrow screens. Accepted and documented: the snapshot carries only the last 8 events.
+- `web/src/city/narration.ts`: the narrator's wording and queue rules as pure functions; 15 Vitest tests in `narration.test.ts`, checked by reverting two fixes on purpose (3 tests failed, then 15 passed again).
+- CI: new `web` job (npm ci, npm test, npm run build). Vitest 4.1.12, Vite 6.4.5; `npm audit` 0 vulnerabilities.
+- ARCHITECTURE.md: frontend data flow, new components, the API URL failure mode, the narrator tradeoff. README: live screenshot.
+- Verified: `npm test` 15 passed; `pytest api/tests` 77 passed; CI run 41831015616 green (test 39s, web 28s); live site 200 with the new bundle.
