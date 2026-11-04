@@ -5,12 +5,18 @@ import type { Focus, WorldMessage } from "../ws/store";
 // One plain sentence at a time about what the city is doing. Live events outrank the
 // guided tour; the camera follows whatever the current sentence names.
 
-type Line = { text: string; detail: string; focus: Focus; weight: number };
+// `topic` marks lines that replace each other while queued: the newest debate turn per
+// council, and one running "who is afraid" line instead of one line per person.
+type Line = { text: string; detail: string; focus: Focus; weight: number; topic?: string };
+type AfraidPerson = { id: string; first: string; job: string };
 
 const MIN_SHOW_MS = 6500;   // every sentence stays long enough to read
 const IDLE_TOUR_MS = 9000;  // with nothing live to say, the tour continues after this
 const BROWSE_HOLD_MS = 20000;
 const AFRAID = 0.6;
+const QUEUE_CAP = 12;
+// The council code writes "[Role unavailable]" when no language model answered.
+const NO_MODEL = /^\[[^\]]*unavailable\]/i;
 
 // The server cuts long event text at a fixed length and ends it with an ellipsis; keep that
 // visible as "..." so a cut sentence never reads as a finished one.
@@ -60,16 +66,20 @@ function lineForEvent(kind: string, text: string, world: WorldMessage, newlyClos
     const debate = useWorld.getState();
     const turns = debate.activeDebateId ? debate.debates[debate.activeDebateId] : undefined;
     const institution = turns?.[turns.length - 1]?.institution_id;
-    const speaker = text.match(/^\[([^\]]+)\]/)?.[1] ?? "An adviser";
+    const speaker = (text.match(/^\[([^\]]+)\]/)?.[1] ?? "").replace(/^[^\p{L}]+/u, "") || "An adviser";
+    const said = text.replace(/^\[[^\]]+\]\s*/, "");
     return {
       text: `The ${institution ? councilName(world, institution) : "city"} council is debating what to do.`,
-      detail: `${speaker}: "${trimText(text.replace(/^\[[^\]]+\]\s*/, ""), 110)}"`,
+      detail: NO_MODEL.test(said) ? "The AI advisers could not be reached this time." : `${speaker}: "${trimText(said, 110)}"`,
       focus: institution ? { kind: "location", id: institution } : null, weight: 2,
+      topic: `debate:${institution ?? "unknown"}`,
     };
   }
   if (kind === "decision" && inst) {
-    const plan = trimText(text.replace(/^VERDICT \[[^\]]+\]:\s*/, "").replace(/^VERDICT:\s*/i, ""));
-    const noModel = /^\[[^\]]*unavailable\]/i.test(plan);
+    const raw = text.replace(/^VERDICT \[[^\]]+\]:\s*/, "").replace(/^VERDICT:\s*/i, "");
+    // Checked on the raw text: trimming can cut the word "unavailable" off the end.
+    const noModel = NO_MODEL.test(raw);
+    const plan = trimText(raw);
     return { text: `The ${councilName(world, inst)} council has voted on a plan.`,
       detail: noModel ? "The AI advisers could not be reached this time, so no plan was written." : plan,
       focus: { kind: "location", id: inst }, weight: 3 };
@@ -93,6 +103,16 @@ function lineForEvent(kind: string, text: string, world: WorldMessage, newlyClos
   return null;
 }
 
+function fearLine(people: AfraidPerson[]): Line {
+  const names = people.map((p) => p.first);
+  const text = names.length === 1 ? `${names[0]} is afraid.`
+    : names.length === 2 ? `${names[0]} and ${names[1]} are afraid.`
+    : `${names[0]}, ${names[1]} and ${names.length - 2} ${names.length === 3 ? "other" : "others"} are afraid.`;
+  const spread = "Fear spreads as people talk to each other.";
+  return { text, detail: names.length === 1 ? `${people[0].job}${spread}` : spread,
+    focus: { kind: "citizen", id: people[0].id }, weight: 2, topic: "fear" };
+}
+
 export default function Narrator() {
   const [shown, setShown] = useState<Line | null>(null);
   const [historyIndex, setHistoryIndex] = useState(-1);
@@ -100,17 +120,41 @@ export default function Narrator() {
   const queue = useRef<Line[]>([]);
   const ambient = useRef<Line | null>(null);
   const shownAt = useRef(0);
-  const tourStep = useRef(0);
+  const tourIndex = useRef(0);
+  const ambientTurn = useRef(false);
+  const lastTick = useRef(-1);
+  const lastCrisisAt = useRef(0);
+  const afraidQueued = useRef<AfraidPerson[]>([]);
   const browseUntil = useRef(0);
   const seenEvents = useRef<Set<string>>(new Set());
   const primed = useRef(false);
   const prevClosed = useRef<Set<string>>(new Set());
   const afraidNow = useRef<Set<string>>(new Set());
 
+  function enqueue(line: Line) {
+    const same = line.topic ? queue.current.findIndex((l) => l.topic === line.topic) : -1;
+    if (same !== -1) queue.current[same] = line;
+    else queue.current.push(line);
+    // Over the cap, drop the oldest of the least important lines, so a crisis or verdict survives.
+    while (queue.current.length > QUEUE_CAP) {
+      const lowest = Math.min(...queue.current.map((l) => l.weight));
+      queue.current.splice(queue.current.findIndex((l) => l.weight === lowest), 1);
+    }
+  }
+
   // Live events and fear changes become queued sentences.
   useEffect(() => useWorld.subscribe((state, prev) => {
     const world = state.world;
     if (!world || world === prev.world) return;
+    // The server restarted (its tick went back): start fresh so replayed events are not muted.
+    if (world.tick < lastTick.current - 5) {
+      seenEvents.current = new Set();
+      primed.current = false;
+      afraidNow.current = new Set();
+      afraidQueued.current = [];
+      queue.current = [];
+    }
+    lastTick.current = world.tick;
     const closedNow = new Set(world.closed_locations ?? []);
     const newlyClosed = [...closedNow].filter((id) => !prevClosed.current.has(id));
     prevClosed.current = closedNow;
@@ -127,24 +171,31 @@ export default function Narrator() {
       const line = lineForEvent(e.kind, e.text, world, newlyClosed);
       if (!line) continue;
       if (line.weight === 0) { ambient.current = line; continue; }
-      const last = queue.current[queue.current.length - 1];
-      // A debate produces many turns; keep only the newest turn per council in the queue.
-      if (last && last.weight === 2 && line.weight === 2 && last.text === line.text) queue.current[queue.current.length - 1] = line;
-      else queue.current.push(line);
+      // One crisis logs a "crisis" event per council it touches; tell it once.
+      if (e.kind === "crisis" && (queue.current.some((l) => l.topic === "crisis") || Date.now() - lastCrisisAt.current < 20000)) continue;
+      if (e.kind === "crisis") { line.topic = "crisis"; lastCrisisAt.current = Date.now(); }
+      enqueue(line);
     }
 
+    let fearChanged = false;
     for (const c of world.citizens) {
       const wasAfraid = afraidNow.current.has(c.id);
       if (c.fear >= AFRAID && !wasAfraid) {
         afraidNow.current.add(c.id);
         const job = c.occupation ? c.occupation[0].toUpperCase() + c.occupation.slice(1) + ". " : "";
-        queue.current.push({ text: `${c.name.split(" ")[0]} is afraid.`, detail: `${job}Click them to read what they remember.`,
-          focus: { kind: "citizen", id: c.id }, weight: 2 });
+        afraidQueued.current.push({ id: c.id, first: c.name.split(" ")[0], job });
+        fearChanged = true;
       } else if (c.fear < AFRAID - 0.1 && wasAfraid) {
         afraidNow.current.delete(c.id);
+        afraidQueued.current = afraidQueued.current.filter((p) => p.id !== c.id);
+        fearChanged = true;
       }
     }
-    queue.current = queue.current.slice(-12);
+    // One running line names everyone who became afraid and has not been narrated yet.
+    if (fearChanged) {
+      queue.current = queue.current.filter((l) => l.topic !== "fear");
+      if (afraidQueued.current.length) enqueue(fearLine(afraidQueued.current));
+    }
   }), []);
 
   // The pacing loop: show the most important waiting sentence, or continue the tour.
@@ -159,12 +210,18 @@ export default function Narrator() {
         const best = Math.max(...queue.current.map((l) => l.weight));
         const at = queue.current.findIndex((l) => l.weight === best);
         next = queue.current.splice(at, 1)[0];
+        if (next.topic === "fear") afraidQueued.current = [];
       } else if (elapsed >= IDLE_TOUR_MS || shownAt.current === 0) {
-        const tour = tourLines(world);
-        const useAmbient = ambient.current && tourStep.current % 2 === 1;
-        next = useAmbient ? ambient.current! : tour[tourStep.current % tour.length];
-        if (useAmbient) ambient.current = null;
-        tourStep.current++;
+        // Tour sentences and "who is talking" lines take turns; each keeps its own place.
+        if (ambientTurn.current && ambient.current) {
+          next = ambient.current;
+          ambient.current = null;
+        } else {
+          const tour = tourLines(world);
+          next = tour[tourIndex.current % tour.length];
+          tourIndex.current++;
+        }
+        ambientTurn.current = !ambientTurn.current;
       }
       if (!next) return;
       shownAt.current = now;
@@ -189,13 +246,19 @@ export default function Narrator() {
 
   if (!shown) return null;
   const atNewest = historyIndex === -1;
+  const atOldest = historyIndex === 0 || history.current.length <= 1;
+  const person = shown.focus?.kind === "citizen" ? shown.focus.id : null;
   return (
-    <div className="narrator" role="status" aria-live="polite">
-      <button className="narrator-step" onClick={() => browse(-1)} aria-label="Previous sentence">&#8249;</button>
-      <p key={shown.text + shown.detail}>
+    <div className="narrator">
+      <button className="narrator-step" onClick={() => browse(-1)} disabled={atOldest} aria-label="Previous sentence">&#8249;</button>
+      {/* Only live news is announced to screen readers; the looping tour stays quiet. */}
+      <p key={shown.text + shown.detail} aria-live={shown.weight >= 2 ? "polite" : "off"}>
         {shown.text}
         {shown.detail && <small>{shown.detail}</small>}
       </p>
+      {person && (
+        <button className="narrator-act" onClick={() => useWorld.getState().select(person)}>Read their mind</button>
+      )}
       <button className="narrator-step" onClick={() => browse(1)} disabled={atNewest} aria-label="Next sentence">&#8250;</button>
     </div>
   );

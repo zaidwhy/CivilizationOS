@@ -125,6 +125,25 @@ body {
 }
 .narrator-step:hover:not(:disabled) { background: #e2e5ea; }
 .narrator-step:disabled { opacity: 0.35; cursor: default; }
+.narrator-act {
+  flex: none; border: 0; border-radius: 7px; padding: 8px 12px;
+  background: #1f2937; color: #fff; font-size: 12.5px; font-weight: 600; cursor: pointer; white-space: nowrap;
+}
+.narrator-act:hover { background: #111827; }
+
+/* Phones: the drawer stacks under the city instead of squeezing it to a sliver. */
+@media (max-width: 760px) {
+  .tagline, .clock { display: none; }
+  .topbar { gap: 10px; padding: 8px 12px; }
+  .layout.with-drawer { grid-template-columns: 1fr; grid-template-rows: minmax(0, 1fr) 55vh; }
+  .layout.with-drawer .sidebar { border-left: 0; border-top: 1px solid var(--line); }
+  .narrator { bottom: 12px; padding: 10px 12px; gap: 8px; flex-wrap: wrap; }
+  .narrator p { font-size: 15px; flex-basis: calc(100% - 92px); }
+  .narrator small { font-size: 12px; }
+  .narrator-act { order: 3; width: 100%; }
+  .layout.with-drawer .narrator { display: none; }
+  .launcher { top: 10px; right: 10px; }
+}
 
 /* ---- crisis launcher ---- */
 .launcher { position: absolute; top: 14px; right: 14px; z-index: 12; display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
