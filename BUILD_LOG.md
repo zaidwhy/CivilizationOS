@@ -5,7 +5,7 @@ Cumulative record of every phase, what shipped, and current status.
 ---
 
 ## Phase 9 - LoRA Fine-Tune + civos-council Model
-**Date:** 2026-06-22 | **Handoff:** `HANDOFF_PHASE9.md`
+**Date:** 2026-06-22 | **Handoff:** `handoffs/HANDOFF_PHASE9.md`
 
 ### Shipped
 - Fixed all Colab training errors (MLflow backend, SFTConfig migration, persona gate)
@@ -23,7 +23,7 @@ Cumulative record of every phase, what shipped, and current status.
 ---
 
 ## Phase 8 - Speech Bubbles, Graph Tooltip, Council Wiring
-**Date:** 2026-06-21 | **Handoff:** `HANDOFF_PHASE8.md`
+**Date:** 2026-06-21 | **Handoff:** `handoffs/HANDOFF_PHASE8.md`
 
 ### Shipped
 - Speech bubbles: name prefix stripped, 50-char cap, pointer tail, 10-tick TTL
@@ -36,7 +36,7 @@ Cumulative record of every phase, what shipped, and current status.
 ---
 
 ## Phase 7 - Housing Crisis + Relationship Graph
-**Date:** ~2026-06-20 | **Handoff:** `HANDOFF_PHASE7.md`
+**Date:** ~2026-06-20 | **Handoff:** `handoffs/HANDOFF_PHASE7.md`
 
 ### Shipped
 - 6th crisis template: Housing Crisis (`inst_economy`, closes Exchange)
@@ -47,7 +47,7 @@ Cumulative record of every phase, what shipped, and current status.
 ---
 
 ## Phase 6 - Crisis System, Fear, Location Closure
-**Date:** ~2026-06-19 | **Handoff:** `HANDOFF_PHASE6.md`
+**Date:** ~2026-06-19 | **Handoff:** `handoffs/HANDOFF_PHASE6.md`
 
 ### Shipped
 - 5 crisis templates: Pandemic, Drought, Cyberattack, Election, Crime Wave
@@ -60,7 +60,7 @@ Cumulative record of every phase, what shipped, and current status.
 ---
 
 ## Phase 5 - PANTHEON Council + Debate System
-**Date:** ~2026-06-18 | **Handoff:** `HANDOFF_PHASE5.md`
+**Date:** ~2026-06-18 | **Handoff:** `handoffs/HANDOFF_PHASE5.md`
 
 ### Shipped
 - 5-role council: Historian, Strategist, Skeptic, Predictor, Synthesizer

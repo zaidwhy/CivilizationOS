@@ -1531,3 +1531,10 @@ checked out at `research/tcmf_paper/paper/`.
 - ARCHITECTURE.md: keepalive now described as reducing cold starts, not preventing them (GitHub runs the 10-minute cron hours apart; a 23 s cold start measured 2026-10-28); tradeoffs as a table; shipped per-call logging removed from Future.
 - Dependabot: urllib3 2.8.0, certifi 2026.10.18, vite 6.4.4, source-map-js 1.2.2.
 - Verified: `pytest api/tests` 76 passed; `npm run build` clean; `npm audit` 0 vulnerabilities.
+
+## 2026-11-04 - refinement pass before a recorded code walkthrough
+
+- Repo root tidied for a reviewer: five phase handoffs and the 2026-10-22 handoff moved into `handoffs/`, `PLAN_3D_CITY.md` into `docs/`; `BUILD_LOG.md` handoff paths updated. No code changed.
+- Em dash scan: 314 hits, all inside `ml/dataset/council_voices.jsonl` (generated training data, left as recorded).
+- Local env: `.venv` (3.14) no longer exists; `.venv312` passes `pip check`.
+- Verified: `pytest api/tests` 76 passed; `pytest research/tcmf_paper` 214 passed, 1 skipped (sentence_transformers absent); `tsc --noEmit` 0 errors; `npm run build` clean; live `/health` 200 (21 s cold start); CI green on main.
