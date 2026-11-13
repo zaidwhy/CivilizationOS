@@ -1572,3 +1572,4 @@ checked out at `research/tcmf_paper/paper/`.
 - Paper (private repo, 4fa92f6): three scope statements added to Limitations in all three versions; no result changed; page counts 12 / 6 / 41 unchanged.
 - Verified: `pytest api/tests` 83 passed; `pytest research/tcmf_paper/tcmfbench` 214 passed, 1 skipped; audit suite 25 passed; 3,198 audited rows regenerate with 0 mismatches; Tier B replays offline to an identical summary.
 - Not done: `_remember` still stores no embedding; the linker is unchanged; no live engine replay; `docs/tcmf.md:168` has one pre-existing craft-guard finding left alone.
+- Merged as PR #15 (b2ea56f) on Zaid's instruction; CI on `main` passed (test, web). Live checks after the merge: frontend 200, API `/health` 200 with version 0.13.0. `/health` reports no commit, so whether the hosted process has redeployed with the new retriever was not confirmed.
