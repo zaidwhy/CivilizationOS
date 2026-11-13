@@ -1563,3 +1563,12 @@ checked out at `research/tcmf_paper/paper/`.
 - Two independent model reviews changed about 20 statements, several against my first reading; `audit/REVIEW_LOG.md`.
 - Verified: `pytest tests` in the audit folder 19 passed; 3,372 stored rows regenerate with 0 mismatches; Tier B replays offline from the committed caches to a byte-identical SUMMARY.md; craft-guard 0 findings.
 - Open for Zaid: whether to push the branch (public repo, paper under anonymous review); whether to remove the weak-ancestor rule and embed `_remember` memories (product decision, nothing in `api/` was touched); the three manuscript checks listed under "For the paper".
+
+## 2026-11-13 evening - TCMF retriever fix after the audit, manuscript limitations
+
+- `api/memory/tcmf.py`: three defaults changed. `weak_ancestor_depth` 3 -> 0.5 (unlinked institution events now rank below every linked cause), `causal_sim_threshold` 0.45 -> 0.60 (tuned for nomic-embed-text), `max_depth` 4 -> 8. `tcmfbench/methods.py` pins the old values so the paper's committed results regenerate unchanged (checked on `results_main` and `results_mixed`).
+- Measured in `research/tcmf_paper/audit` (REPORT.md, "Addendum: the fix"): perfect graph, 18 unrelated events, root in top 8 0.25 -> 1.00; LLM decisions from the top five 0.02 -> 0.76; shuffled-graph control now falls to 0. Cost: on the production linker's graph with a cause it cannot reach, end-to-end decisions are 0.03-0.11 lower than before.
+- Tried and reverted: narrowing the prompt's "CAUSAL CHAIN" to linked events (+0.13 to +0.36 on a correct graph, -0.04 to -0.21 on the linker's graph).
+- Paper (private repo, 4fa92f6): three scope statements added to Limitations in all three versions; no result changed; page counts 12 / 6 / 41 unchanged.
+- Verified: `pytest api/tests` 83 passed; `pytest research/tcmf_paper/tcmfbench` 214 passed, 1 skipped; audit suite 25 passed; 3,198 audited rows regenerate with 0 mismatches; Tier B replays offline to an identical summary.
+- Not done: `_remember` still stores no embedding; the linker is unchanged; no live engine replay; `docs/tcmf.md:168` has one pre-existing craft-guard finding left alone.
