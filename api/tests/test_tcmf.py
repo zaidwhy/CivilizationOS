@@ -191,3 +191,95 @@ class TestTCMFRetriever:
             router=None,
         )
         assert len(ctx.fused_memories) >= 1
+
+
+# ------------------------------------------------------------------ weak ancestors
+
+def _axis(i: int, dim: int = 16) -> list[float]:
+    v = [0.0] * dim
+    v[i] = 1.0
+    return v
+
+
+class TestWeakAncestors:
+    """A recent event the graph does not link to the crisis is a fallback, never a rival to a
+    linked cause. Found by research/tcmf_paper/audit: the old rule gave it depth 3, above a
+    direct cause at depth 1."""
+
+    def _world(self, chain_len: int, unrelated: int):
+        """root -> ... -> crisis, plus unrelated earlier events of the same institution. Each
+        event has one witness memory with the event's own embedding."""
+        cg = CausalGraph()
+        citizens = {p.id: Citizen(p) for p in SEED_CITIZENS[:3]}
+        ids = list(citizens)
+        witness_of: dict[str, str] = {}
+
+        def add(event_id: str, axis: int, tick: int) -> None:
+            cg.add_event(event_id, f"event {event_id}", tick=tick, kind="decision",
+                         institution_id="inst_gov", embedding=_axis(axis))
+            mem = citizens[ids[axis % 3]].memory.add(
+                f"I saw {event_id}", tick, importance=5.0, embedding=_axis(axis))
+            witness_of[event_id] = mem.id
+
+        for j in range(unrelated):
+            add(f"unrelated{j}", 8 + j, tick=20 + j)
+        for i in range(chain_len):
+            add(f"cause{i}", i, tick=40 + i)       # cause0 is the root
+        cg.add_event("crisis", "the crisis", tick=90, kind="crisis",
+                     institution_id="inst_gov", embedding=_axis(15))
+        for i in range(chain_len):
+            cg.link(f"cause{i}", f"cause{i + 1}" if i + 1 < chain_len else "crisis")
+        return cg, citizens, witness_of
+
+    async def _ranking(self, cg, citizens, **kwargs) -> tuple[list[str], str]:
+        ctx = await TCMFRetriever(cg, **kwargs).retrieve(
+            question="why did this happen", citizens=citizens, tick=91,
+            institution_id="inst_gov", crisis_event_id="crisis", k=50, router=None,
+        )
+        return [mem.id for _, mem, _ in ctx.fused_memories], ctx.context_text
+
+    @pytest.mark.asyncio
+    async def test_direct_cause_outranks_every_unlinked_event(self):
+        cg, citizens, witness_of = self._world(chain_len=1, unrelated=6)
+        ranking, _ = await self._ranking(cg, citizens)
+        assert ranking[0] == witness_of["cause0"]
+
+    @pytest.mark.asyncio
+    async def test_every_linked_cause_outranks_every_unlinked_event(self):
+        cg, citizens, witness_of = self._world(chain_len=3, unrelated=6)
+        ranking, _ = await self._ranking(cg, citizens)
+        causes = {witness_of[f"cause{i}"] for i in range(3)}
+        assert set(ranking[:3]) == causes
+        assert ranking[0] == witness_of["cause0"], "the root cause ranks first"
+
+    @pytest.mark.asyncio
+    async def test_unlinked_events_still_rank_above_unmatched_memories(self):
+        """The fallback survives: with no edges at all, event witnesses beat background."""
+        cg, citizens, witness_of = self._world(chain_len=0, unrelated=4)
+        background = citizens["ava"].memory.add("weather was fine", 60, importance=5.0,
+                                                embedding=_axis(7))
+        ranking, _ = await self._ranking(cg, citizens)
+        assert ranking.index(background.id) == len(ranking) - 1
+
+    @pytest.mark.asyncio
+    async def test_root_six_hops_back_is_reached(self):
+        cg, citizens, witness_of = self._world(chain_len=6, unrelated=2)
+        ranking, _ = await self._ranking(cg, citizens)
+        assert ranking[0] == witness_of["cause0"]
+
+    @pytest.mark.asyncio
+    async def test_causal_chain_text_still_lists_weak_ancestors(self):
+        """Narrowing the chain to linked events was measured and reverted: it misleads the
+        reader whenever the linker's edges are wrong. See the comment at step 6 of retrieve."""
+        cg, citizens, _ = self._world(chain_len=2, unrelated=3)
+        _, text = await self._ranking(cg, citizens)
+        chain = text.split("CAUSAL CHAIN")[1]
+        assert "cause0" in chain and "cause1" in chain
+        assert "unrelated0" in chain
+
+    @pytest.mark.asyncio
+    async def test_old_depth_three_is_still_selectable_and_shows_the_defect(self):
+        """The benchmark pins the configuration the paper measured; this is what it did."""
+        cg, citizens, witness_of = self._world(chain_len=1, unrelated=6)
+        ranking, _ = await self._ranking(cg, citizens, weak_ancestor_depth=3, max_depth=4)
+        assert ranking.index(witness_of["cause0"]) == 6, "six unlinked events outrank the cause"

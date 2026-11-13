@@ -244,7 +244,11 @@ async def rank_tcmf(
 ) -> list[str]:
     """The REAL, shipped TCMFRetriever (post-fix: normalized-additive + favor-root)."""
     sc = mat.scenario
-    retr = TCMFRetriever(mat.graph, causal_boost=lam, causal_sim_threshold=threshold)
+    # Pinned to the retriever as it shipped when these results were measured (ancestor walk
+    # of 4, weak ancestors at depth 3). The defaults changed on 2026-11-13 after the audit in
+    # ../audit/REPORT.md; without the pin every committed `tcmf_shipped` row would drift.
+    retr = TCMFRetriever(mat.graph, causal_boost=lam, causal_sim_threshold=threshold,
+                         max_depth=4, weak_ancestor_depth=3)
     ctx = await retr.retrieve(
         question=sc.query_text, citizens=mat.citizens, tick=sc.events[-1].tick + 1,
         institution_id=sc.institution_id,

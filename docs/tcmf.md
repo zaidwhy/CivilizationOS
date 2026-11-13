@@ -72,6 +72,10 @@ There were three other real bugs the same benchmarking pass caught, each documen
 - **The crisis could leak a boost to itself.** The institution-scoped "weak ancestor" fallback didn't exclude the crisis event, so a crisis could occasionally boost memories that merely resembled itself, undermining the causal signal it was supposed to isolate.
 - **Per-citizen pre-filtering discarded root-cause memories before the causal boost ever saw them.** Retrieving only each citizen's episodic top-k before fusion meant a low-relevance root-cause memory could be filtered out before the causal term had a chance to rescue it. The candidate pool now stays large through fusion, then gets cut down after.
 
+A fifth bug survived that pass, because the benchmark could not see it. The retriever also treats the institution's last 20 events as "weak ancestors" as a fallback for missing edges, and it gave them depth 3. Depth is weight here, so an event with no causal link to the crisis outranked the crisis's direct cause at depth 1. The benchmark's graphs held only the causal chain, where that rule adds nothing. An independent audit (`research/tcmf_paper/audit/REPORT.md`, 2026-11-13) put unrelated events in the graph: with a perfect graph and 18 of them, the root cause reached the top 8 on 25% of scenarios, and on real text with `nomic-embed-text` an LLM reader given the retriever's top five scored 0.02 against a no-memory floor of 0.25. Three defaults changed as a result: weak ancestors sit at depth 0.5, below every linked cause; the similarity threshold is 0.60, the value tuned for `nomic-embed-text` (at 0.45, 84% of memories cleared it against some logged event); and the ancestor walk goes 8 hops, not 4. After the change the same two measurements are 100% and 0.76.
+
+The same audit measured what this retriever does not do. Its result with a correct graph is matched by a plain reader of the same graph with no fusion at all, so the value is in the graph. And `auto_link_predecessors()` only links events inside a 48-tick window, by time and similarity, so it cannot supply the edge to an old cause that looks unlike the crisis, which is the case this document opens with.
+
 I did not find any of this by inspection. The multiplicative formula reads fine on paper - it's a plausible design a reasonable engineer would ship without a benchmark to check it against. I found it because the benchmark was built first, run against the shipped code, and read honestly rather than assumed to agree with the design intent.
 
 ---
@@ -121,7 +125,7 @@ def _causal_boost_for_memory(self, memory, ancestors, max_depth):
         sim = _cosine(memory.embedding, ev["embedding"])
         if sim >= self.causal_sim_threshold:
             # deeper ancestor = closer to the root cause = higher weight (the F5 fix).
-            depth_weight = depth / max(max_depth, 1)
+            depth_weight = depth / max_depth if max_depth > 0 else 0.0
             best = max(best, sim * depth_weight)
     return best
 ```

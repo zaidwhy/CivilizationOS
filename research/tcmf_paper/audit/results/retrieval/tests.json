@@ -1,0 +1,722 @@
+{
+  "H1 | tcmf_deployed - graph_union | paper condition (chain-only graph)": {
+    "hypothesis": "H1",
+    "root_hit": {
+      "a": 1.0,
+      "b": 1.0,
+      "diff": 0.0,
+      "lo": 0.0,
+      "hi": 0.0,
+      "p": 1.0,
+      "n": 500.0,
+      "identical_on_every_scenario": true,
+      "p_holm": 1.0
+    },
+    "root_hit8": {
+      "a": 1.0,
+      "b": 1.0,
+      "diff": 0.0,
+      "lo": 0.0,
+      "hi": 0.0,
+      "p": 1.0,
+      "n": 500.0,
+      "identical_on_every_scenario": true
+    },
+    "root_hit12": {
+      "a": 1.0,
+      "b": 1.0,
+      "diff": 0.0,
+      "lo": 0.0,
+      "hi": 0.0,
+      "p": 1.0,
+      "n": 500.0,
+      "identical_on_every_scenario": true
+    },
+    "root_mrr": {
+      "a": 1.0,
+      "b": 0.5266666666666667,
+      "diff": 0.4733333333333334,
+      "lo": 0.44240000000000007,
+      "hi": 0.504,
+      "p": 9.999000099990002e-05,
+      "n": 500.0,
+      "identical_on_every_scenario": false
+    },
+    "verdict_at_5": "within the margin"
+  },
+  "H1 | tcmf_deployed - graph_union | perfect graph, other events present": {
+    "hypothesis": "H1",
+    "root_hit": {
+      "a": 0.618,
+      "b": 1.0,
+      "diff": -0.382,
+      "lo": -0.424,
+      "hi": -0.34195000000000075,
+      "p": 9.999000099990002e-05,
+      "n": 500.0,
+      "identical_on_every_scenario": false,
+      "p_holm": 0.0015998400159984002
+    },
+    "root_hit8": {
+      "a": 1.0,
+      "b": 1.0,
+      "diff": 0.0,
+      "lo": 0.0,
+      "hi": 0.0,
+      "p": 1.0,
+      "n": 500.0,
+      "identical_on_every_scenario": true
+    },
+    "root_hit12": {
+      "a": 1.0,
+      "b": 1.0,
+      "diff": 0.0,
+      "lo": 0.0,
+      "hi": 0.0,
+      "p": 1.0,
+      "n": 500.0,
+      "identical_on_every_scenario": true
+    },
+    "root_mrr": {
+      "a": 0.2604428571428572,
+      "b": 0.5266666666666667,
+      "diff": -0.2662238095238096,
+      "lo": -0.29541749999999994,
+      "hi": -0.23816654761904765,
+      "p": 9.999000099990002e-05,
+      "n": 500.0,
+      "identical_on_every_scenario": false
+    },
+    "verdict_at_5": "first arm worse by more than the margin"
+  },
+  "H2 | tcmf_deployed - vector | deployed linker, deployed|root_age=60-150|rho=0.0": {
+    "hypothesis": "H2",
+    "root_hit": {
+      "a": 0.44,
+      "b": 0.0,
+      "diff": 0.44,
+      "lo": 0.396,
+      "hi": 0.482,
+      "p": 9.999000099990002e-05,
+      "n": 500.0,
+      "identical_on_every_scenario": false,
+      "p_holm": 0.0015998400159984002
+    },
+    "root_hit8": {
+      "a": 0.922,
+      "b": 0.068,
+      "diff": 0.854,
+      "lo": 0.822,
+      "hi": 0.884,
+      "p": 9.999000099990002e-05,
+      "n": 500.0,
+      "identical_on_every_scenario": false
+    },
+    "root_hit12": {
+      "a": 1.0,
+      "b": 0.22,
+      "diff": 0.78,
+      "lo": 0.744,
+      "hi": 0.816,
+      "p": 9.999000099990002e-05,
+      "n": 500.0,
+      "identical_on_every_scenario": false
+    },
+    "root_mrr": {
+      "a": 0.22837857142857143,
+      "b": 0.05906020115652061,
+      "diff": 0.16931837027205082,
+      "lo": 0.15500068974319745,
+      "hi": 0.18417559975357348,
+      "p": 9.999000099990002e-05,
+      "n": 500.0,
+      "identical_on_every_scenario": false
+    },
+    "verdict_at_5": "first arm better by more than the margin"
+  },
+  "H2 | tcmf_deployed - vector | deployed linker, deployed|root_age=60-150|rho=0.5": {
+    "hypothesis": "H2",
+    "root_hit": {
+      "a": 0.898,
+      "b": 0.0,
+      "diff": 0.898,
+      "lo": 0.872,
+      "hi": 0.924,
+      "p": 9.999000099990002e-05,
+      "n": 500.0,
+      "identical_on_every_scenario": false,
+      "p_holm": 0.0015998400159984002
+    },
+    "root_hit8": {
+      "a": 0.986,
+      "b": 0.624,
+      "diff": 0.362,
+      "lo": 0.318,
+      "hi": 0.406,
+      "p": 9.999000099990002e-05,
+      "n": 500.0,
+      "identical_on_every_scenario": false
+    },
+    "root_hit12": {
+      "a": 1.0,
+      "b": 1.0,
+      "diff": 0.0,
+      "lo": 0.0,
+      "hi": 0.0,
+      "p": 1.0,
+      "n": 500.0,
+      "identical_on_every_scenario": true
+    },
+    "root_mrr": {
+      "a": 0.4485746031746032,
+      "b": 0.1257063492063492,
+      "diff": 0.322868253968254,
+      "lo": 0.29871966269841266,
+      "hi": 0.34777946428571427,
+      "p": 9.999000099990002e-05,
+      "n": 500.0,
+      "identical_on_every_scenario": false
+    },
+    "verdict_at_5": "first arm better by more than the margin"
+  },
+  "H4 | tcmf_deployed - vector | rho=0.2|rho_decoy=same|noisy": {
+    "hypothesis": "H4",
+    "root_hit": {
+      "a": 0.692,
+      "b": 0.0,
+      "diff": 0.692,
+      "lo": 0.652,
+      "hi": 0.73,
+      "p": 9.999000099990002e-05,
+      "n": 500.0,
+      "identical_on_every_scenario": false,
+      "p_holm": 0.0015998400159984002
+    },
+    "root_hit8": {
+      "a": 0.99,
+      "b": 0.216,
+      "diff": 0.774,
+      "lo": 0.736,
+      "hi": 0.812,
+      "p": 9.999000099990002e-05,
+      "n": 500.0,
+      "identical_on_every_scenario": false
+    },
+    "root_hit12": {
+      "a": 1.0,
+      "b": 0.608,
+      "diff": 0.392,
+      "lo": 0.348,
+      "hi": 0.436,
+      "p": 9.999000099990002e-05,
+      "n": 500.0,
+      "identical_on_every_scenario": false
+    },
+    "root_mrr": {
+      "a": 0.25833492063492064,
+      "b": 0.09209724114051446,
+      "diff": 0.16623767949440615,
+      "lo": 0.15348769808528154,
+      "hi": 0.17961617280751233,
+      "p": 9.999000099990002e-05,
+      "n": 500.0,
+      "identical_on_every_scenario": false
+    },
+    "verdict_at_5": "first arm better by more than the margin"
+  },
+  "H4 | tcmf_deployed - vector | rho=0.4|rho_decoy=same|noisy": {
+    "hypothesis": "H4",
+    "root_hit": {
+      "a": 0.694,
+      "b": 0.0,
+      "diff": 0.694,
+      "lo": 0.652,
+      "hi": 0.732,
+      "p": 9.999000099990002e-05,
+      "n": 500.0,
+      "identical_on_every_scenario": false,
+      "p_holm": 0.0015998400159984002
+    },
+    "root_hit8": {
+      "a": 0.99,
+      "b": 0.23,
+      "diff": 0.76,
+      "lo": 0.722,
+      "hi": 0.798,
+      "p": 9.999000099990002e-05,
+      "n": 500.0,
+      "identical_on_every_scenario": false
+    },
+    "root_hit12": {
+      "a": 1.0,
+      "b": 0.666,
+      "diff": 0.334,
+      "lo": 0.29,
+      "hi": 0.376,
+      "p": 9.999000099990002e-05,
+      "n": 500.0,
+      "identical_on_every_scenario": false
+    },
+    "root_mrr": {
+      "a": 0.2558253968253968,
+      "b": 0.09684375983493629,
+      "diff": 0.15898163699046053,
+      "lo": 0.14666101880145996,
+      "hi": 0.17183541467111318,
+      "p": 9.999000099990002e-05,
+      "n": 500.0,
+      "identical_on_every_scenario": false
+    },
+    "verdict_at_5": "first arm better by more than the margin"
+  },
+  "H4 | tcmf_deployed - vector | rho=0.6|rho_decoy=same|noisy": {
+    "hypothesis": "H4",
+    "root_hit": {
+      "a": 0.666,
+      "b": 0.0,
+      "diff": 0.666,
+      "lo": 0.624,
+      "hi": 0.706,
+      "p": 9.999000099990002e-05,
+      "n": 500.0,
+      "identical_on_every_scenario": false,
+      "p_holm": 0.0015998400159984002
+    },
+    "root_hit8": {
+      "a": 0.958,
+      "b": 0.226,
+      "diff": 0.732,
+      "lo": 0.69,
+      "hi": 0.772,
+      "p": 9.999000099990002e-05,
+      "n": 500.0,
+      "identical_on_every_scenario": false
+    },
+    "root_hit12": {
+      "a": 1.0,
+      "b": 0.67,
+      "diff": 0.33,
+      "lo": 0.288,
+      "hi": 0.372,
+      "p": 9.999000099990002e-05,
+      "n": 500.0,
+      "identical_on_every_scenario": false
+    },
+    "root_mrr": {
+      "a": 0.2451256132756133,
+      "b": 0.09667264957264958,
+      "diff": 0.1484529637029637,
+      "lo": 0.13702437909312912,
+      "hi": 0.16024095876345876,
+      "p": 9.999000099990002e-05,
+      "n": 500.0,
+      "identical_on_every_scenario": false
+    },
+    "verdict_at_5": "first arm better by more than the margin"
+  },
+  "H4 | tcmf_deployed - vector | rho=0.8|rho_decoy=same|noisy": {
+    "hypothesis": "H4",
+    "root_hit": {
+      "a": 0.174,
+      "b": 0.0,
+      "diff": 0.174,
+      "lo": 0.14,
+      "hi": 0.208,
+      "p": 9.999000099990002e-05,
+      "n": 500.0,
+      "identical_on_every_scenario": false,
+      "p_holm": 0.0015998400159984002
+    },
+    "root_hit8": {
+      "a": 0.47,
+      "b": 0.218,
+      "diff": 0.252,
+      "lo": 0.196,
+      "hi": 0.306,
+      "p": 9.999000099990002e-05,
+      "n": 500.0,
+      "identical_on_every_scenario": false
+    },
+    "root_hit12": {
+      "a": 0.888,
+      "b": 0.672,
+      "diff": 0.216,
+      "lo": 0.168,
+      "hi": 0.262,
+      "p": 9.999000099990002e-05,
+      "n": 500.0,
+      "identical_on_every_scenario": false
+    },
+    "root_mrr": {
+      "a": 0.1474836607836608,
+      "b": 0.09593677988677987,
+      "diff": 0.05154688089688089,
+      "lo": 0.04311548146298146,
+      "hi": 0.060710884115884114,
+      "p": 9.999000099990002e-05,
+      "n": 500.0,
+      "identical_on_every_scenario": false
+    },
+    "verdict_at_5": "first arm better by more than the margin"
+  },
+  "H6 | no_recency - full_reimpl | no recency vs full, chain_only|depth=3": {
+    "hypothesis": "H6",
+    "root_hit": {
+      "a": 1.0,
+      "b": 1.0,
+      "diff": 0.0,
+      "lo": 0.0,
+      "hi": 0.0,
+      "p": 1.0,
+      "n": 500.0,
+      "identical_on_every_scenario": true,
+      "p_holm": 1.0
+    },
+    "root_hit8": {
+      "a": 1.0,
+      "b": 1.0,
+      "diff": 0.0,
+      "lo": 0.0,
+      "hi": 0.0,
+      "p": 1.0,
+      "n": 500.0,
+      "identical_on_every_scenario": true
+    },
+    "root_hit12": {
+      "a": 1.0,
+      "b": 1.0,
+      "diff": 0.0,
+      "lo": 0.0,
+      "hi": 0.0,
+      "p": 1.0,
+      "n": 500.0,
+      "identical_on_every_scenario": true
+    },
+    "root_mrr": {
+      "a": 1.0,
+      "b": 1.0,
+      "diff": 0.0,
+      "lo": 0.0,
+      "hi": 0.0,
+      "p": 1.0,
+      "n": 500.0,
+      "identical_on_every_scenario": true
+    },
+    "verdict_at_5": "within the margin"
+  },
+  "H6 | no_recency - full_reimpl | no recency vs full, oracle|depth=3": {
+    "hypothesis": "H6",
+    "root_hit": {
+      "a": 0.748,
+      "b": 0.618,
+      "diff": 0.13,
+      "lo": 0.092,
+      "hi": 0.17,
+      "p": 9.999000099990002e-05,
+      "n": 500.0,
+      "identical_on_every_scenario": false,
+      "p_holm": 0.0015998400159984002
+    },
+    "root_hit8": {
+      "a": 1.0,
+      "b": 1.0,
+      "diff": 0.0,
+      "lo": 0.0,
+      "hi": 0.0,
+      "p": 1.0,
+      "n": 500.0,
+      "identical_on_every_scenario": true
+    },
+    "root_hit12": {
+      "a": 1.0,
+      "b": 1.0,
+      "diff": 0.0,
+      "lo": 0.0,
+      "hi": 0.0,
+      "p": 1.0,
+      "n": 500.0,
+      "identical_on_every_scenario": true
+    },
+    "root_mrr": {
+      "a": 0.3645952380952381,
+      "b": 0.2604428571428572,
+      "diff": 0.10415238095238095,
+      "lo": 0.08706619047619049,
+      "hi": 0.12161214285714282,
+      "p": 9.999000099990002e-05,
+      "n": 500.0,
+      "identical_on_every_scenario": false
+    },
+    "verdict_at_5": "first arm better by more than the margin"
+  },
+  "H6 | no_recency - full_reimpl | no recency vs full, oracle|depth=2": {
+    "hypothesis": "H6",
+    "root_hit": {
+      "a": 0.0,
+      "b": 0.0,
+      "diff": 0.0,
+      "lo": 0.0,
+      "hi": 0.0,
+      "p": 1.0,
+      "n": 500.0,
+      "identical_on_every_scenario": true,
+      "p_holm": 1.0
+    },
+    "root_hit8": {
+      "a": 1.0,
+      "b": 1.0,
+      "diff": 0.0,
+      "lo": 0.0,
+      "hi": 0.0,
+      "p": 1.0,
+      "n": 500.0,
+      "identical_on_every_scenario": true
+    },
+    "root_hit12": {
+      "a": 1.0,
+      "b": 1.0,
+      "diff": 0.0,
+      "lo": 0.0,
+      "hi": 0.0,
+      "p": 1.0,
+      "n": 500.0,
+      "identical_on_every_scenario": true
+    },
+    "root_mrr": {
+      "a": 0.1428571428571428,
+      "b": 0.1428571428571428,
+      "diff": 0.0,
+      "lo": 0.0,
+      "hi": 0.0,
+      "p": 1.0,
+      "n": 500.0,
+      "identical_on_every_scenario": true
+    },
+    "verdict_at_5": "within the margin"
+  },
+  "H6 | no_recency - full_reimpl | no recency vs full, noisy|depth=3": {
+    "hypothesis": "H6",
+    "root_hit": {
+      "a": 0.812,
+      "b": 0.698,
+      "diff": 0.114,
+      "lo": 0.084,
+      "hi": 0.144,
+      "p": 9.999000099990002e-05,
+      "n": 500.0,
+      "identical_on_every_scenario": false,
+      "p_holm": 0.0015998400159984002
+    },
+    "root_hit8": {
+      "a": 0.988,
+      "b": 0.988,
+      "diff": 0.0,
+      "lo": -0.008,
+      "hi": 0.008,
+      "p": 1.0,
+      "n": 500.0,
+      "identical_on_every_scenario": false
+    },
+    "root_hit12": {
+      "a": 1.0,
+      "b": 1.0,
+      "diff": 0.0,
+      "lo": 0.0,
+      "hi": 0.0,
+      "p": 1.0,
+      "n": 500.0,
+      "identical_on_every_scenario": true
+    },
+    "root_mrr": {
+      "a": 0.38059999999999994,
+      "b": 0.2632333333333334,
+      "diff": 0.11736666666666666,
+      "lo": 0.0993692857142857,
+      "hi": 0.13516410714285715,
+      "p": 9.999000099990002e-05,
+      "n": 500.0,
+      "identical_on_every_scenario": false
+    },
+    "verdict_at_5": "first arm better by more than the margin"
+  },
+  "H6 | no_recency - full_reimpl | no recency vs full, oracle|depth=3|rho=0.4": {
+    "hypothesis": "H6",
+    "root_hit": {
+      "a": 0.736,
+      "b": 0.608,
+      "diff": 0.128,
+      "lo": 0.092,
+      "hi": 0.166,
+      "p": 9.999000099990002e-05,
+      "n": 500.0,
+      "identical_on_every_scenario": false,
+      "p_holm": 0.0015998400159984002
+    },
+    "root_hit8": {
+      "a": 1.0,
+      "b": 1.0,
+      "diff": 0.0,
+      "lo": 0.0,
+      "hi": 0.0,
+      "p": 1.0,
+      "n": 500.0,
+      "identical_on_every_scenario": true
+    },
+    "root_hit12": {
+      "a": 1.0,
+      "b": 1.0,
+      "diff": 0.0,
+      "lo": 0.0,
+      "hi": 0.0,
+      "p": 1.0,
+      "n": 500.0,
+      "identical_on_every_scenario": true
+    },
+    "root_mrr": {
+      "a": 0.3559333333333333,
+      "b": 0.2541809523809524,
+      "diff": 0.10175238095238096,
+      "lo": 0.08495190476190477,
+      "hi": 0.11857619047619047,
+      "p": 9.999000099990002e-05,
+      "n": 500.0,
+      "identical_on_every_scenario": false
+    },
+    "verdict_at_5": "first arm better by more than the margin"
+  },
+  "H3 | tcmf_deployed: other events present - chain only | depth=1": {
+    "hypothesis": "H3",
+    "root_hit": {
+      "a": 0.0,
+      "b": 1.0,
+      "diff": -1.0,
+      "lo": -1.0,
+      "hi": -1.0,
+      "p": 9.999000099990002e-05,
+      "n": 500.0,
+      "identical_on_every_scenario": false,
+      "p_holm": 0.0015998400159984002
+    },
+    "root_hit8": {
+      "a": 1.0,
+      "b": 1.0,
+      "diff": 0.0,
+      "lo": 0.0,
+      "hi": 0.0,
+      "p": 1.0,
+      "n": 500.0,
+      "identical_on_every_scenario": true
+    },
+    "root_hit12": {
+      "a": 1.0,
+      "b": 1.0,
+      "diff": 0.0,
+      "lo": 0.0,
+      "hi": 0.0,
+      "p": 1.0,
+      "n": 500.0,
+      "identical_on_every_scenario": true
+    },
+    "root_mrr": {
+      "a": 0.1428571428571428,
+      "b": 1.0,
+      "diff": -0.8571428571428574,
+      "lo": -0.8571428571428574,
+      "hi": -0.8571428571428574,
+      "p": 9.999000099990002e-05,
+      "n": 500.0,
+      "identical_on_every_scenario": false
+    },
+    "verdict_at_5": "first arm worse by more than the margin"
+  },
+  "H3 | tcmf_deployed: other events present - chain only | depth=2": {
+    "hypothesis": "H3",
+    "root_hit": {
+      "a": 0.0,
+      "b": 1.0,
+      "diff": -1.0,
+      "lo": -1.0,
+      "hi": -1.0,
+      "p": 9.999000099990002e-05,
+      "n": 500.0,
+      "identical_on_every_scenario": false,
+      "p_holm": 0.0015998400159984002
+    },
+    "root_hit8": {
+      "a": 1.0,
+      "b": 1.0,
+      "diff": 0.0,
+      "lo": 0.0,
+      "hi": 0.0,
+      "p": 1.0,
+      "n": 500.0,
+      "identical_on_every_scenario": true
+    },
+    "root_hit12": {
+      "a": 1.0,
+      "b": 1.0,
+      "diff": 0.0,
+      "lo": 0.0,
+      "hi": 0.0,
+      "p": 1.0,
+      "n": 500.0,
+      "identical_on_every_scenario": true
+    },
+    "root_mrr": {
+      "a": 0.1428571428571428,
+      "b": 1.0,
+      "diff": -0.8571428571428574,
+      "lo": -0.8571428571428574,
+      "hi": -0.8571428571428574,
+      "p": 9.999000099990002e-05,
+      "n": 500.0,
+      "identical_on_every_scenario": false
+    },
+    "verdict_at_5": "first arm worse by more than the margin"
+  },
+  "H3 | tcmf_deployed: other events present - chain only | depth=3": {
+    "hypothesis": "H3",
+    "root_hit": {
+      "a": 0.618,
+      "b": 1.0,
+      "diff": -0.382,
+      "lo": -0.424,
+      "hi": -0.34195000000000075,
+      "p": 9.999000099990002e-05,
+      "n": 500.0,
+      "identical_on_every_scenario": false,
+      "p_holm": 0.0015998400159984002
+    },
+    "root_hit8": {
+      "a": 1.0,
+      "b": 1.0,
+      "diff": 0.0,
+      "lo": 0.0,
+      "hi": 0.0,
+      "p": 1.0,
+      "n": 500.0,
+      "identical_on_every_scenario": true
+    },
+    "root_hit12": {
+      "a": 1.0,
+      "b": 1.0,
+      "diff": 0.0,
+      "lo": 0.0,
+      "hi": 0.0,
+      "p": 1.0,
+      "n": 500.0,
+      "identical_on_every_scenario": true
+    },
+    "root_mrr": {
+      "a": 0.2604428571428572,
+      "b": 1.0,
+      "diff": -0.7395571428571429,
+      "lo": -0.7542433333333334,
+      "hi": -0.7242520238095237,
+      "p": 9.999000099990002e-05,
+      "n": 500.0,
+      "identical_on_every_scenario": false
+    },
+    "verdict_at_5": "first arm worse by more than the margin"
+  }
+}

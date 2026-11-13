@@ -62,10 +62,10 @@ class TCMFRetriever:
         self,
         causal_graph: CausalGraph,
         causal_boost: float = 4.0,
-        causal_sim_threshold: float = 0.45,
+        causal_sim_threshold: float = 0.60,
         *,
-        max_depth: int = 4,
-        weak_ancestor_depth: int = 3,
+        max_depth: int = 8,
+        weak_ancestor_depth: float = 0.5,
         candidate_k: int = 10_000,
     ) -> None:
         self.graph = causal_graph
@@ -76,8 +76,18 @@ class TCMFRetriever:
         # default of 2.0 sat below it and lost recall@5 (0.79 vs 1.00 at 4.0, N21).
         # See research/tcmf_paper/FINDINGS.md.
         self.causal_boost = causal_boost
+        # 0.60 is the threshold tuned for nomic-embed-text, the encoder this system runs. Under
+        # that encoder 84% of memories clear the old 0.45 against some logged event, so it
+        # separated nothing (research/tcmf_paper/audit/REPORT.md, Finding 2). Retune per encoder.
         self.causal_sim_threshold = causal_sim_threshold
+        # How far back the ancestor walk goes. At the old cap of 4 a root cause five or more
+        # hops from the crisis was never reached (audit Finding 1).
         self.max_depth = max_depth
+        # Recent events of the institution that the graph does NOT link to the crisis still
+        # earn a boost, as a fallback for missing edges. They sit at this depth, and a direct
+        # cause sits at depth 1, so any value below 1 keeps them under every linked ancestor.
+        # The default was 3, which ranked unrelated events above real causes (audit Finding 2).
+        # With no linked ancestors at all they are the deepest events and carry full weight.
         self.weak_ancestor_depth = weak_ancestor_depth
         # Per-citizen candidate pool. Must be large: episodic pre-filtering would drop
         # low-relevance root-cause memories BEFORE the causal boost can rescue them (fix #4).
@@ -105,19 +115,17 @@ class TCMFRetriever:
                 pass
 
         # 2. Build causal ancestor map {ancestor_id: depth}
-        ancestors: dict[str, int] = {}
+        ancestors: dict[str, float] = {}
         if crisis_event_id:
-            ancestors = self.graph.predecessors(crisis_event_id, max_depth=self.max_depth)
+            ancestors = dict(self.graph.predecessors(crisis_event_id, max_depth=self.max_depth))
+            ancestors.pop(crisis_event_id, None)  # a crisis is never its own ancestor
 
         # Also include institution-scoped recent events as weak ancestors, but never the
         # crisis itself, which would leak a boost to semantically-similar distractors (fix #2).
         for ev in self.graph.events_for_institution(institution_id)[-20:]:
             eid = ev["id"]
-            if eid == crisis_event_id:
-                continue
-            if eid not in ancestors:
+            if eid != crisis_event_id and eid not in ancestors:
                 ancestors[eid] = self.weak_ancestor_depth
-        ancestors.pop(crisis_event_id, None)  # a crisis is never its own ancestor
 
         # 3. Collect episodic memories from all citizens. Pull the full candidate pool, not a
         #    per-citizen episodic top-k, so causal-relevant but low-relevance memories survive.
@@ -154,7 +162,11 @@ class TCMFRetriever:
                 break
         ctx.fused_memories = top
 
-        # 6. Build causal chain text
+        # 6. Build causal chain text. It lists weak ancestors too. Listing only the events the
+        #    graph links was measured: with a correct graph it lifts decisions from 0.76 to
+        #    0.98, but on the graph auto_link_predecessors builds it drops them from 0.47 to
+        #    0.20, because that linker's edges are often wrong and the heading asserts them.
+        #    Narrow this list only once the linker can be trusted (audit REPORT.md, addendum).
         chain_events: list[dict] = []
         for eid, depth in sorted(ancestors.items(), key=lambda kv: kv[1]):
             ev = self.graph.get_event(eid)
@@ -180,8 +192,8 @@ class TCMFRetriever:
     def _causal_boost_for_memory(
         self,
         memory: Memory,
-        ancestors: dict[str, int],
-        max_depth: int,
+        ancestors: dict[str, float],
+        max_depth: float,
     ) -> float:
         """Returns [0, 1] causal boost for a memory based on proximity to ancestors."""
         if not ancestors or memory.embedding is None:
@@ -196,6 +208,8 @@ class TCMFRetriever:
                 # deeper ancestors = closer to the root cause = higher weight (fix #3). The old
                 # form `1 - (depth-1)/max_depth` inverted this, giving the root cause the LOWEST
                 # weight and leaving it at rank ~3 even when retrieved. See FINDINGS.md (F5).
-                depth_weight = depth / max(max_depth, 1)
+                # max_depth is the deepest ancestor present, so that ancestor always weighs 1,
+                # including a weak ancestor when the graph links nothing to the crisis.
+                depth_weight = depth / max_depth if max_depth > 0 else 0.0
                 best = max(best, sim * depth_weight)
         return best
