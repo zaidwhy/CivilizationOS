@@ -181,6 +181,26 @@ def experiments() -> dict[str, list[Cell]]:
         for k in (30, 50)
         for gname, builder in (("oracle", GRAPH_MODES["oracle"]), ("deployed_all", GRAPH_MODES["deployed_all"]))
     ]
+    # After the audit the production defaults were changed. `tcmf_deployed` everywhere above is
+    # the audited configuration; these cells put the current one beside it.
+    fix = {**pick("vector", "graph_union", "tcmf_deployed", "tcmf_no_weak"),
+           "event_log": R.rank_event_log, "tcmf_current": R.rank_tcmf_current}
+    exps["F1_after_fix"] = (
+        [(f"perfect|other_events={k}", replace(DEFAULT, n_decoy_events=k), GRAPH_MODES["oracle"], fix)
+         for k in (0, 6, 12, 18, 30, 50)]
+        + [(f"perfect|depth={d}", replace(DEFAULT, depth=d), GRAPH_MODES["oracle"], fix) for d in (1, 2, 4, 5, 6)]
+        + [(f"shuffled|other_events={k}", replace(DEFAULT, n_decoy_events=k), GRAPH_MODES["shuffled"], fix)
+           for k in (6, 18)]
+        + [(f"p_drop={p}|other_events={k}", replace(DEFAULT, n_decoy_events=k), noisy(p, 0), fix)
+           for p in (0.25, 0.5, 1.0) for k in (6, 18)]
+        + [(f"p_drop=0.3,n_false=2|other_events={k}", replace(DEFAULT, n_decoy_events=k), noisy(0.3, 2), fix)
+           for k in (6, 18)]
+        + [("deep_false_edges=2", DEFAULT, lambda w, rng: graphs.noisy_deep(w, rng, 0.0, 2), fix)]
+        + [(f"linker|other_events={k}", replace(DEFAULT, n_decoy_events=k), GRAPH_MODES["deployed_all"], fix)
+           for k in (6, 18)]
+        + [("linker|cause recent and similar", replace(DEFAULT, root_age=(5, 40), rho=0.5),
+            GRAPH_MODES["deployed_all"], fix)]
+    )
     return exps
 
 

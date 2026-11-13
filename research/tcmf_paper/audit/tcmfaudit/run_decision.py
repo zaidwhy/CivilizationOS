@@ -44,11 +44,20 @@ def chain_block(ev_text: list[str], ticks: np.ndarray, og: graphs.ObservedGraph)
     return "CAUSAL CHAIN (from the event log):\n" + "\n".join(f"- {ev_text[e]}" for e in events)
 
 
-def production_block(tw: TextWorld, og: graphs.ObservedGraph, memories: int) -> tuple[str, list[int]]:
+def production_block(tw: TextWorld, og: graphs.ObservedGraph, memories: int,
+                     linked_chain: bool = False) -> tuple[str, list[int]]:
     """The prompt block production builds for the council (``TCMFContext.context_text`` minus
-    its CRISIS line, which the question already carries), cut to ``memories`` evidence lines."""
+    its CRISIS line, which the question already carries), cut to ``memories`` evidence lines.
+
+    ``linked_chain`` swaps production's chain, which lists weak ancestors too, for one that
+    lists only the events the graph links to the crisis. Production shipped that for an hour
+    on 2026-11-13 and it was reverted on these measurements."""
     ctx, index_of = R.run_tcmf_deployed(tw.world, og, k=12, mem_text=tw.mem_text, ev_text=tw.ev_text)
     _, evidence, chain = ctx.context_text.split("\n\n")
+    linked = sorted(graphs.ancestors(og, max_depth=8), key=lambda e: int(tw.world.ev_tick[e]))
+    if linked_chain and linked:
+        chain = "\n".join([chain.split("\n")[0],
+                           *(f"  [tick {int(tw.world.ev_tick[e])}] {tw.ev_text[e]}" for e in linked[:8])])
     header, *lines = evidence.split("\n")
     shown = [index_of[mem.id] for _, mem, _ in ctx.fused_memories[:memories]]
     return "\n".join([header, *lines[:memories]]) + "\n\n" + chain, shown
@@ -96,12 +105,19 @@ def contexts(tw: TextWorld, summarize: Generator,
         "chain_text@oracle": (chain_block(tw.ev_text, w.ev_tick, oracle), []),
         "tcmf_shipped@oracle": top(R.rank_tcmf_deployed(w, oracle)),
         "tcmf_paper@oracle": top(paper_tcmf(w, oracle)),
-        "tcmf_production_block@oracle": production_block(tw, oracle, 8),
-        "tcmf_production_block_5@oracle": production_block(tw, oracle, BUDGET),
         "tcmf_shipped@deployed_graph": top(R.rank_tcmf_deployed(w, dep)),
         "tcmf_paper@deployed_graph": top(paper_tcmf(w, dep)),
-        "tcmf_production_block@deployed_graph": production_block(tw, dep, 8),
         "tcmf_paper@wrong_graph": top(paper_tcmf(wrong_w, wrong)),
+        # The retriever as it ships after the 2026-11-13 fix. The three production-block arms
+        # of the audited version need that version's prompt code (commit 70a227d); their
+        # results are frozen in results/decision/SUMMARY_audited_70a227d.md.
+        "tcmf_current@oracle": top(R.rank_tcmf_current(w, oracle)),
+        "tcmf_current_block@oracle": production_block(tw, oracle, 8),
+        "tcmf_current@deployed_graph": top(R.rank_tcmf_current(w, dep)),
+        "tcmf_current_block@deployed_graph": production_block(tw, dep, 8),
+        "tcmf_current_block+linked_chain@oracle": production_block(tw, oracle, 8, linked_chain=True),
+        "tcmf_current_block+linked_chain@deployed_graph": production_block(tw, dep, 8, linked_chain=True),
+        "tcmf_current@wrong_graph": top(R.rank_tcmf_current(wrong_w, wrong)),
         "chain_text@wrong_graph": (chain_block(wrong_text, w.ev_tick, wrong), []),
         "gold": (records_block(tw, gold), gold),
     }

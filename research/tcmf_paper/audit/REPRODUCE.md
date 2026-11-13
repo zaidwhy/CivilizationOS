@@ -56,6 +56,20 @@ Deleting the caches reruns the models (about 25 minutes per reader on a 4 GB lap
 of it the rolling summaries). Reader calls use temperature 0 and seed 0; a different Ollama
 build or quantization can still change individual answers.
 
+## The audited retriever and the current one
+
+The audit examined `api/memory/tcmf.py` at commit `70a227d`. Its defaults were changed
+afterwards. From current code:
+
+- Every Tier A row regenerates exactly. `tcmf_deployed` passes the audited defaults to the
+  production class (`retrievers.AUDITED`); `tcmf_current` uses whatever ships today and appears
+  only in `F1_after_fix`.
+- Tier B arms named `tcmf_shipped@...` regenerate exactly for the same reason. The three
+  production-prompt arms of the audited version need that version's prompt code, so their
+  numbers are frozen in `results/decision/SUMMARY_audited_70a227d.md`; to regenerate them,
+  check out `70a227d` and the audit folder from commit `cbc7b3d`.
+- `results/decision/SUMMARY.md` is what the commands in section 4 produce today.
+
 ## What is deterministic and what is not
 
 | Part | Deterministic | Note |

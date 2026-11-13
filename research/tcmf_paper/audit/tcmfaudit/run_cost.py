@@ -36,7 +36,7 @@ def main() -> None:
             cfg = replace(WorldConfig(), n_noise=n_memories - 15 - other_events, n_decoy_events=other_events)
             world = generate(cfg, 0)
             og = graphs.oracle(world)
-            production, _ = R.prepare_tcmf_deployed(world, og)
+            production, _ = R.prepare_tcmf_deployed(world, og, **R.AUDITED)
             for name, fn in METHODS.items():
                 # Loading memories into the production stores is setup, not query time.
                 query = (lambda: production(world.n)) if name == "tcmf_deployed" else (lambda: fn(world, og))

@@ -208,23 +208,41 @@ def run_tcmf_deployed(world: World, og: ObservedGraph, *, k: int, **kwargs):
     return retrieve(k), index_of
 
 
+# The production defaults this audit examined (commit 70a227d). They were changed on
+# 2026-11-13 because of the audit; pinning them here keeps every audited row reproducible.
+AUDITED = {"causal_sim_threshold": 0.45, "max_depth": 4, "weak_ancestor_depth": 3}
+
+
 def rank_tcmf_deployed(world: World, og: ObservedGraph, **retriever_kwargs) -> list[int]:
-    """The production retriever with its shipped defaults, asked for the whole ranking."""
-    ctx, index_of = run_tcmf_deployed(world, og, k=world.n, **retriever_kwargs)
+    """The production retriever as it shipped when audited, asked for the whole ranking."""
+    ctx, index_of = run_tcmf_deployed(world, og, k=world.n, **{**AUDITED, **retriever_kwargs})
     return [index_of[mem.id] for _, mem, _ in ctx.fused_memories]
 
 
-def tcmf_ancestor_depths(world: World, og: ObservedGraph, weak: bool, max_depth: int) -> dict[int, int]:
-    depths = ancestors(og, max_depth=max_depth)
-    if weak:
-        in_tick_order = sorted(og.nodes, key=lambda n: (int(world.ev_tick[n]), n))
-        for e in in_tick_order[-WEAK_ANCESTOR_WINDOW:]:
-            if e != og.crisis:
-                depths.setdefault(e, 3)
+def rank_tcmf_current(world: World, og: ObservedGraph) -> list[int]:
+    """The production retriever with whatever defaults it ships today."""
+    ctx, index_of = run_tcmf_deployed(world, og, k=world.n)
+    return [index_of[mem.id] for _, mem, _ in ctx.fused_memories]
+
+
+def tcmf_ancestor_depths(world: World, og: ObservedGraph, weak: bool | float,
+                         max_depth: int) -> dict[int, float]:
+    """``weak`` selects the weak-ancestor rule. ``True``: the rule audited at commit 70a227d
+    (recent institution events at depth 3). ``False``: no rule. A float f: recent institution
+    events at depth f, below every true ancestor (depth >= 1), or at depth 1 when the graph
+    gives the crisis no ancestors at all."""
+    depths: dict[int, float] = dict(ancestors(og, max_depth=max_depth))
+    if weak is False:
+        return depths
+    weak_depth = 3.0 if weak is True else (float(weak) if depths else 1.0)
+    in_tick_order = sorted(og.nodes, key=lambda n: (int(world.ev_tick[n]), n))
+    for e in in_tick_order[-WEAK_ANCESTOR_WINDOW:]:
+        if e != og.crisis:
+            depths.setdefault(e, weak_depth)
     return depths
 
 
-def tcmf_boost(world: World, depths: dict[int, int], threshold: float, depth_mode: str,
+def tcmf_boost(world: World, depths: dict[int, float], threshold: float, depth_mode: str,
                aggregate: str) -> np.ndarray:
     if not depths:
         return np.zeros(world.n)
@@ -239,7 +257,7 @@ def tcmf_boost(world: World, depths: dict[int, int], threshold: float, depth_mod
 
 def tcmf_variant_scores(
     world: World, og: ObservedGraph, *, lam: float = 4.0, threshold: float = 0.45,
-    depth_mode: str = "root", weak: bool = True, normalize: bool = True,
+    depth_mode: str = "root", weak: bool | float = True, normalize: bool = True,
     relevance: bool = True, recency: bool = True, importance: bool = True,
     aggregate: str = "max", operator: str = "add", max_depth: int = 4,
 ) -> np.ndarray:

@@ -3,6 +3,10 @@
 2026-11-13. Everything here traces to a file in `results/`; the commands are in `REPRODUCE.md`,
 the protocol and its deviations in `PREREG.md`, both independent reviews in `REVIEW_LOG.md`.
 
+**Addendum, same day:** the retriever's defaults were changed because of this audit. Everything
+below describes the retriever as audited (commit `70a227d`); the change and its measured effect
+are in "Addendum: the fix" near the end.
+
 Two names are used throughout. **Shipped** is the production class
 `api.memory.tcmf.TCMFRetriever`, called unmodified with its defaults. **Paper configuration**
 is the same scoring without the weak-ancestor rule, which is what `tcmfbench` evaluates; it is
@@ -374,9 +378,102 @@ against 0.28 with qwen, 0.32 against 0.23 with llama; with link evidence 0.73 ag
 0.70 against 0.46) and not with MiniLM (0.27 against 0.31, 0.66 against 0.68). **Not supported
 as a general result.**
 
+## Addendum: the fix
+
+Zaid asked for the best change to be made. Three defaults of `TCMFRetriever` changed
+(`api/memory/tcmf.py`); nothing else in the system did.
+
+| default | audited | now | why |
+|---|---|---|---|
+| `weak_ancestor_depth` | 3 | 0.5 | an unlinked event must sit below a direct cause (depth 1), not above it |
+| `causal_sim_threshold` | 0.45 | 0.60 | the value tuned for nomic-embed-text, the encoder the system runs |
+| `max_depth` | 4 | 8 | roots more than four hops back were never reached |
+
+The rule was kept, not deleted, because deleting it also removes the rescue of missing edges
+(Finding 2). `tcmfbench` now pins the audited values, so every committed benchmark number
+regenerates unchanged; that was checked by regenerating `results_main` and `results_mixed`
+before and after.
+
+Synthetic tier, root in top 5 / 8 / 12, n = 500 (`F1_after_fix`):
+
+| condition | audited | now | paper configuration |
+|---|---|---|---|
+| perfect graph, 6 other events | 0.62 / 1.00 / 1.00 | 1.00 / 1.00 / 1.00 | 1.00 / 1.00 / 1.00 |
+| perfect graph, 18 other events | 0.08 / 0.25 / 0.49 | 1.00 / 1.00 / 1.00 | 1.00 / 1.00 / 1.00 |
+| perfect graph, 50 other events | 0.00 / 0.01 / 0.07 | 1.00 / 1.00 / 1.00 | 1.00 / 1.00 / 1.00 |
+| perfect graph, chain depth 1 or 2 | 0.00 / 1.00 / 1.00 | 1.00 / 1.00 / 1.00 | 1.00 / 1.00 / 1.00 |
+| perfect graph, chain depth 6 | 0.20 / 0.62 / 1.00 | 1.00 / 1.00 / 1.00 | 0.00 / 0.00 / 0.00 |
+| shuffled graph (control), 6 other events | 0.55 / 1.00 / 1.00 | 0.00 / 0.00 / 0.19 | 0.00 / 0.00 / 0.01 |
+| 25% of edges dropped, 6 other events | 0.52 / 0.96 / 1.00 | 0.59 / 0.88 / 0.99 | 0.42 / 0.42 / 0.45 |
+| 50% of edges dropped, 6 other events | 0.44 / 0.92 / 1.00 | 0.38 / 0.84 / 1.00 | 0.11 / 0.11 / 0.17 |
+| no edges at all, 6 other events | 0.33 / 0.82 / 1.00 | 0.33 / 0.82 / 1.00 | 0.00 / 0.00 / 0.08 |
+| 30% dropped and 2 false edges, 6 other events | 0.70 / 0.99 / 1.00 | 0.46 / 0.81 / 0.96 | 0.34 / 0.34 / 0.36 |
+| production linker, cause old and unlike the crisis, 6 other events | 0.47 / 0.92 / 1.00 | 0.31 / 0.78 / 0.96 | 0.00 / 0.00 / 0.08 |
+| production linker, same, 18 other events | 0.12 / 0.28 / 0.48 | 0.02 / 0.10 / 0.23 | 0.00 / 0.00 / 0.00 |
+| production linker, cause recent and similar | 0.02 / 0.49 / 0.92 | 0.96 / 1.00 / 1.00 | 0.93 / 0.98 / 1.00 |
+
+The negative control now behaves: a wrong graph gives a wrong answer, so the edges are what
+drive the output. On any graph whose edges are right the root is found, at every log size and
+depth tested. Most of the missing-edge rescue survives. **What was lost** is the accident: where
+the true cause is old and the production linker never links it, the audited version did better
+(0.92 against 0.78 in the top 8 with a short log), because unlinked used to outrank linked.
+
+End task, decision accuracy, no link evidence / link evidence present:
+
+| arm | qwen + nomic | qwen + MiniLM | llama + nomic |
+|---|---|---|---|
+| vector | 0.28 / 0.59 | 0.31 / 0.68 | 0.23 / 0.46 |
+| **perfect graph**, 5 memories: audited | 0.02 / 0.05 | 0.24 / 0.45 | 0.02 / 0.12 |
+| perfect graph, 5 memories: now | 0.76 / 0.82 | 0.51 / 0.55 | 0.66 / 0.73 |
+| perfect graph, production prompt block: audited | 0.15 / 0.29 | 0.28 / 0.44 | 0.19 / 0.31 |
+| perfect graph, production prompt block: now | 0.74 / 0.77 | 0.59 / 0.68 | 0.58 / 0.66 |
+| **production linker's graph**, 5 memories: audited | 0.34 / 0.59 | 0.37 / 0.57 | 0.36 / 0.55 |
+| production linker's graph, 5 memories: now | 0.28 / 0.48 | 0.26 / 0.33 | 0.41 / 0.48 |
+| production linker's graph, production prompt block: audited | 0.47 / 0.56 | 0.45 / 0.63 | 0.42 / 0.46 |
+| production linker's graph, production prompt block: now | 0.36 / 0.53 | 0.41 / 0.52 | 0.39 / 0.37 |
+
+With a correct graph the retriever went from below the no-memory floor to 0.51 to 0.82. On the
+production linker's graph, in scenarios built so that the linker can never reach the cause, it
+is 0.03 to 0.11 lower end to end than the audited version and still 0.08 to 0.16 above vector
+when no memory links cause to crisis. These comparisons are over 8 domains and are exploratory.
+The MiniLM column runs the nomic threshold and is lower for that reason.
+
+Why I judged this the right trade: in the running simulator the edges that exist are either
+explicit (a crisis to its secondary crisis, a crisis to its verdict) or drawn by the linker
+between recent, similar events. Those are the edges that are usually right, and the audited rule
+ranked the events on them **below** unrelated ones. The regime where the audited version did
+better is one the linker cannot serve at all; fixing that needs a better linker, not a weighting
+that happens to favour whatever is unlinked.
+
+**One change was tried and reverted.** I also narrowed the prompt's "CAUSAL CHAIN" text to the
+events the graph actually links. Measured:
+
+| production prompt block, now | qwen + nomic | qwen + MiniLM | llama + nomic |
+|---|---|---|---|
+| perfect graph, chain lists weak ancestors too (shipped) | 0.74 / 0.77 | 0.59 / 0.68 | 0.58 / 0.66 |
+| perfect graph, chain narrowed to linked events | 0.98 / 0.99 | 0.95 / 0.99 | 0.79 / 0.79 |
+| production linker's graph, chain lists weak ancestors too (shipped) | 0.36 / 0.53 | 0.41 / 0.52 | 0.39 / 0.37 |
+| production linker's graph, chain narrowed to linked events | 0.21 / 0.36 | 0.37 / 0.45 | 0.18 / 0.24 |
+
+Worth +0.13 to +0.36 on a correct graph and -0.04 to -0.21 on the production linker's, where it
+falls below the no-memory floor with nomic: the heading asserts the linker's edges and the
+reader believes them. It stays reverted until the linker can be trusted. This is Finding 4
+again, and the clearest single number for where the next work should go.
+
+Still open from "What the evidence supports doing": embedding the memories written through
+`_remember` (item 6), and the linker (item 7). Items 1, 4 and 5 are done; items 2 and 3 are
+descriptions and a prompt change that waits on the linker.
+
+Verification of the change: `pytest api/tests` 83 passed (6 new; 4 of them fail on the audited
+code), `pytest tcmfbench` 214 passed and 1 skipped, the audit's own suite 25 passed including
+ranking parity with the retriever as it ships now, and 3,198 audited rows regenerated from the
+changed code with 0 mismatches.
+
 ## For the paper
 
-These are checks for Zaid to make against the manuscript; I have not edited it.
+The three scope statements below were added to the Limitations sections of all three manuscript
+versions on 2026-11-13 (private paper repository, commit `4fa92f6`); no result, table or claim
+changed.
 
 - The benchmark never runs the weak-ancestor rule where it can act. Any sentence that presents
   benchmark numbers as the behaviour of the deployed system needs that scope stated, or the
@@ -433,5 +530,6 @@ These are checks for Zaid to make against the manuscript; I have not edited it.
 | `results/retrieval/*.jsonl.gz` | Tier A raw rows, one per (cell, seed, method) |
 | `results/retrieval/SUMMARY.md`, `tests.json` | every cell; the registered tests |
 | `results/decision/cache_*.jsonl.gz` | every model call with its verbatim output |
-| `results/decision/SUMMARY.md`, `tests.json` | Tier B tables and tests |
+| `results/decision/SUMMARY_audited_70a227d.md`, `tests_audited_70a227d.json` | Tier B tables and tests for the retriever as audited |
+| `results/decision/SUMMARY.md`, `tests.json` | Tier B regenerated from current code, with the after-fix arms |
 | `results/cost.json` | query-time cost |

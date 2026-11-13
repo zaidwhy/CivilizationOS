@@ -15,11 +15,11 @@ from tcmfaudit.world import WorldConfig, generate
 DEFAULT = WorldConfig()
 
 
-def assert_same_ranking_up_to_exact_ties(w, og, knobs, label):
+def assert_same_ranking_up_to_exact_ties(w, og, knobs, label, production_rank=R.rank_tcmf_deployed):
     """The re-implementation and production may order two memories differently only when
     their fused scores are exactly equal (production breaks ties by citizen, this by index)."""
     scores = R.tcmf_variant_scores(w, og, **knobs)
-    mine, production = R.rank_tcmf_variant(w, og, **knobs), R.rank_tcmf_deployed(w, og)
+    mine, production = R.rank_tcmf_variant(w, og, **knobs), production_rank(w, og)
     for a, b in zip(mine, production):
         assert a == b or scores[a] == scores[b], label
 
@@ -68,6 +68,26 @@ def test_reimplementation_ranks_exactly_like_the_deployed_retriever(mode):
             "no_crisis_id": lambda: graphs.no_crisis_id(w),
         }[mode]()
         assert_same_ranking_up_to_exact_ties(w, og, {}, (mode, seed))
+
+
+CURRENT = {"weak": 0.5, "threshold": 0.60, "max_depth": 8}
+
+
+@pytest.mark.parametrize("mode", ["chain_only", "oracle", "noisy", "shuffled", "deployed", "no_crisis_id"])
+def test_reimplementation_tracks_the_retriever_as_it_ships_today(mode):
+    """Fails when production's defaults move again, which is the signal to re-measure."""
+    for seed in range(40):
+        w = generate(replace(DEFAULT, depth=1 + seed % 6, rho=0.3, rho_decoy=0.3), seed)
+        rng = np.random.default_rng(seed)
+        og = {
+            "chain_only": lambda: graphs.chain_only(w),
+            "oracle": lambda: graphs.oracle(w),
+            "noisy": lambda: graphs.noisy(w, rng, 0.3, 2),
+            "shuffled": lambda: graphs.shuffled(w, rng),
+            "deployed": lambda: graphs.deployed(w),
+            "no_crisis_id": lambda: graphs.no_crisis_id(w),
+        }[mode]()
+        assert_same_ranking_up_to_exact_ties(w, og, CURRENT, (mode, seed), R.rank_tcmf_current)
 
 
 def test_paper_configuration_matches_production_where_the_weak_rule_cannot_act():
