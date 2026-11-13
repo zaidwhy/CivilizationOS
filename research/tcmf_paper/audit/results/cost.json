@@ -1,0 +1,182 @@
+[
+  {
+    "memories": 94,
+    "institution_events": 9,
+    "method": "vector",
+    "median_ms": 0.016
+  },
+  {
+    "memories": 94,
+    "institution_events": 9,
+    "method": "episodic",
+    "median_ms": 0.024
+  },
+  {
+    "memories": 94,
+    "institution_events": 9,
+    "method": "graph_union",
+    "median_ms": 0.064
+  },
+  {
+    "memories": 94,
+    "institution_events": 9,
+    "method": "tcmf_vectorized",
+    "median_ms": 0.09
+  },
+  {
+    "memories": 94,
+    "institution_events": 9,
+    "method": "tcmf_deployed",
+    "median_ms": 10.688
+  },
+  {
+    "memories": 94,
+    "institution_events": 21,
+    "method": "vector",
+    "median_ms": 0.015
+  },
+  {
+    "memories": 94,
+    "institution_events": 21,
+    "method": "episodic",
+    "median_ms": 0.025
+  },
+  {
+    "memories": 94,
+    "institution_events": 21,
+    "method": "graph_union",
+    "median_ms": 0.067
+  },
+  {
+    "memories": 94,
+    "institution_events": 21,
+    "method": "tcmf_vectorized",
+    "median_ms": 0.107
+  },
+  {
+    "memories": 94,
+    "institution_events": 21,
+    "method": "tcmf_deployed",
+    "median_ms": 21.258
+  },
+  {
+    "memories": 994,
+    "institution_events": 9,
+    "method": "vector",
+    "median_ms": 0.159
+  },
+  {
+    "memories": 994,
+    "institution_events": 9,
+    "method": "episodic",
+    "median_ms": 0.174
+  },
+  {
+    "memories": 994,
+    "institution_events": 9,
+    "method": "graph_union",
+    "median_ms": 0.648
+  },
+  {
+    "memories": 994,
+    "institution_events": 9,
+    "method": "tcmf_vectorized",
+    "median_ms": 0.476
+  },
+  {
+    "memories": 994,
+    "institution_events": 9,
+    "method": "tcmf_deployed",
+    "median_ms": 106.642
+  },
+  {
+    "memories": 994,
+    "institution_events": 21,
+    "method": "vector",
+    "median_ms": 0.152
+  },
+  {
+    "memories": 994,
+    "institution_events": 21,
+    "method": "episodic",
+    "median_ms": 0.202
+  },
+  {
+    "memories": 994,
+    "institution_events": 21,
+    "method": "graph_union",
+    "median_ms": 0.577
+  },
+  {
+    "memories": 994,
+    "institution_events": 21,
+    "method": "tcmf_vectorized",
+    "median_ms": 0.51
+  },
+  {
+    "memories": 994,
+    "institution_events": 21,
+    "method": "tcmf_deployed",
+    "median_ms": 215.324
+  },
+  {
+    "memories": 4994,
+    "institution_events": 9,
+    "method": "vector",
+    "median_ms": 0.968
+  },
+  {
+    "memories": 4994,
+    "institution_events": 9,
+    "method": "episodic",
+    "median_ms": 1.274
+  },
+  {
+    "memories": 4994,
+    "institution_events": 9,
+    "method": "graph_union",
+    "median_ms": 4.658
+  },
+  {
+    "memories": 4994,
+    "institution_events": 9,
+    "method": "tcmf_vectorized",
+    "median_ms": 2.098
+  },
+  {
+    "memories": 4994,
+    "institution_events": 9,
+    "method": "tcmf_deployed",
+    "median_ms": 562.623
+  },
+  {
+    "memories": 4994,
+    "institution_events": 21,
+    "method": "vector",
+    "median_ms": 0.852
+  },
+  {
+    "memories": 4994,
+    "institution_events": 21,
+    "method": "episodic",
+    "median_ms": 1.088
+  },
+  {
+    "memories": 4994,
+    "institution_events": 21,
+    "method": "graph_union",
+    "median_ms": 3.579
+  },
+  {
+    "memories": 4994,
+    "institution_events": 21,
+    "method": "tcmf_vectorized",
+    "median_ms": 2.58
+  },
+  {
+    "memories": 4994,
+    "institution_events": 21,
+    "method": "tcmf_deployed",
+    "median_ms": 1130.977
+  }
+]

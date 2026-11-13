@@ -1,0 +1,788 @@
+{
+  "llama3-2-3b__nomic-embed-text": {
+    "link=0 | tcmf_shipped@oracle - chain_text@oracle": {
+      "family": "confirmatory",
+      "why": "H5: production retriever's memories vs the bare chain text",
+      "diff": -0.9609375,
+      "lo": -0.9921875,
+      "hi": -0.9296875,
+      "p": 0.0081991800819918,
+      "n": 8.0,
+      "p_holm": 0.0163983601639836
+    },
+    "link=0 | tcmf_paper@oracle - chain_text@oracle": {
+      "family": "exploratory",
+      "why": "H5 with the paper's configuration",
+      "diff": -0.1796875,
+      "lo": -0.3046875,
+      "hi": -0.0625,
+      "p": 0.059494050594940506,
+      "n": 8.0,
+      "p_holm": null
+    },
+    "link=0 | tcmf_production_block@oracle - chain_text@oracle": {
+      "family": "exploratory",
+      "why": "production prompt block vs clean chain text",
+      "diff": -0.7890625,
+      "lo": -0.8359375,
+      "hi": -0.7421875,
+      "p": 0.0081991800819918,
+      "n": 8.0,
+      "p_holm": null
+    },
+    "link=0 | tcmf_production_block@deployed_graph - vector": {
+      "family": "exploratory",
+      "why": "production end to end (own linker, own prompt) vs vector",
+      "diff": 0.1953125,
+      "lo": 0.0625,
+      "hi": 0.3046875,
+      "p": 0.0367963203679632,
+      "n": 8.0,
+      "p_holm": null
+    },
+    "link=0 | tcmf_shipped@deployed_graph - vector": {
+      "family": "exploratory",
+      "why": "production retriever on its own linker's graph vs vector",
+      "diff": 0.1328125,
+      "lo": 0.0703125,
+      "hi": 0.1953125,
+      "p": 0.030396960303969604,
+      "n": 8.0,
+      "p_holm": null
+    },
+    "link=0 | tcmf_paper@oracle - vector": {
+      "family": "exploratory",
+      "why": "paper configuration on a perfect graph vs vector",
+      "diff": 0.5703125,
+      "lo": 0.4296875,
+      "hi": 0.71875,
+      "p": 0.0081991800819918,
+      "n": 8.0,
+      "p_holm": null
+    },
+    "link=0 | tcmf_shipped@oracle - vector": {
+      "family": "exploratory",
+      "why": "production retriever on a perfect graph vs vector",
+      "diff": -0.2109375,
+      "lo": -0.2578125,
+      "hi": -0.15625,
+      "p": 0.0081991800819918,
+      "n": 8.0,
+      "p_holm": null
+    },
+    "link=0 | tcmf_paper@oracle - graph_union@oracle": {
+      "family": "exploratory",
+      "why": "paper configuration vs the fusion-free graph reader",
+      "diff": 0.03125,
+      "lo": -0.03125,
+      "hi": 0.0859375,
+      "p": 0.47095290470952905,
+      "n": 8.0,
+      "p_holm": null
+    },
+    "link=0 | tcmf_paper@wrong_graph - none": {
+      "family": "exploratory",
+      "why": "retrieval steered by a wrong graph vs no memory",
+      "diff": -0.140625,
+      "lo": -0.1953125,
+      "hi": -0.0859375,
+      "p": 0.014698530146985302,
+      "n": 8.0,
+      "p_holm": null
+    },
+    "link=0 | chain_text@wrong_graph - none": {
+      "family": "exploratory",
+      "why": "wrong chain text vs no memory",
+      "diff": -0.234375,
+      "lo": -0.25,
+      "hi": -0.21875,
+      "p": 0.0081991800819918,
+      "n": 8.0,
+      "p_holm": null
+    },
+    "link=0 | event_log_union - vector": {
+      "family": "exploratory",
+      "why": "event log without edges vs vector",
+      "diff": 0.0234375,
+      "lo": -0.03125,
+      "hi": 0.0859375,
+      "p": 0.6598340165983402,
+      "n": 8.0,
+      "p_holm": null
+    },
+    "link=0 | summary - vector": {
+      "family": "exploratory",
+      "why": "rolling summary vs vector",
+      "diff": -0.0078125,
+      "lo": -0.0625,
+      "hi": 0.046875,
+      "p": 1.0,
+      "n": 8.0,
+      "p_holm": null
+    },
+    "link=0 | chronological - vector": {
+      "family": "exploratory",
+      "why": "sliding window vs vector",
+      "diff": -0.0078125,
+      "lo": -0.046875,
+      "hi": 0.0390625,
+      "p": 1.0,
+      "n": 8.0,
+      "p_holm": null
+    },
+    "link=1 | tcmf_shipped@oracle - chain_text@oracle": {
+      "family": "confirmatory",
+      "why": "H5: production retriever's memories vs the bare chain text",
+      "diff": -0.859375,
+      "lo": -0.9375,
+      "hi": -0.7734375,
+      "p": 0.0081991800819918,
+      "n": 8.0,
+      "p_holm": 0.0163983601639836
+    },
+    "link=1 | tcmf_paper@oracle - chain_text@oracle": {
+      "family": "exploratory",
+      "why": "H5 with the paper's configuration",
+      "diff": -0.109375,
+      "lo": -0.234375,
+      "hi": 0.0078125,
+      "p": 0.18138186181381863,
+      "n": 8.0,
+      "p_holm": null
+    },
+    "link=1 | tcmf_production_block@oracle - chain_text@oracle": {
+      "family": "exploratory",
+      "why": "production prompt block vs clean chain text",
+      "diff": -0.671875,
+      "lo": -0.7578125,
+      "hi": -0.5935546875000028,
+      "p": 0.0081991800819918,
+      "n": 8.0,
+      "p_holm": null
+    },
+    "link=1 | tcmf_production_block@deployed_graph - vector": {
+      "family": "exploratory",
+      "why": "production end to end (own linker, own prompt) vs vector",
+      "diff": 0.0,
+      "lo": -0.125,
+      "hi": 0.140625,
+      "p": 1.0,
+      "n": 8.0,
+      "p_holm": null
+    },
+    "link=1 | tcmf_shipped@deployed_graph - vector": {
+      "family": "exploratory",
+      "why": "production retriever on its own linker's graph vs vector",
+      "diff": 0.09375,
+      "lo": -0.0390625,
+      "hi": 0.234375,
+      "p": 0.3163683631636836,
+      "n": 8.0,
+      "p_holm": null
+    },
+    "link=1 | tcmf_paper@oracle - vector": {
+      "family": "exploratory",
+      "why": "paper configuration on a perfect graph vs vector",
+      "diff": 0.40625,
+      "lo": 0.234375,
+      "hi": 0.578125,
+      "p": 0.015598440155984402,
+      "n": 8.0,
+      "p_holm": null
+    },
+    "link=1 | tcmf_shipped@oracle - vector": {
+      "family": "exploratory",
+      "why": "production retriever on a perfect graph vs vector",
+      "diff": -0.34375,
+      "lo": -0.46875,
+      "hi": -0.2109375,
+      "p": 0.0081991800819918,
+      "n": 8.0,
+      "p_holm": null
+    },
+    "link=1 | tcmf_paper@oracle - graph_union@oracle": {
+      "family": "exploratory",
+      "why": "paper configuration vs the fusion-free graph reader",
+      "diff": -0.0703125,
+      "lo": -0.140625,
+      "hi": -0.0078125,
+      "p": 0.17988201179882013,
+      "n": 8.0,
+      "p_holm": null
+    },
+    "link=1 | tcmf_paper@wrong_graph - none": {
+      "family": "exploratory",
+      "why": "retrieval steered by a wrong graph vs no memory",
+      "diff": -0.1328125,
+      "lo": -0.171875,
+      "hi": -0.09375,
+      "p": 0.0081991800819918,
+      "n": 8.0,
+      "p_holm": null
+    },
+    "link=1 | chain_text@wrong_graph - none": {
+      "family": "exploratory",
+      "why": "wrong chain text vs no memory",
+      "diff": -0.2421875,
+      "lo": -0.25,
+      "hi": -0.2265625,
+      "p": 0.0081991800819918,
+      "n": 8.0,
+      "p_holm": null
+    },
+    "link=1 | event_log_union - vector": {
+      "family": "exploratory",
+      "why": "event log without edges vs vector",
+      "diff": -0.109375,
+      "lo": -0.2421875,
+      "hi": 0.0078125,
+      "p": 0.18788121187881213,
+      "n": 8.0,
+      "p_holm": null
+    },
+    "link=1 | summary - vector": {
+      "family": "exploratory",
+      "why": "rolling summary vs vector",
+      "diff": -0.1875,
+      "lo": -0.3125,
+      "hi": -0.0625,
+      "p": 0.0451954804519548,
+      "n": 8.0,
+      "p_holm": null
+    },
+    "link=1 | chronological - vector": {
+      "family": "exploratory",
+      "why": "sliding window vs vector",
+      "diff": 0.0859375,
+      "lo": -0.03125,
+      "hi": 0.2265625,
+      "p": 0.34006599340065996,
+      "n": 8.0,
+      "p_holm": null
+    }
+  },
+  "qwen2-5-3b-instruct__all-minilm": {
+    "link=0 | tcmf_shipped@oracle - chain_text@oracle": {
+      "family": "confirmatory",
+      "why": "H5: production retriever's memories vs the bare chain text",
+      "diff": -0.703125,
+      "lo": -0.8125,
+      "hi": -0.59375,
+      "p": 0.0081991800819918,
+      "n": 8.0,
+      "p_holm": 0.0163983601639836
+    },
+    "link=0 | tcmf_paper@oracle - chain_text@oracle": {
+      "family": "exploratory",
+      "why": "H5 with the paper's configuration",
+      "diff": -0.140625,
+      "lo": -0.21875,
+      "hi": -0.0546875,
+      "p": 0.0471952804719528,
+      "n": 8.0,
+      "p_holm": null
+    },
+    "link=0 | tcmf_production_block@oracle - chain_text@oracle": {
+      "family": "exploratory",
+      "why": "production prompt block vs clean chain text",
+      "diff": -0.6640625,
+      "lo": -0.7890625,
+      "hi": -0.53125,
+      "p": 0.0081991800819918,
+      "n": 8.0,
+      "p_holm": null
+    },
+    "link=0 | tcmf_production_block@deployed_graph - vector": {
+      "family": "exploratory",
+      "why": "production end to end (own linker, own prompt) vs vector",
+      "diff": 0.1328125,
+      "lo": 0.0390625,
+      "hi": 0.2265625,
+      "p": 0.045295470452954706,
+      "n": 8.0,
+      "p_holm": null
+    },
+    "link=0 | tcmf_shipped@deployed_graph - vector": {
+      "family": "exploratory",
+      "why": "production retriever on its own linker's graph vs vector",
+      "diff": 0.0546875,
+      "lo": -0.0234375,
+      "hi": 0.1328125,
+      "p": 0.35066493350664935,
+      "n": 8.0,
+      "p_holm": null
+    },
+    "link=0 | tcmf_paper@oracle - vector": {
+      "family": "exploratory",
+      "why": "paper configuration on a perfect graph vs vector",
+      "diff": 0.4921875,
+      "lo": 0.375,
+      "hi": 0.609375,
+      "p": 0.0081991800819918,
+      "n": 8.0,
+      "p_holm": null
+    },
+    "link=0 | tcmf_shipped@oracle - vector": {
+      "family": "exploratory",
+      "why": "production retriever on a perfect graph vs vector",
+      "diff": -0.0703125,
+      "lo": -0.1875,
+      "hi": 0.046875,
+      "p": 0.3568643135686431,
+      "n": 8.0,
+      "p_holm": null
+    },
+    "link=0 | tcmf_paper@oracle - graph_union@oracle": {
+      "family": "exploratory",
+      "why": "paper configuration vs the fusion-free graph reader",
+      "diff": -0.015625,
+      "lo": -0.1171875,
+      "hi": 0.078125,
+      "p": 0.9373062693730627,
+      "n": 8.0,
+      "p_holm": null
+    },
+    "link=0 | tcmf_paper@wrong_graph - none": {
+      "family": "exploratory",
+      "why": "retrieval steered by a wrong graph vs no memory",
+      "diff": -0.171875,
+      "lo": -0.2265625,
+      "hi": -0.125,
+      "p": 0.0081991800819918,
+      "n": 8.0,
+      "p_holm": null
+    },
+    "link=0 | chain_text@wrong_graph - none": {
+      "family": "exploratory",
+      "why": "wrong chain text vs no memory",
+      "diff": -0.21875,
+      "lo": -0.28125,
+      "hi": -0.1484375,
+      "p": 0.0081991800819918,
+      "n": 8.0,
+      "p_holm": null
+    },
+    "link=0 | event_log_union - vector": {
+      "family": "exploratory",
+      "why": "event log without edges vs vector",
+      "diff": -0.0546875,
+      "lo": -0.171875,
+      "hi": 0.046875,
+      "p": 0.49995000499950004,
+      "n": 8.0,
+      "p_holm": null
+    },
+    "link=0 | summary - vector": {
+      "family": "exploratory",
+      "why": "rolling summary vs vector",
+      "diff": -0.046875,
+      "lo": -0.15625,
+      "hi": 0.0625,
+      "p": 0.5328467153284672,
+      "n": 8.0,
+      "p_holm": null
+    },
+    "link=0 | chronological - vector": {
+      "family": "exploratory",
+      "why": "sliding window vs vector",
+      "diff": -0.046875,
+      "lo": -0.1484375,
+      "hi": 0.015625,
+      "p": 0.7490250974902509,
+      "n": 8.0,
+      "p_holm": null
+    },
+    "link=1 | tcmf_shipped@oracle - chain_text@oracle": {
+      "family": "confirmatory",
+      "why": "H5: production retriever's memories vs the bare chain text",
+      "diff": -0.515625,
+      "lo": -0.65625,
+      "hi": -0.375,
+      "p": 0.0081991800819918,
+      "n": 8.0,
+      "p_holm": 0.0163983601639836
+    },
+    "link=1 | tcmf_paper@oracle - chain_text@oracle": {
+      "family": "exploratory",
+      "why": "H5 with the paper's configuration",
+      "diff": -0.0390625,
+      "lo": -0.0703125,
+      "hi": -0.0078125,
+      "p": 0.12658734126587343,
+      "n": 8.0,
+      "p_holm": null
+    },
+    "link=1 | tcmf_production_block@oracle - chain_text@oracle": {
+      "family": "exploratory",
+      "why": "production prompt block vs clean chain text",
+      "diff": -0.5234375,
+      "lo": -0.6328125,
+      "hi": -0.3984375,
+      "p": 0.0081991800819918,
+      "n": 8.0,
+      "p_holm": null
+    },
+    "link=1 | tcmf_production_block@deployed_graph - vector": {
+      "family": "exploratory",
+      "why": "production end to end (own linker, own prompt) vs vector",
+      "diff": -0.0546875,
+      "lo": -0.1484375,
+      "hi": 0.046875,
+      "p": 0.41525847415258477,
+      "n": 8.0,
+      "p_holm": null
+    },
+    "link=1 | tcmf_shipped@deployed_graph - vector": {
+      "family": "exploratory",
+      "why": "production retriever on its own linker's graph vs vector",
+      "diff": -0.109375,
+      "lo": -0.1796875,
+      "hi": -0.0234375,
+      "p": 0.07589241075892411,
+      "n": 8.0,
+      "p_holm": null
+    },
+    "link=1 | tcmf_paper@oracle - vector": {
+      "family": "exploratory",
+      "why": "paper configuration on a perfect graph vs vector",
+      "diff": 0.2421875,
+      "lo": 0.078125,
+      "hi": 0.40625,
+      "p": 0.0580941905809419,
+      "n": 8.0,
+      "p_holm": null
+    },
+    "link=1 | tcmf_shipped@oracle - vector": {
+      "family": "exploratory",
+      "why": "production retriever on a perfect graph vs vector",
+      "diff": -0.234375,
+      "lo": -0.3125,
+      "hi": -0.15625,
+      "p": 0.0081991800819918,
+      "n": 8.0,
+      "p_holm": null
+    },
+    "link=1 | tcmf_paper@oracle - graph_union@oracle": {
+      "family": "exploratory",
+      "why": "paper configuration vs the fusion-free graph reader",
+      "diff": 0.015625,
+      "lo": -0.0546875,
+      "hi": 0.09375,
+      "p": 0.8684131586841316,
+      "n": 8.0,
+      "p_holm": null
+    },
+    "link=1 | tcmf_paper@wrong_graph - none": {
+      "family": "exploratory",
+      "why": "retrieval steered by a wrong graph vs no memory",
+      "diff": -0.0625,
+      "lo": -0.1015625,
+      "hi": -0.0234375,
+      "p": 0.06109389061093891,
+      "n": 8.0,
+      "p_holm": null
+    },
+    "link=1 | chain_text@wrong_graph - none": {
+      "family": "exploratory",
+      "why": "wrong chain text vs no memory",
+      "diff": -0.2265625,
+      "lo": -0.265625,
+      "hi": -0.1875,
+      "p": 0.0081991800819918,
+      "n": 8.0,
+      "p_holm": null
+    },
+    "link=1 | event_log_union - vector": {
+      "family": "exploratory",
+      "why": "event log without edges vs vector",
+      "diff": -0.359375,
+      "lo": -0.4453125,
+      "hi": -0.2578125,
+      "p": 0.0081991800819918,
+      "n": 8.0,
+      "p_holm": null
+    },
+    "link=1 | summary - vector": {
+      "family": "exploratory",
+      "why": "rolling summary vs vector",
+      "diff": -0.2109375,
+      "lo": -0.296875,
+      "hi": -0.1171875,
+      "p": 0.014998500149985002,
+      "n": 8.0,
+      "p_holm": null
+    },
+    "link=1 | chronological - vector": {
+      "family": "exploratory",
+      "why": "sliding window vs vector",
+      "diff": -0.078125,
+      "lo": -0.1328125,
+      "hi": -0.03125,
+      "p": 0.031096890310968902,
+      "n": 8.0,
+      "p_holm": null
+    }
+  },
+  "qwen2-5-3b-instruct__nomic-embed-text": {
+    "link=0 | tcmf_shipped@oracle - chain_text@oracle": {
+      "family": "confirmatory",
+      "why": "H5: production retriever's memories vs the bare chain text",
+      "diff": -0.921875,
+      "lo": -0.9921875,
+      "hi": -0.8125,
+      "p": 0.0081991800819918,
+      "n": 8.0,
+      "p_holm": 0.0163983601639836
+    },
+    "link=0 | tcmf_paper@oracle - chain_text@oracle": {
+      "family": "exploratory",
+      "why": "H5 with the paper's configuration",
+      "diff": -0.1171875,
+      "lo": -0.2578125,
+      "hi": 0.0078125,
+      "p": 0.2445755424457554,
+      "n": 8.0,
+      "p_holm": null
+    },
+    "link=0 | tcmf_production_block@oracle - chain_text@oracle": {
+      "family": "exploratory",
+      "why": "production prompt block vs clean chain text",
+      "diff": -0.796875,
+      "lo": -0.8828125,
+      "hi": -0.6953125,
+      "p": 0.0081991800819918,
+      "n": 8.0,
+      "p_holm": null
+    },
+    "link=0 | tcmf_production_block@deployed_graph - vector": {
+      "family": "exploratory",
+      "why": "production end to end (own linker, own prompt) vs vector",
+      "diff": 0.1875,
+      "lo": 0.1171875,
+      "hi": 0.2734375,
+      "p": 0.0081991800819918,
+      "n": 8.0,
+      "p_holm": null
+    },
+    "link=0 | tcmf_shipped@deployed_graph - vector": {
+      "family": "exploratory",
+      "why": "production retriever on its own linker's graph vs vector",
+      "diff": 0.0625,
+      "lo": 0.0234375,
+      "hi": 0.109375,
+      "p": 0.059694030596940305,
+      "n": 8.0,
+      "p_holm": null
+    },
+    "link=0 | tcmf_paper@oracle - vector": {
+      "family": "exploratory",
+      "why": "paper configuration on a perfect graph vs vector",
+      "diff": 0.546875,
+      "lo": 0.4296875,
+      "hi": 0.65625,
+      "p": 0.0081991800819918,
+      "n": 8.0,
+      "p_holm": null
+    },
+    "link=0 | tcmf_shipped@oracle - vector": {
+      "family": "exploratory",
+      "why": "production retriever on a perfect graph vs vector",
+      "diff": -0.2578125,
+      "lo": -0.296875,
+      "hi": -0.21875,
+      "p": 0.0081991800819918,
+      "n": 8.0,
+      "p_holm": null
+    },
+    "link=0 | tcmf_paper@oracle - graph_union@oracle": {
+      "family": "exploratory",
+      "why": "paper configuration vs the fusion-free graph reader",
+      "diff": 0.03125,
+      "lo": -0.0234375,
+      "hi": 0.078125,
+      "p": 0.43815618438156184,
+      "n": 8.0,
+      "p_holm": null
+    },
+    "link=0 | tcmf_paper@wrong_graph - none": {
+      "family": "exploratory",
+      "why": "retrieval steered by a wrong graph vs no memory",
+      "diff": -0.1875,
+      "lo": -0.234375,
+      "hi": -0.140625,
+      "p": 0.0081991800819918,
+      "n": 8.0,
+      "p_holm": null
+    },
+    "link=0 | chain_text@wrong_graph - none": {
+      "family": "exploratory",
+      "why": "wrong chain text vs no memory",
+      "diff": -0.21875,
+      "lo": -0.28125,
+      "hi": -0.1484375,
+      "p": 0.0081991800819918,
+      "n": 8.0,
+      "p_holm": null
+    },
+    "link=0 | event_log_union - vector": {
+      "family": "exploratory",
+      "why": "event log without edges vs vector",
+      "diff": -0.046875,
+      "lo": -0.0859375,
+      "hi": -0.0078125,
+      "p": 0.1561843815618438,
+      "n": 8.0,
+      "p_holm": null
+    },
+    "link=0 | summary - vector": {
+      "family": "exploratory",
+      "why": "rolling summary vs vector",
+      "diff": -0.015625,
+      "lo": -0.0859375,
+      "hi": 0.0546875,
+      "p": 0.8467153284671532,
+      "n": 8.0,
+      "p_holm": null
+    },
+    "link=0 | chronological - vector": {
+      "family": "exploratory",
+      "why": "sliding window vs vector",
+      "diff": -0.015625,
+      "lo": -0.0859375,
+      "hi": 0.046875,
+      "p": 0.8739126087391261,
+      "n": 8.0,
+      "p_holm": null
+    },
+    "link=1 | tcmf_shipped@oracle - chain_text@oracle": {
+      "family": "confirmatory",
+      "why": "H5: production retriever's memories vs the bare chain text",
+      "diff": -0.90625,
+      "lo": -0.984375,
+      "hi": -0.8125,
+      "p": 0.0081991800819918,
+      "n": 8.0,
+      "p_holm": 0.0163983601639836
+    },
+    "link=1 | tcmf_paper@oracle - chain_text@oracle": {
+      "family": "exploratory",
+      "why": "H5 with the paper's configuration",
+      "diff": -0.046875,
+      "lo": -0.1484375,
+      "hi": 0.015625,
+      "p": 0.7452254774522548,
+      "n": 8.0,
+      "p_holm": null
+    },
+    "link=1 | tcmf_production_block@oracle - chain_text@oracle": {
+      "family": "exploratory",
+      "why": "production prompt block vs clean chain text",
+      "diff": -0.671875,
+      "lo": -0.7734375,
+      "hi": -0.5625,
+      "p": 0.0081991800819918,
+      "n": 8.0,
+      "p_holm": null
+    },
+    "link=1 | tcmf_production_block@deployed_graph - vector": {
+      "family": "exploratory",
+      "why": "production end to end (own linker, own prompt) vs vector",
+      "diff": -0.0390625,
+      "lo": -0.1484375,
+      "hi": 0.09375,
+      "p": 0.6386361363863614,
+      "n": 8.0,
+      "p_holm": null
+    },
+    "link=1 | tcmf_shipped@deployed_graph - vector": {
+      "family": "exploratory",
+      "why": "production retriever on its own linker's graph vs vector",
+      "diff": 0.0,
+      "lo": -0.1015625,
+      "hi": 0.1015625,
+      "p": 1.0,
+      "n": 8.0,
+      "p_holm": null
+    },
+    "link=1 | tcmf_paper@oracle - vector": {
+      "family": "exploratory",
+      "why": "paper configuration on a perfect graph vs vector",
+      "diff": 0.3203125,
+      "lo": 0.1953125,
+      "hi": 0.453125,
+      "p": 0.015398460153984602,
+      "n": 8.0,
+      "p_holm": null
+    },
+    "link=1 | tcmf_shipped@oracle - vector": {
+      "family": "exploratory",
+      "why": "production retriever on a perfect graph vs vector",
+      "diff": -0.5390625,
+      "lo": -0.65625,
+      "hi": -0.40625,
+      "p": 0.0081991800819918,
+      "n": 8.0,
+      "p_holm": null
+    },
+    "link=1 | tcmf_paper@oracle - graph_union@oracle": {
+      "family": "exploratory",
+      "why": "paper configuration vs the fusion-free graph reader",
+      "diff": -0.0390625,
+      "lo": -0.1484375,
+      "hi": 0.03125,
+      "p": 0.7457254274572542,
+      "n": 8.0,
+      "p_holm": null
+    },
+    "link=1 | tcmf_paper@wrong_graph - none": {
+      "family": "exploratory",
+      "why": "retrieval steered by a wrong graph vs no memory",
+      "diff": -0.1484375,
+      "lo": -0.21875,
+      "hi": -0.078125,
+      "p": 0.0327967203279672,
+      "n": 8.0,
+      "p_holm": null
+    },
+    "link=1 | chain_text@wrong_graph - none": {
+      "family": "exploratory",
+      "why": "wrong chain text vs no memory",
+      "diff": -0.2265625,
+      "lo": -0.265625,
+      "hi": -0.1875,
+      "p": 0.0081991800819918,
+      "n": 8.0,
+      "p_holm": null
+    },
+    "link=1 | event_log_union - vector": {
+      "family": "exploratory",
+      "why": "event log without edges vs vector",
+      "diff": -0.328125,
+      "lo": -0.4765625,
+      "hi": -0.1640625,
+      "p": 0.015598440155984402,
+      "n": 8.0,
+      "p_holm": null
+    },
+    "link=1 | summary - vector": {
+      "family": "exploratory",
+      "why": "rolling summary vs vector",
+      "diff": -0.125,
+      "lo": -0.203125,
+      "hi": -0.046875,
+      "p": 0.047795220477952205,
+      "n": 8.0,
+      "p_holm": null
+    },
+    "link=1 | chronological - vector": {
+      "family": "exploratory",
+      "why": "sliding window vs vector",
+      "diff": 0.0078125,
+      "lo": -0.0546875,
+      "hi": 0.078125,
+      "p": 1.0,
+      "n": 8.0,
+      "p_holm": null
+    }
+  }
+}

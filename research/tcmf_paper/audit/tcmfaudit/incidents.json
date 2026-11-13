@@ -1,0 +1,415 @@
+{
+  "_rules": "Authoring rules, fixed before any run and checked by tests/test_textworld.py: (1) every domain has exactly four candidate decisions and any of them can be the true cause; (2) a decision, its witness, its mechanism and the mechanism witness never use the crisis keywords listed for the domain; (3) the link memory names both the mechanism and the crisis; (4) options paraphrase the decision, they do not copy it.",
+  "domains": [
+    {
+      "id": "water",
+      "keywords": ["cholera", "sick", "ill", "illness", "clinic", "vomit"],
+      "crisis": "Cholera cases are surging across the east district and the clinics are overwhelmed.",
+      "symptoms": [
+        "Three more families on my street came down with violent stomach illness overnight.",
+        "The east clinic ran out of beds; cholera patients are lying in the corridor.",
+        "My neighbour's children have been vomiting since yesterday and cannot keep fluids down.",
+        "They are turning the school hall into a cholera ward because the clinic is full.",
+        "Everyone in the east market is talking about how many people fell sick this week."
+      ],
+      "causes": [
+        {
+          "option": "Ending the contract that supplied chlorine",
+          "decision": "Council session: the chlorine supply contract was cancelled to cut costs.",
+          "witness": "I sat in the gallery when they voted to cancel the chlorine contract; it passed without debate.",
+          "mechanism": "Dosing at the east reservoir stopped when the chemical tanks ran dry.",
+          "mech_witness": "The dosing pump at the east reservoir has been idle for weeks and the tanks are empty.",
+          "link": "The lab traced the cholera strain to east reservoir water that went untreated after dosing stopped."
+        },
+        {
+          "option": "Allowing the condemned well on Mill Lane to be used again",
+          "decision": "Council session: the condemned Mill Lane well was approved for reopening.",
+          "witness": "I remember the vote to take the lock off the Mill Lane well; the engineer's warning was read out and ignored.",
+          "mechanism": "Residents began drawing from the Mill Lane well again.",
+          "mech_witness": "People queue at the Mill Lane well every morning now that the lock is off.",
+          "link": "Nearly every cholera patient interviewed had been drinking from the Mill Lane well since it reopened."
+        },
+        {
+          "option": "Postponing repairs to the sewer main under Tanner Street",
+          "decision": "Council session: the Tanner Street sewer main repair was deferred to next year.",
+          "witness": "I was there when the works committee pushed the Tanner Street sewer repair back a year to save money.",
+          "mechanism": "The cracked Tanner Street sewer main began seeping into the surrounding ground.",
+          "mech_witness": "The ground along Tanner Street is soggy and smells foul where the old main runs.",
+          "link": "Inspectors found seepage from the Tanner Street sewer main in the pipes feeding the homes where cholera broke out."
+        },
+        {
+          "option": "Eliminating the job of district water inspector",
+          "decision": "Council session: the district water inspector post was abolished.",
+          "witness": "I heard the clerk announce that the water inspector's post was struck from the payroll.",
+          "mechanism": "Routine sampling of the district standpipes ceased.",
+          "mech_witness": "Nobody has come to take samples from the standpipes since the spring.",
+          "link": "Cholera spread for weeks without anyone noticing because sampling of the standpipes had ceased."
+        }
+      ]
+    },
+    {
+      "id": "power",
+      "keywords": ["blackout", "dark", "outage", "power cut", "candles", "no electricity"],
+      "crisis": "A blackout has left the northern wards without electricity for a third night.",
+      "symptoms": [
+        "We are cooking by candles again; the whole block has been dark since Tuesday.",
+        "The bakery threw out its dough because the ovens have had no electricity for days.",
+        "Street lamps are out across the northern wards and people are afraid to walk home in the dark.",
+        "My shop's cold room failed during the blackout and all the stock spoiled.",
+        "The night shift at the mill was sent home because of the outage."
+      ],
+      "causes": [
+        {
+          "option": "Moving the transformer upkeep money into the festival fund",
+          "decision": "Council session: the transformer maintenance budget was transferred to the harvest festival.",
+          "witness": "I watched the treasurer move the transformer maintenance money into the festival account.",
+          "mechanism": "The yearly oil change on the Northgate transformer was skipped.",
+          "mech_witness": "The Northgate transformer has been humming louder and running hot since the service crew stopped coming.",
+          "link": "The blackout began when the Northgate transformer, overdue for its oil change, burned out."
+        },
+        {
+          "option": "Letting the tree-trimming agreement along the feeder line lapse",
+          "decision": "Council session: the tree-trimming contract for the northern feeder line was not renewed.",
+          "witness": "I recall the council letting the tree-trimming contract lapse because the bids came in high.",
+          "mechanism": "Branches grew into the northern feeder line.",
+          "mech_witness": "The poplars along the feeder line now reach well above the wires and brush them in the wind.",
+          "link": "Crews found the blackout started where overgrown branches had pulled down the northern feeder line."
+        },
+        {
+          "option": "Permitting the foundry to connect a second furnace",
+          "decision": "Council session: the foundry was granted a permit to connect a second furnace.",
+          "witness": "I was at the hearing where the foundry got its permit for a second furnace despite the engineer's objection.",
+          "mechanism": "Load on the northern substation rose above its rating.",
+          "mech_witness": "The needle on the northern substation gauge sits in the red every evening since the foundry expanded.",
+          "link": "The blackout followed the northern substation tripping under load above its rating."
+        },
+        {
+          "option": "Dismissing half of the line repair crew",
+          "decision": "Council session: half of the line repair crew was laid off.",
+          "witness": "I saw the notice dismissing six of the twelve linemen after the budget vote.",
+          "mechanism": "Reported faults on the northern lines went unrepaired for weeks.",
+          "mech_witness": "The cracked insulator I reported on Quarry Road a month ago is still hanging there.",
+          "link": "The blackout spread from faults on the northern lines that had gone unrepaired for weeks."
+        }
+      ]
+    },
+    {
+      "id": "hospital",
+      "keywords": ["emergency ward", "ambulance", "ambulances", "waiting", "turned away", "overcrowded"],
+      "crisis": "The emergency ward at Saint Brannoc is overcrowded and ambulances are being turned away.",
+      "symptoms": [
+        "I waited nine hours in the emergency ward with my father before anyone saw him.",
+        "Two ambulances sat outside Saint Brannoc for an hour and then drove off with their patients.",
+        "The emergency ward is so overcrowded that people are sitting on the floor.",
+        "A nurse told us they were turning away anyone who could still walk.",
+        "My sister was sent across the river because Saint Brannoc had no room in the emergency ward."
+      ],
+      "causes": [
+        {
+          "option": "Shutting the walk-in clinic on Harbour Road",
+          "decision": "Council session: the Harbour Road walk-in clinic was closed.",
+          "witness": "I attended the meeting where they voted to close the Harbour Road walk-in clinic.",
+          "mechanism": "Minor cases from the harbour quarter began going to Saint Brannoc instead.",
+          "mech_witness": "Dockers with cuts and sprains now walk up the hill to Saint Brannoc because Harbour Road is shuttered.",
+          "link": "Most of the people filling the emergency ward are minor cases from the harbour quarter with nowhere else to go."
+        },
+        {
+          "option": "Stopping all new nurse appointments",
+          "decision": "Council session: a hiring freeze was imposed on nursing staff.",
+          "witness": "I heard the health board announce the freeze on hiring nurses.",
+          "mechanism": "Departing nurses at Saint Brannoc were not replaced.",
+          "mech_witness": "Four nurses left Saint Brannoc this season and their names are still blank on the rota.",
+          "link": "The emergency ward backs up because the nurses who left were never replaced and beds cannot be staffed."
+        },
+        {
+          "option": "Halving the money for home care visits",
+          "decision": "Council session: the home care visiting budget was cut by half.",
+          "witness": "I was present when the committee cut the home care visiting budget in half.",
+          "mechanism": "Recovered patients could not be discharged without home visits arranged.",
+          "mech_witness": "My aunt has been well enough to leave for two weeks but they say nobody can visit her at home.",
+          "link": "The emergency ward cannot move patients upstairs because recovered patients are stuck waiting for home visits."
+        },
+        {
+          "option": "Selling the hospital's east wing to a developer",
+          "decision": "Council session: the east wing of Saint Brannoc was sold to a developer.",
+          "witness": "I watched them sign away the east wing of Saint Brannoc to the hotel developer.",
+          "mechanism": "Forty beds in the east wing were removed.",
+          "mech_witness": "Workmen carried the bed frames out of the east wing and stacked them in the yard.",
+          "link": "With the east wing's forty beds removed, the emergency ward has nowhere to send admissions."
+        }
+      ]
+    },
+    {
+      "id": "food",
+      "keywords": ["bread", "flour", "hungry", "ration", "queue", "shortage"],
+      "crisis": "Bread has run short in the lower town and the bakeries are rationing loaves.",
+      "symptoms": [
+        "I queued two hours for bread this morning and they sold out before I reached the door.",
+        "The baker on Pike Street is rationing one loaf per family.",
+        "My children went to school hungry because there was no bread to be had.",
+        "People were shoving in the bread queue outside the lower town bakery.",
+        "Flour has tripled in price since the shortage began."
+      ],
+      "causes": [
+        {
+          "option": "Selling off the town's grain reserve",
+          "decision": "Council session: the municipal grain reserve was sold to pay down debt.",
+          "witness": "I was in the chamber when they voted to sell the grain reserve to the highest bidder.",
+          "mechanism": "The granary on Corn Hill was emptied.",
+          "mech_witness": "The Corn Hill granary doors stand open and there is nothing inside but dust.",
+          "link": "When the harvest came in thin there was no bread because the Corn Hill granary had been emptied."
+        },
+        {
+          "option": "Raising the toll charged at the river bridge",
+          "decision": "Council session: the river bridge toll was doubled.",
+          "witness": "I heard the toll keeper read the new doubled rate for the river bridge.",
+          "mechanism": "Grain carters from the upland farms stopped crossing into town.",
+          "mech_witness": "The upland carters now sell at the far bank and turn back rather than cross.",
+          "link": "Bread ran short once the upland grain carters stopped crossing into town."
+        },
+        {
+          "option": "Leaving the mill race without dredging",
+          "decision": "Council session: dredging of the mill race was struck from the works list.",
+          "witness": "I saw the works list with the mill race dredging crossed out by the chairman.",
+          "mechanism": "The town mill wheel slowed to a crawl as the race silted up.",
+          "mech_witness": "The miller says the wheel barely turns now; silt has choked the race.",
+          "link": "The bakeries have no flour for bread because the silted race has slowed the town mill to a crawl."
+        },
+        {
+          "option": "Granting one merchant the sole right to import grain",
+          "decision": "Council session: an exclusive grain import licence was granted to the Varley company.",
+          "witness": "I was at the session that handed the Varley company the only licence to bring in grain.",
+          "mechanism": "The Varley warehouses held back stock.",
+          "mech_witness": "Sacks are piled to the rafters in the Varley warehouses and none of it is leaving.",
+          "link": "Bread is short because the Varley warehouses are holding back the stock they alone may import."
+        }
+      ]
+    },
+    {
+      "id": "transit",
+      "keywords": ["bridge closed", "stranded", "ferry", "cut off", "collapse", "collapsed"],
+      "crisis": "The Weir Bridge has been closed after a partial collapse and the south bank is cut off.",
+      "symptoms": [
+        "I have been stranded on the south bank since the Weir Bridge was closed.",
+        "The ferry queue stretches along the quay now that the bridge is shut.",
+        "A span of the Weir Bridge collapsed into the river last night.",
+        "Carts are backed up for a mile because the south bank is cut off.",
+        "My workshop has had no deliveries since the collapse."
+      ],
+      "causes": [
+        {
+          "option": "Cancelling the yearly structural survey",
+          "decision": "Council session: the annual structural survey was dropped from the budget.",
+          "witness": "I recall the surveyor protesting when his annual inspection was dropped from the budget.",
+          "mechanism": "Corrosion on the third pier went unrecorded.",
+          "mech_witness": "From my boat I can see rust flaking off the third pier and nobody has been down to look.",
+          "link": "The Weir Bridge collapsed at the third pier, where corrosion had gone unrecorded."
+        },
+        {
+          "option": "Removing the weight limit for quarry wagons",
+          "decision": "Council session: the weight limit for quarry wagons was lifted.",
+          "witness": "I was there when the quarry owners persuaded the council to lift the wagon weight limit.",
+          "mechanism": "Loaded stone wagons began crossing in convoys.",
+          "mech_witness": "Stone wagons now cross six at a time and the roadway shakes under them.",
+          "link": "The Weir Bridge collapsed under a convoy of loaded stone wagons."
+        },
+        {
+          "option": "Approving gravel dredging upstream",
+          "decision": "Council session: a gravel dredging concession upstream was approved.",
+          "witness": "I heard the vote that gave the dredging company its gravel concession upstream.",
+          "mechanism": "The riverbed around the piers was scoured away.",
+          "mech_witness": "The water by the piers runs far deeper and faster than it did before the dredgers came.",
+          "link": "Divers found the riverbed scoured away beneath the pier where the Weir Bridge collapsed."
+        },
+        {
+          "option": "Substituting cheaper timber in the deck repairs",
+          "decision": "Council session: cheaper timber was authorised for the deck repairs.",
+          "witness": "I saw the order approving softwood instead of oak for the deck repairs.",
+          "mechanism": "The new deck beams began to rot within a season.",
+          "mech_witness": "The beams they put in last year are already soft enough to push a knife into.",
+          "link": "The Weir Bridge collapsed where the rotted deck beams gave way."
+        }
+      ]
+    },
+    {
+      "id": "school",
+      "keywords": ["no teacher", "classes cancelled", "sent home", "closed", "teachers left", "empty classrooms"],
+      "crisis": "Half the classes at Hollin Road School have been cancelled because the teachers have left.",
+      "symptoms": [
+        "My daughter was sent home again; her class has had no teacher for a fortnight.",
+        "Three classrooms at Hollin Road stand empty because the teachers left.",
+        "The head told parents that classes are cancelled until further notice.",
+        "Children are roaming the lanes at midday since the school sent them home.",
+        "Another two teachers left Hollin Road this week."
+      ],
+      "causes": [
+        {
+          "option": "Holding staff wages flat for three years",
+          "decision": "Council session: staff salaries were frozen for three years.",
+          "witness": "I was in the hall when the three-year salary freeze was read into the minutes.",
+          "mechanism": "The neighbouring parish began offering higher pay.",
+          "mech_witness": "The parish across the valley is advertising posts at a quarter more than ours.",
+          "link": "The teachers left Hollin Road for the neighbouring parish and its higher pay."
+        },
+        {
+          "option": "Shutting down the staff lodging house",
+          "decision": "Council session: the staff lodging house was shut and sold.",
+          "witness": "I watched the auction of the staff lodging house after the council shut it.",
+          "mechanism": "Staff from outside the town had nowhere affordable to live.",
+          "mech_witness": "The young master from the coast has been sleeping at the inn and says he cannot afford it much longer.",
+          "link": "Teachers left Hollin Road because, once the lodging house closed, they had nowhere affordable to live."
+        },
+        {
+          "option": "Merging year groups into double-sized classes",
+          "decision": "Council session: year groups were merged into double classes.",
+          "witness": "I heard the education committee order the year groups merged into double classes.",
+          "mechanism": "Each member of staff was left with seventy pupils.",
+          "mech_witness": "There are seventy children in one room now and the mistress has lost her voice.",
+          "link": "The teachers left Hollin Road worn out by rooms of seventy pupils."
+        },
+        {
+          "option": "Appointing an inspector with authority to dock pay",
+          "decision": "Council session: an inspector with power to dock pay was appointed.",
+          "witness": "I remember the uproar when they appointed an inspector who could dock pay on the spot.",
+          "mechanism": "Fines were issued to staff almost weekly.",
+          "mech_witness": "The inspector fined two of them last week over the state of the chalkboards.",
+          "link": "The teachers left Hollin Road after the inspector's weekly fines."
+        }
+      ]
+    },
+    {
+      "id": "fire",
+      "keywords": ["fire", "burned", "burning", "smoke", "flames", "ash"],
+      "crisis": "A fire has burned through the Tannery Quarter and forty homes are lost.",
+      "symptoms": [
+        "I watched the flames jump from roof to roof along Tannery Row.",
+        "Smoke is still hanging over the quarter and my eyes are stinging.",
+        "Forty families are sleeping in the church since their homes burned.",
+        "Nothing is left of my cousin's house but ash and a chimney.",
+        "The fire spread so fast that people ran out with nothing."
+      ],
+      "causes": [
+        {
+          "option": "Disbanding the night watch",
+          "decision": "Council session: the night watch was disbanded.",
+          "witness": "I was present when the council voted to disband the night watch as an unneeded expense.",
+          "mechanism": "No one patrolled the quarter after dark.",
+          "mech_witness": "I have not seen a watchman's lantern in the quarter for months.",
+          "link": "The fire burned for an hour before the alarm was raised because no one patrolled the quarter after dark."
+        },
+        {
+          "option": "Letting the public cisterns go unfilled",
+          "decision": "Council session: refilling of the public cisterns was suspended.",
+          "witness": "I heard the order suspending the carts that refill the public cisterns.",
+          "mechanism": "The cistern at Tannery Cross stood dry.",
+          "mech_witness": "The children play inside the Tannery Cross cistern now; it is bone dry.",
+          "link": "The bucket chains could not fight the fire because the Tannery Cross cistern stood dry."
+        },
+        {
+          "option": "Allowing thatch roofs in the quarter again",
+          "decision": "Council session: the ban on thatched roofing was repealed.",
+          "witness": "I recall the builders cheering when the ban on thatched roofing was repealed.",
+          "mechanism": "New houses on Tannery Row were roofed in straw.",
+          "mech_witness": "Every new roof on Tannery Row is straw now; it is half the price of tile.",
+          "link": "The fire raced along Tannery Row across the new straw roofs."
+        },
+        {
+          "option": "Licensing a tallow works among the houses",
+          "decision": "Council session: a tallow rendering works was licensed inside the residential rows.",
+          "witness": "I saw the licence for the tallow works posted on the row despite the petition against it.",
+          "mechanism": "Open vats of fat were kept boiling beside timber walls.",
+          "mech_witness": "The tallow man keeps his vats boiling all night a hand's breadth from the neighbour's wall.",
+          "link": "The fire started where a boiling vat of fat at the tallow works caught the timber wall."
+        }
+      ]
+    },
+    {
+      "id": "flood",
+      "keywords": ["flood", "flooded", "underwater", "water in", "drowned", "waist-deep"],
+      "crisis": "The Low Meadows are flooded and two hundred households have been driven out.",
+      "symptoms": [
+        "The water in our kitchen is waist-deep and still rising.",
+        "The whole of Low Meadows is underwater; only the roofs show.",
+        "We carried my grandmother out on a door when the flood reached the bed.",
+        "Two hundred households are camped on the ridge since the meadows flooded.",
+        "All our hens drowned in the night."
+      ],
+      "causes": [
+        {
+          "option": "Ending the embankment upkeep levy",
+          "decision": "Council session: the embankment upkeep levy was abolished.",
+          "witness": "I was at the session where the embankment levy was abolished to please the ratepayers.",
+          "mechanism": "Burrows and slumps in the river embankment were left unmended.",
+          "mech_witness": "There is a slump in the embankment by the willow that you could drive a cart through.",
+          "link": "The meadows flooded when the river broke through the unmended slump in the embankment."
+        },
+        {
+          "option": "Permitting houses to be built on the overflow field",
+          "decision": "Council session: building plots were approved on the overflow field.",
+          "witness": "I heard the planning vote that released the overflow field for building plots.",
+          "mechanism": "The overflow field was raised and walled.",
+          "mech_witness": "They have banked up the old overflow field and put a wall right round it.",
+          "link": "The meadows flooded because the river, shut out of the walled overflow field, had nowhere else to go."
+        },
+        {
+          "option": "Dismissing the sluice keeper",
+          "decision": "Council session: the sluice keeper's position was terminated.",
+          "witness": "I remember the sluice keeper handing in his keys the day his position was terminated.",
+          "mechanism": "The sluice gates stayed shut through the rains.",
+          "mech_witness": "The sluice gates have not been opened once this season; the wheel is chained.",
+          "link": "The meadows flooded because the sluice gates stayed shut while the river rose."
+        },
+        {
+          "option": "Allowing the upland woods to be cleared",
+          "decision": "Council session: clearance of the upland woods was authorised.",
+          "witness": "I watched the council authorise the timber company to clear the upland woods.",
+          "mechanism": "Rain ran straight off the bare hillside into the river.",
+          "mech_witness": "The hillside is bare stumps now and every shower sends brown torrents down the gullies.",
+          "link": "The meadows flooded when rain off the bare hillside swelled the river in a single night."
+        }
+      ]
+    }
+  ],
+  "noise": [
+    "The cobbler on Fenn Lane has a new apprentice who whistles all day.",
+    "I lost my good gloves somewhere between the market and the chapel.",
+    "The choir is rehearsing a new piece for the spring service.",
+    "My brother wrote to say his ship reached port safely.",
+    "The tailor has raised his prices again and nobody is pleased.",
+    "There was a fine sunset over the hills this evening.",
+    "The innkeeper's dog had six puppies and he is giving them away.",
+    "I finally finished mending the garden fence.",
+    "A travelling puppet show set up in the square for two days.",
+    "The apples are early this year and sweeter than last.",
+    "My cousin is getting married at midsummer.",
+    "The clock on the guildhall is running ten minutes slow.",
+    "I beat the blacksmith at draughts for the first time.",
+    "Someone has painted the old pump on Carter Street bright green.",
+    "The fiddler at the Three Bells played until midnight.",
+    "My knee aches whenever the weather turns.",
+    "The potter's new glaze came out a lovely deep blue.",
+    "A fox has been getting into the vicar's garden.",
+    "I owe the chandler for last month's lamp oil.",
+    "The children built a snow fort behind the stables.",
+    "The bookbinder is looking for someone to share his shop.",
+    "We had goose for dinner on my mother's birthday.",
+    "The carrier brought a letter from my old schoolmaster.",
+    "My neighbour is teaching her parrot to say good morning.",
+    "The glazier replaced the cracked pane in the chapel window.",
+    "I walked out to the old oak and back before breakfast.",
+    "The weaver's loom broke and she is waiting on a part.",
+    "There is talk of a wrestling match at the autumn fair.",
+    "The barber told a long story about his time in the army.",
+    "I planted beans along the south wall.",
+    "My sister's baby has cut her first tooth.",
+    "The saddler has a fine new sign above his door.",
+    "A pedlar came through selling ribbons and needles.",
+    "The lamplighter was late again tonight.",
+    "I found a silver button on the path by the churchyard.",
+    "The cooper's son has gone to sea.",
+    "The moon was so bright last night I could read by it.",
+    "My landlord wants the rent a week early this quarter.",
+    "The apothecary has a remedy for coughs that tastes of liquorice.",
+    "Two swans have nested on the mill pond."
+  ]
+}
