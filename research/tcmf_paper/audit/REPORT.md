@@ -464,6 +464,17 @@ Still open from "What the evidence supports doing": embedding the memories writt
 `_remember` (item 6), and the linker (item 7). Items 1, 4 and 5 are done; items 2 and 3 are
 descriptions and a prompt change that waits on the linker.
 
+Update, 14 Nov (PR #16, 53d5912): items 6 and 7 are done as far as the evidence allows.
+Crisis and verdict memories now carry embeddings in both modes (`use_llm=False` uses a
+word-hashing embedder, `api/memory/hashing_embedder.py`). The linker gains a similarity-only
+pass over events older than its window, at most 2 links per crisis, with encoder-specific
+thresholds. On the synthetic tier the old, moderately similar cause is now linked in 458 of 500
+scenarios (was 0) and precision rises from 0.64 to 0.88; unrelated links are unchanged in every
+regime. The paper's premise regime (old and unlike the crisis) is unchanged at 0 of 500:
+similarity cannot separate that cause from an unrelated event, so the linker cannot either.
+Full tables: `results/linker.md`. The nomic and MiniLM thresholds were fitted on the same text
+pairs they were scored on; Tier B with the new linker has not been run.
+
 Verification of the change: `pytest api/tests` 83 passed (6 new; 4 of them fail on the audited
 code), `pytest tcmfbench` 214 passed and 1 skipped, the audit's own suite 25 passed including
 ranking parity with the retriever as it ships now, and 3,198 audited rows regenerated from the
