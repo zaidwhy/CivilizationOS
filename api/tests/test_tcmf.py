@@ -83,6 +83,33 @@ class TestCausalGraph:
         preds = g.predecessors("x")
         assert "x" not in preds
 
+    def _old_and_new(self) -> CausalGraph:
+        # A cause 199 ticks before the crisis and similar to it (cosine 0.8), and an unrelated
+        # event as old (cosine 0). Both are far outside the 48-tick window.
+        g = CausalGraph()
+        g.add_event("cause", "old cause", tick=1, embedding=[0.8, 0.6, 0.0])
+        g.add_event("unrelated", "old other", tick=2, embedding=[0.0, 0.0, 1.0])
+        g.add_event("crisis", "crisis", tick=200, embedding=[1.0, 0.0, 0.0])
+        return g
+
+    def test_old_cause_unreachable_by_window_alone(self):
+        g = self._old_and_new()
+        g.auto_link_predecessors("crisis")
+        assert g.predecessors("crisis") == {}
+
+    def test_older_pass_links_similar_old_cause_only(self):
+        g = self._old_and_new()
+        g.auto_link_predecessors("crisis", older_sim_threshold=0.64)
+        assert g.predecessors("crisis") == {"cause": 1}
+
+    def test_older_pass_caps_links_most_similar_first(self):
+        g = CausalGraph()
+        for i, x in enumerate((0.70, 0.95, 0.80, 0.90)):
+            g.add_event(f"e{i}", "old", tick=i + 1, embedding=[x, (1 - x * x) ** 0.5])
+        g.add_event("crisis", "crisis", tick=200, embedding=[1.0, 0.0])
+        g.auto_link_predecessors("crisis", older_sim_threshold=0.64, max_older_links=2)
+        assert set(g.predecessors("crisis")) == {"e1", "e3"}
+
 
 # ------------------------------------------------------------------ TCMF retrieval
 

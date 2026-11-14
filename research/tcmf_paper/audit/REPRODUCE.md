@@ -37,6 +37,15 @@ that share a world configuration. `--only A5 P3` runs a subset; `--n 100` a smal
 $PY -m tcmfaudit.run_cost                 # writes results/cost.json; wall clock, machine-specific
 ```
 
+## 3b. Linker before and after the older-event pass (about 1 minute, offline)
+
+```bash
+$PY -m tcmfaudit.run_linker               # writes results/linker.md
+```
+
+Finding 3's linker table (window pass alone) next to the same scenarios with
+`older_sim_threshold` set. The text tier reads the committed embedding caches, so no model runs.
+
 ## 4. Tier B: LLM end task (needs Ollama)
 
 Models: `qwen2.5:3b-instruct`, `llama3.2:3b`, `nomic-embed-text`, `all-minilm`
