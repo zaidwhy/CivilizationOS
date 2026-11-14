@@ -97,7 +97,9 @@ def to_causal_graph(world: World, og: ObservedGraph, ev_text: list[str] | None =
     return graph
 
 
-def deployed(world: World, link_all: bool = False) -> ObservedGraph:
+def deployed(world: World, link_all: bool = False, linker: dict | None = None) -> ObservedGraph:
+    """``linker`` is passed to ``auto_link_predecessors`` as keyword arguments; None calls it
+    with its defaults, as every committed row was built."""
     nodes = list(range(len(world.ev_kind)))
     graph = CausalGraph()
     for i in sorted(nodes, key=lambda n: (int(world.ev_tick[n]), n)):
@@ -106,7 +108,7 @@ def deployed(world: World, link_all: bool = False) -> ObservedGraph:
             institution_id=INSTITUTION, embedding=world.ev_emb[i].tolist(),
         )
         if link_all or i == world.crisis:
-            graph.auto_link_predecessors(event_id(i))
+            graph.auto_link_predecessors(event_id(i), **(linker or {}))
     edges = [(int(c[1:]), int(e[1:])) for c, e in graph._g.edges]
     return ObservedGraph(nodes, edges, world.crisis)
 

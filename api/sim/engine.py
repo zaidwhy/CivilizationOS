@@ -26,7 +26,7 @@ from ..agents.citizen import Citizen
 from ..agents.council import COUNCILS, DebateTurn
 from ..agents.personas import SEED_CITIZENS, Persona
 from ..llm import Tier, get_router
-from ..memory.causal_graph import CausalGraph
+from ..memory.causal_graph import OLDER_LINK_THRESHOLD_NOMIC, CausalGraph
 from ..memory.hashing_embedder import CAUSAL_SIM_THRESHOLD as LEXICAL_SIM_THRESHOLD, HashingEmbedder
 from ..memory.tcmf import TCMFRetriever
 from ..sim.crisis import Crisis, CrisisRegistry
@@ -85,6 +85,9 @@ class Engine:
         # Ollama model, or without an LLM a numpy word-hashing embedder whose similarities need
         # their own causal threshold. Never mix the two in one run.
         self._embedder = self._router if use_llm else HashingEmbedder()
+        # Linking crises to causes older than the 48-tick window, on similarity alone. The
+        # threshold is measured for nomic-embed-text only, so the lexical encoder keeps it off.
+        self._older_link_threshold = OLDER_LINK_THRESHOLD_NOMIC if use_llm else None
         # PANTHEON
         self.causal_graph = CausalGraph()
         self.tcmf = (
@@ -535,7 +538,9 @@ class Engine:
             institution_id=institution_id,
             embedding=embedding,
         )
-        self.causal_graph.auto_link_predecessors(crisis.causal_event_id)
+        self.causal_graph.auto_link_predecessors(
+            crisis.causal_event_id, older_sim_threshold=self._older_link_threshold
+        )
         self._log_event(tick, "crisis", f"CRISIS [{institution_id}]: {text}")
         logger.info("Crisis injected: %s -> %s", crisis.id, institution_id)
 

@@ -21,6 +21,13 @@ import networkx as nx
 import numpy as np
 
 
+# Similarity a crisis needs to an event older than the linker's window before it is linked to
+# it on similarity alone, under nomic-embed-text. Just above the highest similarity any
+# unrelated decision reached to its crisis in the audit's text tier (0.639, 384 pairs, the
+# same data the change was then measured on). research/tcmf_paper/audit/results/linker.md
+OLDER_LINK_THRESHOLD_NOMIC = 0.64
+
+
 def _cosine(a: list[float], b: list[float]) -> float:
     va, vb = np.asarray(a, dtype=np.float32), np.asarray(b, dtype=np.float32)
     denom = np.linalg.norm(va) * np.linalg.norm(vb)
@@ -70,8 +77,17 @@ class CausalGraph:
         new_event_id: str,
         window_ticks: int = 48,
         semantic_threshold: float = 0.5,
+        *,
+        older_sim_threshold: float | None = None,
+        max_older_links: int = 2,
     ) -> None:
-        """Link temporally nearby, semantically similar events as weak causes."""
+        """Link temporally nearby, semantically similar events as weak causes.
+
+        With ``older_sim_threshold`` set, events older than the window are also linked on
+        similarity alone: at most ``max_older_links`` of them, most similar first, each at or
+        above the threshold. Without it a cause older than the window can never be linked.
+        The threshold is encoder-specific; see ``OLDER_LINK_THRESHOLD_NOMIC``.
+        """
         if new_event_id not in self._g:
             return
         new_data = self._g.nodes[new_event_id]
@@ -94,6 +110,20 @@ class CausalGraph:
             combined = 0.5 * t_weight + 0.5 * s_weight
             if combined >= 0.3:
                 self._g.add_edge(nid, new_event_id, weight=round(combined, 3))
+
+        if older_sim_threshold is None or not new_emb:
+            return
+        older: list[tuple[float, str]] = []
+        for nid, data in self._g.nodes(data=True):
+            if nid == new_event_id or new_tick - data["tick"] <= window_ticks:
+                continue
+            if data.get("embedding"):
+                sim = _cosine(new_emb, data["embedding"])
+                if sim >= older_sim_threshold:
+                    older.append((sim, nid))
+        older.sort(reverse=True)
+        for sim, nid in older[:max_older_links]:
+            self._g.add_edge(nid, new_event_id, weight=round(sim, 3))
 
     # ------------------------------------------------------------------ read
 

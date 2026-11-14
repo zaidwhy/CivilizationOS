@@ -87,6 +87,19 @@ async def test_generic_observation_reaches_causal_boost_without_llm(monkeypatch)
 
 
 @pytest.mark.parametrize("use_llm", [False, True])
+async def test_crisis_links_to_similar_crisis_older_than_window(monkeypatch, use_llm):
+    # The older-than-window pass is on only for the router's encoder, whose threshold was
+    # measured; the lexical encoder has none and keeps the window alone.
+    eng = _engine(monkeypatch, use_llm=use_llm)
+    text = CRISIS_TEMPLATES["drought"].description
+    first = await eng.inject_crisis(text, "inst_economy")
+    eng.tick_count = 100
+    second = await eng.inject_crisis(text, "inst_economy")
+    linked = first.causal_event_id in eng.causal_graph.predecessors(second.causal_event_id)
+    assert linked is use_llm
+
+
+@pytest.mark.parametrize("use_llm", [False, True])
 async def test_verdict_memories_reach_causal_boost(monkeypatch, use_llm):
     eng = _engine(monkeypatch, use_llm=use_llm)
     seen_router = []
