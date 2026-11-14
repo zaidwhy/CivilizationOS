@@ -1573,3 +1573,11 @@ checked out at `research/tcmf_paper/paper/`.
 - Verified: `pytest api/tests` 83 passed; `pytest research/tcmf_paper/tcmfbench` 214 passed, 1 skipped; audit suite 25 passed; 3,198 audited rows regenerate with 0 mismatches; Tier B replays offline to an identical summary.
 - Not done: `_remember` still stores no embedding; the linker is unchanged; no live engine replay; `docs/tcmf.md:168` has one pre-existing craft-guard finding left alone.
 - Merged as PR #15 (b2ea56f) on Zaid's instruction; CI on `main` passed (test, web). Live checks after the merge: frontend 200, API `/health` 200 with version 0.13.0. `/health` reports no commit, so whether the hosted process has redeployed with the new retriever was not confirmed.
+
+## 2026-11-14 - Audit items 6 and 7: memory embeddings and the older-cause linker (PR #16)
+
+- `api/sim/engine.py`: crisis events, crisis observations, verdict events and verdict memories now carry embeddings, and the embedder is passed to the retriever in both modes. `use_llm=False` (the hosted demo) uses a new numpy word-hashing embedder, `api/memory/hashing_embedder.py`, causal threshold 0.20.
+- `CausalGraph.auto_link_predecessors`: optional similarity-only pass over events older than the 48-tick window, at most 2 links per crisis, encoder-specific thresholds (nomic 0.64, MiniLM 0.34); off for the hashing embedder.
+- Measured (`research/tcmf_paper/audit/results/linker.md`): synthetic, old and moderately similar cause, true root linked 0 -> 458 of 500, precision 0.64 -> 0.88; unrelated links unchanged in every regime; the paper's premise regime (old, dissimilar cause) unchanged at 0 of 500.
+- Verified: `pytest api/tests` 93 passed (83 before; 10 new, shown failing on the old code); tcmfbench 214 passed, 1 skipped; audit suite 25 passed; CI on PR #16 green; merged as 53d5912. Audit REPORT.md addendum updated.
+- Not verified: thresholds for nomic and MiniLM were fitted on the pairs they were scored on; no live engine run with Ollama; Tier B not rerun; extra embed calls per crisis not timed. Render redeploy confirmed by Zaid in the dashboard.
