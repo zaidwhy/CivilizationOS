@@ -27,6 +27,7 @@ from ..agents.council import COUNCILS, DebateTurn
 from ..agents.personas import SEED_CITIZENS, Persona
 from ..llm import Tier, get_router
 from ..memory.causal_graph import CausalGraph
+from ..memory.hashing_embedder import CAUSAL_SIM_THRESHOLD as LEXICAL_SIM_THRESHOLD, HashingEmbedder
 from ..memory.tcmf import TCMFRetriever
 from ..sim.crisis import Crisis, CrisisRegistry
 from ..sim.events import CRISIS_TEMPLATES, CrisisTemplate
@@ -80,9 +81,16 @@ class Engine:
         self.event_log: list[dict] = []
         self._bg: set[asyncio.Task] = set()
         self._router = get_router() if use_llm else None
+        # One encoder per engine, so every memory and event vector shares a space: the router's
+        # Ollama model, or without an LLM a numpy word-hashing embedder whose similarities need
+        # their own causal threshold. Never mix the two in one run.
+        self._embedder = self._router if use_llm else HashingEmbedder()
         # PANTHEON
         self.causal_graph = CausalGraph()
-        self.tcmf = TCMFRetriever(self.causal_graph)
+        self.tcmf = (
+            TCMFRetriever(self.causal_graph) if use_llm
+            else TCMFRetriever(self.causal_graph, causal_sim_threshold=LEXICAL_SIM_THRESHOLD)
+        )
         self.crises = CrisisRegistry()
         self._on_debate_turn: Callable[[DebateTurn], Awaitable[None]] | None = None
         # Phase 3 - active crisis state
@@ -445,17 +453,26 @@ class Engine:
             logger.exception("reflection failed for %s", c.p.id)
 
     # ---- memory helpers ----
-    def _remember(self, c: Citizen, text: str, tick: int, kind: str) -> None:
-        c.memory.add(text, tick, kind=kind, importance=IMPORTANCE.get(kind, 3.0))
+    def _remember(
+        self, c: Citizen, text: str, tick: int, kind: str, embedding: list[float] | None = None
+    ) -> None:
+        c.memory.add(text, tick, kind=kind, importance=IMPORTANCE.get(kind, 3.0), embedding=embedding)
+
+    async def _embed_texts(self, texts: list[str]) -> dict[str, list[float]]:
+        """Embed each distinct text once. A failed text is left out and stored without one."""
+        out: dict[str, list[float]] = {}
+        if self._embedder is None:
+            return out
+        for text in dict.fromkeys(texts):
+            try:
+                out[text] = (await self._embedder.embed([text]))[0]
+            except Exception:  # craft-guard: allow sec-swallow because a vector is optional: the failure is logged and the memory is stored without one, as before
+                logger.exception("embedding failed")
+        return out
 
     async def _remember_async(self, c: Citizen, text: str, tick: int, kind: str) -> None:
-        embedding = None
-        if self.use_llm and self._router is not None:
-            try:
-                embedding = (await self._router.embed([text]))[0]
-            except Exception:
-                logger.exception("embedding failed")
-        c.memory.add(text, tick, kind=kind, importance=IMPORTANCE.get(kind, 3.0), embedding=embedding)
+        embedding = (await self._embed_texts([text])).get(text)
+        self._remember(c, text, tick, kind, embedding)
 
     # ---- Phase 3: crisis effects per tick ----
     def _tick_crisis_effects(self, tick: int) -> None:
@@ -468,8 +485,21 @@ class Engine:
         # Remove locations that were partially reopened by a council verdict
         self._closed_locations -= self._verdict_reopened
 
-    def _apply_template_fear(self, tmpl: CrisisTemplate, tick: int) -> None:
-        """Inject fear and occupation-specific memories into citizens."""
+    def _template_observations(self, tmpl: CrisisTemplate) -> list[str]:
+        """The crisis memory each citizen gets: occupation-specific line first, else generic."""
+        texts = (c.occupation_crisis_observation(tmpl.key) or tmpl.citizen_observation
+                 for c in self.citizens.values())
+        return [t for t in texts if t]
+
+    def _apply_template_fear(
+        self, tmpl: CrisisTemplate, tick: int, embeddings: dict[str, list[float]] | None = None
+    ) -> None:
+        """Inject fear and occupation-specific memories into citizens.
+
+        `embeddings` maps observation text to its vector. The crisis's causal boost can only
+        reach a memory that has one, so inject_crisis embeds them before calling this.
+        """
+        embeddings = embeddings or {}
         for c in self.citizens.values():
             boost = tmpl.workplace_fear_boost.get(c.p.workplace_id, 0.0)
             c.apply_fear(tmpl.base_fear + boost)
@@ -478,9 +508,10 @@ class Engine:
             # Occupation-specific reaction takes priority over generic observation
             occ_obs = c.occupation_crisis_observation(tmpl.key)
             if occ_obs:
-                self._remember(c, occ_obs, tick, "event")
+                self._remember(c, occ_obs, tick, "event", embeddings.get(occ_obs))
             elif tmpl.citizen_observation:
-                self._remember(c, tmpl.citizen_observation, tick, "event")
+                obs = tmpl.citizen_observation
+                self._remember(c, obs, tick, "event", embeddings.get(obs))
 
     # ---- Phase 2: crisis injection ----
     async def inject_crisis(
@@ -494,12 +525,7 @@ class Engine:
         tick = self.tick_count
         crisis = self.crises.create(text, tick, institution_id, severity, template_key=template_key, emergent=emergent)
 
-        embedding: list[float] | None = None
-        if self.use_llm and self._router:
-            try:
-                embedding = (await self._router.embed([text]))[0]
-            except Exception:
-                logger.exception("crisis embedding failed")
+        embedding = (await self._embed_texts([text])).get(text)
 
         self.causal_graph.add_event(
             crisis.causal_event_id,
@@ -517,7 +543,8 @@ class Engine:
         if tmpl:
             expiry = tick + tmpl.duration_ticks
             self._active_templates.append((tmpl, expiry))
-            self._apply_template_fear(tmpl, tick)
+            observations = await self._embed_texts(self._template_observations(tmpl))
+            self._apply_template_fear(tmpl, tick, observations)
             for sec_inst in tmpl.secondary_institutions:
                 sec_council = COUNCILS.get(sec_inst)
                 if sec_council:
@@ -546,7 +573,7 @@ class Engine:
             institution_id=crisis.institution_id,
             crisis_event_id=crisis.causal_event_id,
             k=12,
-            router=router if self.use_llm else None,
+            router=self._embedder,
         )
         if self._factions:
             lines = "; ".join(
@@ -593,12 +620,7 @@ class Engine:
         if verdict_text:
             debate_id = self.crises._crises[crisis.id].debate_id
             decision_id = f"dec_{crisis.id}"
-            decision_emb: list[float] | None = None
-            if self.use_llm and router:
-                try:
-                    decision_emb = (await router.embed([verdict_text]))[0]
-                except Exception:
-                    pass
+            decision_emb = (await self._embed_texts([verdict_text])).get(verdict_text)
             self.causal_graph.add_event(
                 decision_id,
                 text=verdict_text,
@@ -614,7 +636,9 @@ class Engine:
             if crisis.template_key:
                 tmpl = CRISIS_TEMPLATES.get(crisis.template_key)
                 if tmpl:
-                    self._apply_verdict_effects(tmpl, verdict_text, crisis.institution_id)
+                    memory_text = self._verdict_memory_text(tmpl, verdict_text)
+                    memory_emb = (await self._embed_texts([memory_text])).get(memory_text)
+                    self._apply_verdict_effects(tmpl, verdict_text, crisis.institution_id, memory_emb)
 
         logger.info("Debate complete for crisis %s", crisis.id)
 
@@ -689,18 +713,23 @@ class Engine:
         )
         return res_text
 
-    def _apply_verdict_effects(self, tmpl: CrisisTemplate, verdict_text: str, institution_id: str = "") -> None:
+    @staticmethod
+    def _verdict_memory_text(tmpl: CrisisTemplate, verdict_text: str) -> str:
+        return f"Council issued directive on {tmpl.name}: {verdict_text[:100].rstrip()}"
+
+    def _apply_verdict_effects(
+        self,
+        tmpl: CrisisTemplate,
+        verdict_text: str,
+        institution_id: str = "",
+        memory_embedding: list[float] | None = None,
+    ) -> None:
         """Partial fear reduction + decision memory + partial location reopening on verdict."""
-        summary = verdict_text[:100].rstrip()
+        memory_text = self._verdict_memory_text(tmpl, verdict_text)
         tick = self.tick_count
         for c in self.citizens.values():
             c.fear = max(0.0, c.fear - tmpl.verdict_fear_reduction)
-            self._remember(
-                c,
-                f"Council issued directive on {tmpl.name}: {summary}",
-                tick,
-                "decision",
-            )
+            self._remember(c, memory_text, tick, "decision", memory_embedding)
 
         # Track how much fear this institution's verdict averted (what-if metric)
         rec = self._track_record.get(institution_id)
